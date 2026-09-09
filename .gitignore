@@ -1,0 +1,47 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+
+# Local configuration (keep examples tracked)
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+
+# Logs and local generated files
+*.log
+coverage.xml
+htmlcov/
+
+# Scratch temporary test captures, media, and build outputs
+.scratch/**/screenshots/
+.scratch/**/evidence/*.png
+.scratch/**/coordinator-ui.png
+.scratch/**/*.png
+.scratch/**/coordinator-live/
+.scratch/**/dist/
+.scratch/**/dist-cjs/
+.scratch/**/*-snapshot.json
+.scratch/**/*-valuation.json
+.scratch/**/*-verification-response.json
+.scratch/**/source-*.json
+.scratch/**/tsm_raw_capture.json
+.scratch/**/tsm-rejection-before.json
+.scratch/**/system-evidence/*.json
+.scratch/**/probe-summary.json
+.scratch/**/avgo-*.json
+.scratch/**/snapshot-initial.json
+.scratch/**/pytest_output.txt

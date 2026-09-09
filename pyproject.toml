@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stock-valuation-mvp"
+version = "0.2.0"
+description = "Deterministic, provenance-rich US stock valuation MVP"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi==0.141.1",
+  "uvicorn[standard]==0.52.4",
+  "pydantic==2.13.5",
+  "pydantic-settings==2.15.0",
+  "httpx==0.28.1",
+  "yfinance==1.7.0",
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest==9.1.1",
+  "pytest-asyncio==1.4.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+pythonpath = ["backend"]
