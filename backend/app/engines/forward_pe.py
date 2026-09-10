@@ -84,7 +84,48 @@ def run_forward_pe(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAss
         return _unavailable(f"Current quote must be positive, got {current_price}")
     if snapshot.diluted_shares.value <= ZERO:
         return _unavailable(f"Diluted shares must be positive, got {snapshot.diluted_shares.value}")
-    eps_metric = snapshot.forward_eps_1y or snapshot.forward_eps_2y
+    horizon = getattr(assumptions, "forecast_horizon", "ntm")
+    eps_metric: FinancialMetric | None = None
+    forward_eps_override = getattr(snapshot, "forward_eps", None)
+    if forward_eps_override is not None:
+        eps_metric = forward_eps_override
+    elif snapshot.forward_eps_1y is not None and "NTM" in (snapshot.forward_eps_1y.period or ""):
+        eps_metric = snapshot.forward_eps_1y
+    elif horizon == "current_fy":
+        eps_metric = snapshot.forward_eps_1y or snapshot.forward_eps_2y
+    elif horizon == "next_fy":
+        eps_metric = snapshot.forward_eps_2y or snapshot.forward_eps_1y
+    else:  # "ntm"
+        if (
+            snapshot.forward_eps_1y is not None
+            and snapshot.forward_eps_2y is not None
+        ):
+            w1 = Decimal("1")
+            w2 = Decimal("0")
+            if snapshot.ntm_weights is not None:
+                w1 = snapshot.ntm_weights.get("current_fy", Decimal("1"))
+                w2 = snapshot.ntm_weights.get("next_fy", Decimal("0"))
+            elif snapshot.forecast_fiscal_year_end is not None:
+                from app.services.projections import calculate_ntm_weights
+                as_of = snapshot.current_price.as_of if snapshot.current_price else date.today()
+                w1, w2, _, _ = calculate_ntm_weights(as_of, snapshot.forecast_fiscal_year_end)
+            blended_eps = (
+                snapshot.forward_eps_1y.value * w1 + snapshot.forward_eps_2y.value * w2
+            ).quantize(TWO_PLACES, ROUND_HALF_UP)
+            eps_metric = FinancialMetric(
+                value=blended_eps,
+                unit=snapshot.forward_eps_1y.unit,
+                period="NTM",
+                source=f"NTM day-weighted: {w1 * 100:.1f}% {snapshot.forward_eps_1y.period} + {w2 * 100:.1f}% {snapshot.forward_eps_2y.period}",
+                source_type=SourceType.DERIVED,
+                as_of=max(snapshot.forward_eps_1y.as_of, snapshot.forward_eps_2y.as_of),
+                confidence=min(snapshot.forward_eps_1y.confidence, snapshot.forward_eps_2y.confidence),
+                is_estimated=True,
+                notes="Day-weighted NTM consensus forecast",
+            )
+        else:
+            eps_metric = snapshot.forward_eps_1y or snapshot.forward_eps_2y
+
     if eps_metric is None:
         return _unavailable("No forward EPS estimate available")
 
@@ -234,6 +275,7 @@ def run_forward_pe(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAss
             "pe_source": assumption_source_type,
             "pe_source_label": source_label,
             "multiple_source": multiple_source,
+            "forecast_horizon": horizon,
         },
         input_metrics=input_metrics,
         assumption_metrics=assumption_metrics,

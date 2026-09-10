@@ -136,10 +136,13 @@ def test_dcf_scenario_math():
         expected = (prev * (1 + growth)).quantize(PREC, ROUND_HALF_UP)
         assert sc.fcff_projections[t - 1] == expected, f"Year {t}: {sc.fcff_projections[t-1]} != {expected}"
 
-    # Verify PVs
+    # Verify PVs using ACT/365 year fractions
+    import math
     for t, pv in enumerate(sc.pv_projections, start=1):
         fcff_t = sc.fcff_projections[t - 1]
-        expected_pv = (fcff_t / ((1 + wacc) ** t)).quantize(PREC, ROUND_HALF_UP)
+        yf = sc.year_fractions[t - 1]
+        df = Decimal(str(math.exp(float(yf) * math.log(float(1 + wacc)))))
+        expected_pv = (fcff_t / df).quantize(PREC, ROUND_HALF_UP)
         assert pv == expected_pv, f"PV Year {t}: {pv} != {expected_pv}"
 
     # Terminal value
@@ -147,8 +150,10 @@ def test_dcf_scenario_math():
     expected_tv = (fcff_5 * (1 + tg) / (wacc - tg)).quantize(PREC, ROUND_HALF_UP)
     assert sc.terminal_value == expected_tv
 
-    # PVTV
-    expected_pvtv = (expected_tv / ((1 + wacc) ** 5)).quantize(PREC, ROUND_HALF_UP)
+    # PVTV using Year 5 fraction
+    t5 = sc.year_fractions[-1]
+    df5 = Decimal(str(math.exp(float(t5) * math.log(float(1 + wacc)))))
+    expected_pvtv = (expected_tv / df5).quantize(PREC, ROUND_HALF_UP)
     assert sc.pv_terminal_value == expected_pvtv
 
     # EV = sum(PV) + PVTV

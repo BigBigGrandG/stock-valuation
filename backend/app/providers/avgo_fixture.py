@@ -106,6 +106,15 @@ class AVGOFixtureProvider(FinancialDataProvider):
             "security_type": "COMMON_STOCK",
             "is_profitable": True,
             "diluted_shares": Decimal("4940000000"),
+            "shares_basis": "ALL_CLASS_RECONCILED",
+            "shares_reconciliation": {
+                "selected_source": "info.impliedSharesOutstanding",
+                "is_multi_class": False,
+                "conflict_detected": False,
+                "implied_shares": 4940000000,
+                "single_class_shares": 4940000000,
+                "reconciliation_notes": "Single-class common stock verified fixture",
+            },
             "as_of": FIXTURE_DATE,
             "source": "AVGO TEST/DEMO fixture",
         }
@@ -141,7 +150,11 @@ class AVGOFixtureProvider(FinancialDataProvider):
             "fcff_definition": "Free Cash Flow to Firm: EBIT*(1-tax) + D&A - capex - ΔNWC. DCF model ONLY (discounted at WACC).",
             "forward_fcff_1y": Decimal("79000000000"),
             "forward_fcff_2y": Decimal("88000000000"),
+            "fcf_growth": Decimal("0.51"),
+            "fcff_growth": Decimal("0.50"),
             "period": "TTM/FY2025E",
+            "statement_basis": "TTM",
+            "annual_fallback": False,
             "as_of": FIXTURE_DATE,
             "source": "AVGO TEST/DEMO fixture",
             "note": "FCFE and FCFF are separately labeled synthetic values with different economic definitions. Do not confuse.",
@@ -153,7 +166,12 @@ class AVGOFixtureProvider(FinancialDataProvider):
             "revenue_ttm": Decimal("51574000000"),
             "ebitda_ttm": Decimal("28000000000"),
             "eps_ttm": Decimal("15.00"),
+            "revenue_growth": Decimal("0.51"),
+            "ebitda_growth": Decimal("0.45"),
+            "eps_growth": Decimal("0.25"),
             "period": "TTM",
+            "statement_basis": "TTM",
+            "annual_fallback": False,
             "as_of": FIXTURE_DATE,
             "source": "AVGO TEST/DEMO fixture",
             "note": _DEMO_NOTE,
@@ -162,6 +180,8 @@ class AVGOFixtureProvider(FinancialDataProvider):
     def get_forward_estimates(self, ticker: str) -> ForwardEstimatesData:
         _check_ticker(ticker)
         return {
+            "forward_revenue_1y": Decimal("65000000000"),
+            "forward_revenue_2y": Decimal("75000000000"),
             "forward_eps_1y": Decimal("19.21"),
             "forward_eps_2y": Decimal("22.50"),
             "forward_ebitda_1y": Decimal("118300000000"),
@@ -333,6 +353,18 @@ class AVGOFixtureProvider(FinancialDataProvider):
                 source_type=SourceType.FIXTURE, as_of=d, confidence=0.5, is_estimated=True,
                 notes="Synthetic forward EBITDA Y2 estimate (mock analyst-style concept; not actual consensus).",
             ),
+            revenue_estimate_1y=fm(
+                estimates.get("forward_revenue_1y", Decimal("65000000000")), "USD", estimates["period_1y"],
+                "Synthetic forward revenue Y1 estimate."
+            ),
+            revenue_estimate_2y=fm(
+                estimates.get("forward_revenue_2y", Decimal("75000000000")), "USD", estimates["period_2y"],
+                "Synthetic forward revenue Y2 estimate."
+            ),
+            forward_revenue=fm(
+                estimates.get("forward_revenue_1y", Decimal("65000000000")), "USD", estimates["period_1y"],
+                "Synthetic forward revenue estimate."
+            ),
 
             # Historical multiples
             historical_forward_pe=fm(
@@ -347,12 +379,15 @@ class AVGOFixtureProvider(FinancialDataProvider):
             # Growth metrics (derived from fixture)
             revenue_growth=fm(Decimal("0.51"), "ratio", "YoY FY2024",
                               "Synthetic revenue YoY growth (includes VMware acquisition)"),
+            ebitda_growth=fm(Decimal("0.45"), "ratio", "YoY FY2024",
+                             "Synthetic EBITDA YoY growth"),
             eps_growth=fm(Decimal("0.25"), "ratio", "YoY FY2024",
                           "Synthetic EPS YoY growth"),
-            fcf_growth=fm(Decimal("0.20"), "ratio", "YoY FY2024",
+            fcf_growth=fm(Decimal("0.51"), "ratio", "YoY FY2024",
                           "Synthetic FCFE YoY growth"),
-            fcff_growth=fm(Decimal("0.18"), "ratio", "YoY FY2024",
+            fcff_growth=fm(Decimal("0.50"), "ratio", "YoY FY2024",
                            "Synthetic FCFF YoY growth"),
+
 
             data_quality=DataQuality.LOW,
             is_demo=True,

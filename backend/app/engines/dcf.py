@@ -19,11 +19,16 @@ from app.config import (
     FCF_GROWTH_CAP_BEAR,
     FCF_GROWTH_CAP_BULL,
     FCF_GROWTH_FLOOR,
+    DEFAULT_GROWTH_CAP,
+    DEFAULT_GROWTH_FLOOR,
 )
+from app.services.projections import calculate_ntm_weights
 from app.models.domain import (
     CompanyFinancialSnapshot,
     DataQuality,
     DCFScenario,
+    DCFSensitivityCell,
+    DCFSensitivityMatrix,
     FinancialMetric,
     ModelValuation,
     PriceEstimate,
@@ -49,15 +54,21 @@ def _premium(current: Decimal, fair_value: Decimal) -> Decimal:
     return ((current - fair_value) / fair_value).quantize(FOUR, ROUND_HALF_UP) if fair_value else ZERO
 
 
-def _cap_growth(value: Decimal, cap: Decimal) -> Decimal:
-    return min(max(value, FCF_GROWTH_FLOOR), cap)
+def _cap_growth(value: Decimal, cap: Decimal, floor: Decimal = FCF_GROWTH_FLOOR) -> Decimal:
+    return min(max(value, floor), cap)
 
 
-def _ordered_growth(raw: Decimal) -> ScenarioValues:
+def _ordered_growth(
+    raw: Decimal,
+    base_cap: Decimal = FCF_GROWTH_CAP_BASE,
+    floor: Decimal = FCF_GROWTH_FLOOR,
+) -> ScenarioValues:
+    bear_cap = min(base_cap * Decimal("0.85"), base_cap)
+    bull_cap = min(base_cap * Decimal("1.15"), Decimal("2.0"))
     values = [
-        _cap_growth(raw * Decimal("0.85"), FCF_GROWTH_CAP_BEAR),
-        _cap_growth(raw, FCF_GROWTH_CAP_BASE),
-        _cap_growth(raw * Decimal("1.15"), FCF_GROWTH_CAP_BULL),
+        _cap_growth(raw * Decimal("0.85"), bear_cap, floor),
+        _cap_growth(raw, base_cap, floor),
+        _cap_growth(raw * Decimal("1.15"), bull_cap, floor),
     ]
     values.sort()
     return ScenarioValues(low=values[0], base=values[1], high=values[2])
@@ -66,14 +77,20 @@ def _ordered_growth(raw: Decimal) -> ScenarioValues:
 def _growth_source(
     snapshot: CompanyFinancialSnapshot,
     override: Optional[ScenarioValues],
+    growth_cap: Optional[Decimal] = None,
+    growth_floor: Optional[Decimal] = None,
 ) -> tuple[ScenarioValues, str, str, Optional[FinancialMetric]]:
     """Resolve growth using FCFF-forward, analyst operational, historical, fallback order."""
+    base_cap = growth_cap if growth_cap is not None and growth_cap != DEFAULT_GROWTH_CAP else FCF_GROWTH_CAP_BASE
+    effective_floor = growth_floor if growth_floor is not None and growth_floor != DEFAULT_GROWTH_FLOOR else FCF_GROWTH_FLOOR
+    bear_cap = min(base_cap * Decimal("0.85"), base_cap)
+    bull_cap = min(base_cap * Decimal("1.15"), Decimal("2.0"))
 
     if override is not None:
         capped = ScenarioValues(
-            low=_cap_growth(override.low, FCF_GROWTH_CAP_BEAR),
-            base=_cap_growth(override.base, FCF_GROWTH_CAP_BASE),
-            high=_cap_growth(override.high, FCF_GROWTH_CAP_BULL),
+            low=_cap_growth(override.low, bear_cap, effective_floor),
+            base=_cap_growth(override.base, base_cap, effective_floor),
+            high=_cap_growth(override.high, bull_cap, effective_floor),
         )
         metric = FinancialMetric(
             value=capped.base,
@@ -87,6 +104,7 @@ def _growth_source(
             notes="Capped deterministic FCFF growth for years 3-5.",
         )
         return capped, "user_override dcf.fcf_growth (capped)", "user_override", metric
+
 
     # Prefer explicit analyst forward FCFF1 -> FCFF2. Fixture values retain
     # fixture provenance; the *derived rate* is never labelled consensus.
@@ -110,7 +128,7 @@ def _growth_source(
             is_estimated=True,
             notes="Derived FCFF growth; not a separate analyst consensus value.",
         )
-        return _ordered_growth(raw), "derived from forward FCFF1→FCFF2 (capped)", "derived", metric
+        return _ordered_growth(raw, base_cap, effective_floor), "derived from forward FCFF1→FCFF2 (capped)", "derived", metric
 
     # Historical TTM -> first forecast is still FCFF, not FCFE. This rate is
     # also the least-surprising deterministic continuation when FCFF2 is absent.
@@ -130,7 +148,7 @@ def _growth_source(
                 is_estimated=True,
                 notes="Historical-to-forward FCFF growth; not FCFE.",
             )
-            return _ordered_growth(raw), "derived from FCFF TTM→FCFF1 (capped)", "derived", metric
+            return _ordered_growth(raw, base_cap, effective_floor), "derived from FCFF TTM→FCFF1 (capped)", "derived", metric
 
     # Prefer an explicitly forward/analyst operational estimate next.  An
     # actual/historical operational metric is not an analyst proxy.
@@ -159,7 +177,7 @@ def _growth_source(
             "source_type": SourceType.DERIVED,
             "notes": f"Forward operational {label} proxy; FCFE growth is not used.",
         })
-        return _ordered_growth(candidate.value), f"derived from forward {label} (capped)", "derived", metric
+        return _ordered_growth(candidate.value, base_cap, effective_floor), f"derived from forward {label} (capped)", "derived", metric
 
     # Historical FCFF growth has explicit firm-cash-flow lineage and outranks
     # a historical revenue/EBITDA/EPS metric that could be unrelated to FCFF.
@@ -170,7 +188,7 @@ def _growth_source(
             "source_type": SourceType.DERIVED,
             "notes": "Historical FCFF growth; FCFE growth is not used.",
         })
-        return _ordered_growth(candidate.value), "historical FCFF growth (capped)", "derived", metric
+        return _ordered_growth(candidate.value, base_cap, effective_floor), "historical FCFF growth (capped)", "derived", metric
 
     # Last, use an explicitly historical operational proxy.  This branch is
     # intentionally after FCFF growth and never considers FCFE growth.
@@ -181,9 +199,14 @@ def _growth_source(
                 "source_type": SourceType.DERIVED,
                 "notes": f"Historical operational {label} proxy; FCFE growth is not used.",
             })
-            return _ordered_growth(candidate.value), f"derived from historical {label} (capped)", "derived", metric
+            return _ordered_growth(candidate.value, base_cap, effective_floor), f"derived from historical {label} (capped)", "derived", metric
 
-    fallback = DEFAULT_DCF_FCF_GROWTH_FALLBACK
+    fallback = ScenarioValues(
+        low=_cap_growth(DEFAULT_DCF_FCF_GROWTH_FALLBACK.low, bear_cap, effective_floor),
+        base=_cap_growth(DEFAULT_DCF_FCF_GROWTH_FALLBACK.base, base_cap, effective_floor),
+        high=_cap_growth(DEFAULT_DCF_FCF_GROWTH_FALLBACK.high, bull_cap, effective_floor),
+    )
+
     metric = FinancialMetric(
         value=fallback.base,
         unit="ratio",
@@ -209,7 +232,11 @@ def _year_from_period(period: str, as_of: date) -> int:
     match = re.search(r"(?:FY)?(20\d{2})", period or "")
     if match:
         year = int(match.group(1))
-        return year + 1 if "TTM" in period.upper() else year
+        if "TTM" in period.upper():
+            return max(year + 1, as_of.year)
+        if year < as_of.year:
+            return as_of.year
+        return year
     return as_of.year
 
 
@@ -242,6 +269,48 @@ def _projection_metric(
     )
 
 
+def _calculate_dcf(
+    projections: list[Decimal],
+    year_fractions: list[Decimal],
+    wacc: Decimal,
+    terminal_growth: Decimal,
+    net_debt: Decimal,
+    diluted_shares: Decimal,
+) -> tuple[list[Decimal], Decimal, Decimal, Decimal, Decimal, Decimal, Decimal]:
+    """
+    Pure mathematical DCF calculation function using exact ACT/365 year fractions.
+    Returns:
+        (pvs, terminal_value, pv_terminal_value, enterprise_value, equity_value, price_per_share, tv_ratio)
+    """
+    if not wacc.is_finite() or not terminal_growth.is_finite() or wacc <= terminal_growth:
+        raise ValueError(f"WACC ({wacc}) must be > terminal_growth ({terminal_growth})")
+    one_plus_wacc = Decimal("1") + wacc
+    ln_wacc = one_plus_wacc.ln()
+
+    pvs: list[Decimal] = []
+    for proj, frac in zip(projections, year_fractions):
+        disc_factor = (frac * ln_wacc).exp()
+        pv = (proj / disc_factor).quantize(PREC, ROUND_HALF_UP)
+        pvs.append(pv)
+
+    terminal_val = (
+        projections[-1] * (Decimal("1") + terminal_growth) / (wacc - terminal_growth)
+    ).quantize(PREC, ROUND_HALF_UP)
+
+    tv_frac = year_fractions[-1]
+    tv_disc_factor = (tv_frac * ln_wacc).exp()
+    pv_tv = (terminal_val / tv_disc_factor).quantize(PREC, ROUND_HALF_UP)
+
+    ev = (sum(pvs) + pv_tv).quantize(PREC, ROUND_HALF_UP)
+    equity = ev - net_debt
+    if equity <= ZERO:
+        raise ValueError(f"Non-positive equity value ({equity})")
+
+    price = (equity / diluted_shares).quantize(PREC, ROUND_HALF_UP)
+    tv_ratio = (pv_tv / ev).quantize(FOUR, ROUND_HALF_UP) if ev > ZERO else ZERO
+    return pvs, terminal_val, pv_tv, ev, equity, price, tv_ratio
+
+
 def _compute_dcf_scenario(
     scenario_name: str,
     fcff_y1: Decimal,
@@ -261,8 +330,10 @@ def _compute_dcf_scenario(
     fcff_y2_metric: Optional[FinancialMetric] = None,
     growth_metric: Optional[FinancialMetric] = None,
     growth_cap: Optional[Decimal] = None,
+    growth_floor: Optional[Decimal] = None,
     net_debt_value: Optional[Decimal] = None,
     projection_as_of: Optional[date] = None,
+    growth_compound_horizon: Optional[str] = None,
 ) -> DCFScenario:
     """Compute one path using explicit five-year PV math."""
 
@@ -280,11 +351,37 @@ def _compute_dcf_scenario(
         raise ValueError("DCF requires positive FCFF")
 
     as_of = projection_as_of or (fcff_y1_metric.as_of if fcff_y1_metric else date.today())
+    effective_floor = growth_floor if growth_floor is not None else FCF_GROWTH_FLOOR
+
+    def _safe_date(y: int, m: int, d: int) -> date:
+        try:
+            return date(y, m, d)
+        except ValueError:
+            return date(y, m, 28)
+
+    # Guarantee first_period never labels a past year as future
     first_period = fcff_y1_metric.period if fcff_y1_metric else f"FY{base_year}E"
+    match_y = re.search(r"(?:FY)?(20\d{2})", first_period or "")
+    if match_y and int(match_y.group(1)) < as_of.year:
+        first_period = f"FY{as_of.year}E"
+
+    start_dates: list[str] = []
+    end_dates: list[str] = []
+    year_fractions: list[Decimal] = []
+
+    for yr in range(1, N_YEARS + 1):
+        s_date = _safe_date(as_of.year + yr - 1, as_of.month, as_of.day)
+        e_date = _safe_date(as_of.year + yr, as_of.month, as_of.day)
+        start_dates.append(s_date.isoformat())
+        end_dates.append(e_date.isoformat())
+        days_elapsed = (e_date - as_of).days
+        yf = (Decimal(str(days_elapsed)) / Decimal("365")).quantize(Decimal("0.00000001"), ROUND_HALF_UP)
+        year_fractions.append(yf)
+
+
     projections: list[Decimal] = []
     periods: list[str] = []
     metrics: list[dict] = []
-    pvs: list[Decimal] = []
 
     previous: Optional[Decimal] = None
     raw_growth_metric = growth_metric
@@ -297,16 +394,18 @@ def _compute_dcf_scenario(
             "source": f"{growth_metric.source}; effective {scenario_name} FCFF growth",
             "notes": (
                 f"Raw growth={raw_growth}; effective growth={growth_rate}; "
-                f"floor={FCF_GROWTH_FLOOR}; cap={cap}; lineage={growth_metric.source}."
+                f"floor={effective_floor}; cap={cap}; lineage={growth_metric.source}."
             ),
         })
     growth_note = (
         f" Raw growth={growth_metric.value}; effective growth={growth_rate}; "
-        f"floor={FCF_GROWTH_FLOOR}; cap={growth_cap}; lineage={growth_metric.source}."
+        f"floor={effective_floor}; cap={growth_cap}; lineage={growth_metric.source}."
         if growth_metric is not None
         else ""
     )
     for year in range(1, N_YEARS + 1):
+        s_str = start_dates[year - 1]
+        e_str = end_dates[year - 1]
         if year == 1:
             value = fcff_y1.quantize(PREC, ROUND_HALF_UP)
             metric = fcff_y1_metric or _projection_metric(
@@ -317,69 +416,70 @@ def _compute_dcf_scenario(
                 as_of=as_of,
                 confidence=0.5,
                 is_estimated=True,
-                notes="FCFF Year 1 input supplied directly to DCF.",
+                notes=f"FCFF Year 1 ({s_str} to {e_str}) supplied directly to DCF.",
             )
         elif year == 2 and fcff_y2 is not None:
             value = fcff_y2.quantize(PREC, ROUND_HALF_UP)
+            y2_label_period = fcff_y2_metric.period if fcff_y2_metric else _forecast_period(first_period, as_of, 1)
+            match_y2 = re.search(r"(?:FY)?(20\d{2})", y2_label_period or "")
+            if match_y2 and int(match_y2.group(1)) < as_of.year:
+                y2_label_period = _forecast_period(first_period, as_of, 1)
             metric = fcff_y2_metric or _projection_metric(
                 value,
-                period=fcff_y2_metric.period if fcff_y2_metric else f"FY{base_year + 1}E",
+                period=y2_label_period,
                 source=fcff_y2_label or "Forward FCFF Year 2",
                 source_type=SourceType.DERIVED,
                 as_of=as_of,
                 confidence=0.5,
                 is_estimated=True,
-                notes="FCFF Year 2 input supplied directly to DCF.",
+                notes=f"FCFF Year 2 ({s_str} to {e_str}) supplied directly to DCF.",
             )
         else:
             value = (previous * (Decimal("1") + growth_rate)).quantize(PREC, ROUND_HALF_UP)  # type: ignore[operator]
+            proj_period = _forecast_period(first_period, as_of, year - 1)
             metric = _projection_metric(
                 value,
-                period=_forecast_period(first_period, as_of, year - 1),
+                period=proj_period,
                 source=f"Derived from prior FCFF projection × (1 + {growth_rate})",
                 source_type=SourceType.DERIVED,
                 as_of=as_of,
                 confidence=(growth_metric.confidence if growth_metric else 1.0),
                 is_estimated=True,
-                notes="Capped deterministic FCFF projection; no FCFE substitution." + growth_note,
+                notes=f"Capped deterministic FCFF projection for {s_str} ~ {e_str}; no FCFE substitution." + growth_note,
             )
         if value <= ZERO:
             raise ValueError(f"DCF [{scenario_name}] produced non-positive FCFF in year {year}")
-        pv = (value / ((Decimal("1") + wacc) ** year)).quantize(PREC, ROUND_HALF_UP)
         projections.append(value)
         periods.append(metric.period)
         metrics.append(metric_dict(metric) or {})
-        pvs.append(pv)
         previous = value
 
-    terminal_value = (
-        projections[-1] * (Decimal("1") + terminal_growth) / (wacc - terminal_growth)
-    ).quantize(PREC, ROUND_HALF_UP)
-    pv_terminal_value = (terminal_value / ((Decimal("1") + wacc) ** N_YEARS)).quantize(PREC, ROUND_HALF_UP)
-    enterprise_value = (sum(pvs) + pv_terminal_value).quantize(PREC, ROUND_HALF_UP)
     net_debt = net_debt_value if net_debt_value is not None else total_debt - cash
-    equity_value = enterprise_value - net_debt
-    if equity_value <= ZERO:
-        raise ValueError(f"DCF [{scenario_name}] produced non-positive equity value ({equity_value})")
-    price = (equity_value / diluted_shares).quantize(PREC, ROUND_HALF_UP)
+    pvs, terminal_value, pv_terminal_value, enterprise_value, equity_value, price, _ = _calculate_dcf(
+        projections, year_fractions, wacc, terminal_growth, net_debt, diluted_shares
+    )
 
     formulas = {
-        "pv_year": "PV_t = FCFF_t / (1 + WACC)^t",
+        "pv_year": "PV_t = FCFF_t / (1 + WACC)^t (ACT/365 day-fraction)",
         "terminal_value": "TV = FCFF_5 × (1 + g) / (WACC - g)",
-        "pv_terminal_value": "PVTV = TV / (1 + WACC)^5",
+        "pv_terminal_value": "PVTV = TV / (1 + WACC)^t_5 (ACT/365 Year 5 fraction)",
         "enterprise_value": "EV = Σ(PV_1..PV_5) + PVTV",
         "equity_value": "Equity = EV - debt + cash = EV - net_debt",
         "price_per_share": "Price = Equity / diluted shares",
     }
     steps = [
         f"[{scenario_name}] FCFF projections ({', '.join(periods)}) = {projections}",
-        *[f"[{scenario_name}] PV year {year} = {projections[year - 1]} / (1 + {wacc})^{year} = {pvs[year - 1]}" for year in range(1, N_YEARS + 1)],
+        *[f"[{scenario_name}] PV year {year} (t={year_fractions[year - 1]:.4f}) = {projections[year - 1]} / (1 + {wacc})^{year_fractions[year - 1]:.4f} = {pvs[year - 1]}" for year in range(1, N_YEARS + 1)],
         f"[{scenario_name}] TV = {projections[-1]} × (1 + {terminal_growth}) / ({wacc} - {terminal_growth}) = {terminal_value}",
-        f"[{scenario_name}] PVTV = {terminal_value} / (1 + {wacc})^5 = {pv_terminal_value}",
+        f"[{scenario_name}] PVTV = {terminal_value} / (1 + {wacc})^{year_fractions[-1]:.4f} = {pv_terminal_value}",
         f"[{scenario_name}] EV = {sum(pvs)} + {pv_terminal_value} = {enterprise_value}",
         f"[{scenario_name}] Equity = {enterprise_value} - {total_debt} + {cash} = {equity_value}",
         f"[{scenario_name}] Price/share = {equity_value} / {diluted_shares} = {price}",
     ]
+    compound_horizon = growth_compound_horizon or (
+        f"From valuation as_of {as_of} to Year 1 end {end_dates[0]} (ACT/365 convention; annual end-of-year discounting: t1={year_fractions[0]:.4f}, t5={year_fractions[-1]:.4f})"
+    )
+
     return DCFScenario(
         scenario=scenario_name,  # type: ignore[arg-type]
         wacc=wacc,
@@ -388,12 +488,16 @@ def _compute_dcf_scenario(
         growth_metric=metric_dict(effective_growth_metric),
         growth_metric_raw=metric_dict(raw_growth_metric),
         growth_cap=growth_cap,
-        growth_floor=FCF_GROWTH_FLOOR,
+        growth_floor=effective_floor,
         fcff_year1=projections[0],
         fcff_projections=projections,
         projection_periods=periods,
         projection_metrics=metrics,
         pv_years=list(range(1, N_YEARS + 1)),
+        year_fractions=year_fractions,
+        period_start_dates=start_dates,
+        period_end_dates=end_dates,
+        growth_compound_horizon=compound_horizon,
         pv_projections=pvs,
         terminal_value=terminal_value,
         pv_terminal_value=pv_terminal_value,
@@ -411,9 +515,7 @@ def _compute_dcf_scenario(
     )
 
 
-def _calculate_wacc(snapshot: CompanyFinancialSnapshot) -> Optional[Decimal]:
-    """Calculate CAPM/equity-debt weighted WACC when every input exists."""
-
+def _calculate_wacc(snapshot: CompanyFinancialSnapshot) -> Decimal | None:
     required = (
         snapshot.risk_free_rate,
         snapshot.beta,
@@ -433,6 +535,90 @@ def _calculate_wacc(snapshot: CompanyFinancialSnapshot) -> Optional[Decimal]:
     return (cost_of_equity * market_cap + debt_cost * (Decimal("1") - tax) * debt) / denominator
 
 
+def _generate_sensitivity_matrix(
+    base_scenario: DCFScenario,
+) -> DCFSensitivityMatrix:
+    base_wacc = base_scenario.wacc
+    base_tg = base_scenario.terminal_growth
+    wacc_step = Decimal("0.01")
+    tg_step = Decimal("0.005")
+
+    wacc_range = [
+        base_wacc - wacc_step,
+        base_wacc,
+        base_wacc + wacc_step,
+    ]
+    tg_range = [
+        base_tg - tg_step,
+        base_tg,
+        base_tg + tg_step,
+    ]
+
+    projections = base_scenario.fcff_projections
+    year_fractions = base_scenario.year_fractions
+    net_debt = base_scenario.net_debt
+    diluted_shares = base_scenario.diluted_shares
+
+    cells: list[list[DCFSensitivityCell]] = []
+    for row_idx, wacc in enumerate(wacc_range):
+        row: list[DCFSensitivityCell] = []
+        for col_idx, tg in enumerate(tg_range):
+            if wacc <= tg:
+                row.append(
+                    DCFSensitivityCell(
+                        wacc=wacc,
+                        terminal_growth=tg,
+                        available=False,
+                        unavailable_reason=f"WACC ({wacc}) must be greater than terminal growth ({tg})",
+                    )
+                )
+                continue
+
+            try:
+                pvs, terminal_val, pv_tv, ev, equity, price, tv_ratio = _calculate_dcf(
+                    projections, year_fractions, wacc, tg, net_debt, diluted_shares
+                )
+                row.append(
+                    DCFSensitivityCell(
+                        wacc=wacc,
+                        terminal_growth=tg,
+                        price_per_share=price,
+                        enterprise_value=ev,
+                        equity_value=equity,
+                        tv_ratio=tv_ratio,
+                        available=True,
+                    )
+                )
+            except Exception as exc:
+                row.append(
+                    DCFSensitivityCell(
+                        wacc=wacc,
+                        terminal_growth=tg,
+                        available=False,
+                        unavailable_reason=str(exc),
+                    )
+                )
+        cells.append(row)
+
+    base_tv_ratio = (
+        base_scenario.pv_terminal_value / base_scenario.enterprise_value
+    ).quantize(FOUR, ROUND_HALF_UP) if base_scenario.enterprise_value > ZERO else ZERO
+
+    tv_warning: Optional[str] = None
+    if base_tv_ratio > Decimal("0.80"):
+        tv_warning = "high_tv_dependence_strong"
+    elif base_tv_ratio > Decimal("0.70"):
+        tv_warning = "high_tv_dependence_moderate"
+
+    return DCFSensitivityMatrix(
+        wacc_range=wacc_range,
+        terminal_growth_range=tg_range,
+        cells=cells,
+        base_tv_ratio=base_tv_ratio,
+        tv_dependence_warning=tv_warning,
+    )
+
+
 def run_dcf(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssumptions) -> ModelValuation:
     warnings: list[str] = []
     current = snapshot.current_price.value
@@ -441,6 +627,18 @@ def run_dcf(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssumption
         return ModelValuation(formula=FORMULA, formula_description="Five-year FCFF DCF", inputs={}, assumptions={}, calculation_steps=[], available=False, unavailable_reason="Current quote must be positive", data_quality=DataQuality.LOW)
     if shares <= ZERO:
         return ModelValuation(formula=FORMULA, formula_description="Five-year FCFF DCF", inputs={}, assumptions={}, calculation_steps=[], available=False, unavailable_reason="Diluted shares must be positive", data_quality=DataQuality.LOW)
+    if getattr(snapshot, "shares_basis", None) == "CONFLICT_DEGRADED":
+        return ModelValuation(
+            formula=FORMULA,
+            formula_description="Five-year FCFF DCF",
+            inputs={},
+            assumptions={},
+            calculation_steps=[],
+            available=False,
+            unavailable_reason="Share capital reconciliation conflict: severe divergence across share classes/sources; model fails closed to prevent erroneous price targets.",
+            warnings=["Diluted share count is in CONFLICT_DEGRADED state; per-share valuation model is unavailable."],
+            data_quality=DataQuality.LOW,
+        )
     if snapshot.financial_currency and snapshot.financial_currency.upper() != snapshot.currency.upper():
         return ModelValuation(
             formula=FORMULA,
@@ -505,7 +703,14 @@ def run_dcf(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssumption
             warnings.append("Only FCFE data was provided; FCFE cannot substitute FCFF in the DCF.")
         return ModelValuation(formula=FORMULA, formula_description="Five-year FCFF DCF", inputs={}, assumptions={}, calculation_steps=[], available=False, unavailable_reason=reason, warnings=warnings, data_quality=DataQuality.LOW)
 
-    growth_scenarios, growth_label, growth_source_type, growth_metric = _growth_source(snapshot, assumptions.dcf_fcf_growth)
+    raw_cap = getattr(assumptions, "growth_cap", None)
+    req_growth_cap = raw_cap if raw_cap is not None and raw_cap != DEFAULT_GROWTH_CAP else FCF_GROWTH_CAP_BASE
+    raw_floor = getattr(assumptions, "growth_floor", None)
+    req_growth_floor = raw_floor if raw_floor is not None and raw_floor != DEFAULT_GROWTH_FLOOR else FCF_GROWTH_FLOOR
+    growth_scenarios, growth_label, growth_source_type, growth_metric = _growth_source(
+        snapshot, assumptions.dcf_fcf_growth, growth_cap=req_growth_cap, growth_floor=req_growth_floor
+    )
+
 
     # WACC precedence: request override, then CAPM if complete, then config.
     wacc_sv = assumptions.dcf_wacc
@@ -554,41 +759,115 @@ def run_dcf(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssumption
                 data_quality=DataQuality.LOW,
             )
 
-    if y1_metric is not None:
+    val_date = snapshot.current_price.as_of
+
+    def _safe_date(y: int, m: int, d: int) -> date:
+        try:
+            return date(y, m, d)
+        except ValueError:
+            return date(y, m, 28)
+
+    y1_end_date = _safe_date(val_date.year + 1, val_date.month, val_date.day)
+
+    match_fwd = re.search(r"(?:FY)?(20\d{2})", y1_metric.period if y1_metric else "")
+    is_mismatched_forward_fy = False
+    fy_end = None
+    if y1_metric is not None and match_fwd and "NTM" not in (y1_metric.period or "").upper():
+        fy_year = int(match_fwd.group(1))
+        fy_end = getattr(snapshot, "forecast_fiscal_year_end", None) or _safe_date(fy_year, 12, 31)
+        days_to_fy_end = (fy_end - val_date).days
+        # If less than 330 days remain in this fiscal year (e.g. 112 days when val_date is in September),
+        # it is a discrete fiscal year that does not cover the full upcoming 12-month anniversary window.
+        if days_to_fy_end < 330:
+            is_mismatched_forward_fy = True
+
+    y1_value: Optional[Decimal] = None
+    y1_label: str = ""
+    first_period: str = ""
+    base_year: int = val_date.year
+
+    if y1_metric is not None and not is_mismatched_forward_fy:
         y1_value = y1_metric.value
         y1_label = f"Forward FCFF {y1_metric.period} [{y1_metric.source}]"
         first_period = y1_metric.period
         base_year = _year_from_period(first_period, y1_metric.as_of)
+    elif y1_metric is not None and is_mismatched_forward_fy:
+        if y2_metric is not None and fy_end is not None:
+            w0, w1, _, _ = calculate_ntm_weights(val_date, fy_end)
+            y1_blended = (w0 * y1_metric.value + w1 * y2_metric.value).quantize(PREC, ROUND_HALF_UP)
+            y1_value = y1_blended
+            y1_label = f"NTM blended forward FCFF ({w0:.1%} {y1_metric.period} + {w1:.1%} {y2_metric.period})"
+            first_period = f"NTM (w0={w0:.2f}, w1={w1:.2f})"
+            base_year = val_date.year
+            warnings.append(f"Discrete fiscal year {y1_metric.period} blended with {y2_metric.period} into NTM anniversary cash flow.")
+        elif ttm_metric is not None:
+            y1_value = None
+            y1_label = f"Historical proxy (derived from FCFF TTM [{ttm_metric.source}])"
+            first_period = f"Anniversary Year 1 ({val_date} to {y1_end_date})"
+            base_year = val_date.year
+            warnings.append(
+                f"Forward FCFF {y1_metric.period} is a discrete fiscal year without +2y estimate for NTM blending; "
+                f"fell back to historical FCFF proxy compounded over {(y1_end_date - ttm_metric.as_of).days} days to anniversary Year 1."
+            )
+        else:
+            return ModelValuation(
+                formula=FORMULA,
+                formula_description="Five-year discounted FCFF model",
+                inputs={},
+                assumptions={},
+                calculation_steps=[],
+                available=False,
+                unavailable_reason=(
+                    f"Forward FCFF estimate {y1_metric.period} represents a discrete fiscal year ending {fy_end}, "
+                    f"which does not match the DCF anniversary horizon ending {y1_end_date}. "
+                    f"Without a +2y estimate for NTM blending or a historical FCFF proxy, anniversary cash flow cannot be constructed without blind relabeling."
+                ),
+                warnings=warnings,
+                data_quality=DataQuality.LOW,
+            )
     else:
-        # TTM is historical. Derive a separate Y1 for each scenario below,
-        # rather than relabelling the TTM metric as a forecast.
         y1_value = None
         y1_label = f"Derived from FCFF TTM [{ttm_metric.source}]"  # type: ignore[union-attr]
-        first_period = _forecast_period(ttm_metric.period, ttm_metric.as_of)  # type: ignore[union-attr]
-        base_year = _year_from_period(first_period, ttm_metric.as_of)  # type: ignore[union-attr]
+        first_period = _forecast_period(ttm_metric.period, val_date)  # type: ignore[union-attr]
+        base_year = _year_from_period(first_period, val_date)  # type: ignore[union-attr]
         warnings.append(f"FCFF TTM used only as historical base; Year 1 is derived as {first_period}.")
 
     scenarios: list[DCFScenario] = []
     errors: list[str] = []
     growth_caps = {
-        "bear": FCF_GROWTH_CAP_BEAR,
-        "base": FCF_GROWTH_CAP_BASE,
-        "bull": FCF_GROWTH_CAP_BULL,
+        "bear": min(req_growth_cap * Decimal("0.85"), req_growth_cap),
+        "base": req_growth_cap,
+        "bull": min(req_growth_cap * Decimal("1.15"), Decimal("2.0")),
     }
     for name, wacc, tg, growth in params:
         try:
+            horizon_desc = None
             if y1_value is None:
+                base_date = ttm_metric.as_of  # type: ignore[union-attr]
+                elapsed_days = (y1_end_date - base_date).days
+                if elapsed_days <= 0:
+                    elapsed_days = 365
+                dt = Decimal(str(elapsed_days)) / Decimal("365")
+                one_plus_g = Decimal("1") + growth
+                if one_plus_g > ZERO:
+                    compound_factor = (dt * one_plus_g.ln()).exp()
+                else:
+                    compound_factor = one_plus_g
+                y1 = (ttm_metric.value * compound_factor).quantize(PREC, ROUND_HALF_UP)  # type: ignore[union-attr]
+                horizon_desc = (
+                    f"From historical base {base_date} to Year 1 end {y1_end_date} "
+                    f"({elapsed_days} days = {dt:.2f} years; ACT/365 compound factor = {compound_factor:.4f})"
+                )
                 y1_metric_for_scenario = _projection_metric(
-                    (ttm_metric.value * (Decimal("1") + growth)).quantize(PREC, ROUND_HALF_UP),  # type: ignore[union-attr]
+                    y1,
                     period=first_period,
-                    source=f"Derived from historical FCFF {ttm_metric.period} × (1 + {growth})",  # type: ignore[union-attr]
+                    source=f"Derived from historical FCFF {ttm_metric.period} × (1 + {growth})^{dt:.2f}",  # type: ignore[union-attr]
                     source_type=SourceType.DERIVED,
-                    as_of=ttm_metric.as_of,  # type: ignore[union-attr]
+                    as_of=val_date,
                     confidence=ttm_metric.confidence,  # type: ignore[union-attr]
                     is_estimated=True,
-                    notes="Forecast Y1 derived from FCFF TTM; TTM is not relabelled.",
+                    notes=f"Forecast Y1 derived with ACT/365 compounding over {elapsed_days} days.",
                 )
-                y1 = y1_metric_for_scenario.value
             else:
                 y1_metric_for_scenario = y1_metric
                 y1 = y1_value
@@ -610,8 +889,10 @@ def run_dcf(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssumption
                 fcff_y2_metric=y2_metric,
                 growth_metric=growth_metric,
                 growth_cap=growth_caps[name],
+                growth_floor=req_growth_floor,
                 net_debt_value=nd_metric.value,
-                projection_as_of=(y1_metric_for_scenario.as_of if y1_metric_for_scenario else snapshot.current_price.as_of),
+                projection_as_of=val_date,
+                growth_compound_horizon=horizon_desc,
             )
             scenarios.append(scenario)
         except ValueError as exc:
@@ -719,6 +1000,17 @@ def run_dcf(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssumption
         })
         assumption_metrics[f"growth_{label}"] = metric_dict(effective) or {}
 
+    base_scenario = scenario_map["base"]
+    sensitivity_mat = _generate_sensitivity_matrix(base_scenario)
+    if sensitivity_mat.tv_dependence_warning == "high_tv_dependence_strong":
+        warnings.append(
+            f"DCF Terminal Value accounts for {(sensitivity_mat.base_tv_ratio * Decimal('100')).quantize(Decimal('0.1'))}% of Enterprise Value (>80%). High sensitivity to terminal assumptions."
+        )
+    elif sensitivity_mat.tv_dependence_warning == "high_tv_dependence_moderate":
+        warnings.append(
+            f"DCF Terminal Value accounts for {(sensitivity_mat.base_tv_ratio * Decimal('100')).quantize(Decimal('0.1'))}% of Enterprise Value (>70%). Moderate sensitivity to terminal assumptions."
+        )
+
     steps = [
         "IMPORTANT: Uses FCFF (firm/unlevered FCF), NOT FCFE.",
         "Year 1 and Year 2 use explicit forward FCFF metrics when available; missing years are derived and labelled.",
@@ -774,6 +1066,7 @@ def run_dcf(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssumption
         base=estimate(scenario_map["base"]),
         high=estimate(scenario_map["bull"]),
         dcf_scenarios=sorted_scenarios,
+        sensitivity_matrix=sensitivity_mat,
         warnings=list(dict.fromkeys(warnings)),
         data_quality=quality,
     )

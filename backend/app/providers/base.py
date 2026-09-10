@@ -114,10 +114,13 @@ class IncomeStatementData(_RawData):
 
 
 class ForwardEstimatesData(_RawData):
+    forward_revenue_1y: Optional[Decimal] = None
+    forward_revenue_2y: Optional[Decimal] = None
     period_1y: str = "FY1E"
     period_2y: str = "FY2E"
     as_of: Optional[date] = None
     source: str = "provider"
+
 
 
 class HistoricalMultiplesData(_RawData):

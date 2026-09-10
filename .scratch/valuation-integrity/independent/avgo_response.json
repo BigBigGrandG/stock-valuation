@@ -1,0 +1,1621 @@
+{
+  "ticker": "AVGO",
+  "company_name": "Broadcom Inc.",
+  "current_price": "343.83",
+  "currency": "USD",
+  "as_of": "2025-01-15T16:00:00",
+  "price_timestamp": "2025-01-15T16:00:00",
+  "valuations": {
+    "forward_pe": {
+      "formula": "Price = Forward EPS \u00d7 Target P/E",
+      "formula_description": "Price target derived from forward EPS multiplied by a target P/E. Historical median is used when available; otherwise the configured fallback applies.",
+      "inputs": {
+        "forward_eps": "19.21",
+        "forward_eps_period": "NTM (w0=1.00, w1=0.00)",
+        "forward_eps_source": "NTM day-weighted blend: 100.0% FY1 (19.21) + 0.0% FY2 (22.50)",
+        "forward_eps_source_type": "derived",
+        "forward_eps_as_of": "2025-01-15",
+        "forward_eps_is_estimated": true,
+        "current_price": "343.83"
+      },
+      "assumptions": {
+        "pe_multiple_low": "19.8000",
+        "pe_multiple_base": "22.0000",
+        "pe_multiple_high": "24.2000",
+        "pe_source": "fixture",
+        "pe_source_label": "Historical median P/E (AVGO TEST/DEMO fixture)",
+        "multiple_source": "historical",
+        "forecast_horizon": "ntm"
+      },
+      "input_metrics": {
+        "current_price": {
+          "value": "343.83",
+          "unit": "USD",
+          "period": "2025-01-15",
+          "source": "AVGO TEST/DEMO fixture",
+          "source_type": "fixture",
+          "as_of": "2025-01-15",
+          "confidence": 1.0,
+          "is_estimated": false,
+          "notes": null
+        },
+        "diluted_shares": {
+          "value": "4940000000",
+          "unit": "shares",
+          "period": "FY2024",
+          "source": "AVGO TEST/DEMO fixture",
+          "source_type": "fixture",
+          "as_of": "2025-01-15",
+          "confidence": 1.0,
+          "is_estimated": false,
+          "notes": null
+        },
+        "cash": {
+          "value": "24000000000",
+          "unit": "USD",
+          "period": "FY2024",
+          "source": "AVGO TEST/DEMO fixture",
+          "source_type": "fixture",
+          "as_of": "2025-01-15",
+          "confidence": 1.0,
+          "is_estimated": false,
+          "notes": null
+        },
+        "total_debt": {
+          "value": "59400000000",
+          "unit": "USD",
+          "period": "FY2024",
+          "source": "AVGO TEST/DEMO fixture",
+          "source_type": "fixture",
+          "as_of": "2025-01-15",
+          "confidence": 1.0,
+          "is_estimated": false,
+          "notes": null
+        },
+        "net_debt": {
+          "value": "35400000000",
+          "unit": "USD",
+          "period": "FY2024",
+          "source": "Derived from total_debt - cash",
+          "source_type": "derived",
+          "as_of": "2025-01-15",
+          "confidence": 1.0,
+          "is_estimated": false,
+          "notes": "Derived net debt; normalize_snapshot publishes it on the snapshot."
+        },
+        "forward_eps": {
+          "value": "19.21",
+          "unit": "USD",
+          "period": "NTM (w0=1.00, w1=0.00)",
+          "source": "NTM day-weighted blend: 100.0% FY1 (19.21) + 0.0% FY2 (22.50)",
+          "source_type": "derived",
+          "as_of": "2025-01-15",
+          "confidence": 0.5,
+          "is_estimated": true,
+          "notes": "Calculated from 365/365 remaining days in fiscal year"
+        }
+      },
+      "assumption_metrics": {
+        "pe_multiple_low": {
+          "value": "19.8000",
+          "unit": "multiple",
+          "period": "5Y median",
+          "source": "Derived low range from historical median (AVGO TEST/DEMO fixture)",
+          "source_type": "derived",
+          "as_of": "2025-01-15",
+          "confidence": 1.0,
+          "is_estimated": true,
+          "notes": "P/E low: multiple_source=historical; derived \u00b110% scenario range"
+        },
+        "pe_multiple_base": {
+          "value": "22.0000",
+          "unit": "multiple",
+          "period": "5Y median",
+          "source": "AVGO TEST/DEMO fixture",
+          "source_type": "fixture",
+          "as_of": "2025-01-15",
+          "confidence": 1.0,
+          "is_estimated": false,
+          "notes": "P/E base: multiple_source=historical; observed historical median"
+        },
+        "pe_multiple_high": {
+          "value": "24.2000",
+          "unit": "multiple",
+          "period": "5Y median",
+          "source": "Derived high range from historical median (AVGO TEST/DEMO fixture)",
+          "source_type": "derived",
+          "as_of": "2025-01-15",
+          "confidence": 1.0,
+          "is_estimated": true,
+          "notes": "P/E high: multiple_source=historical; derived \u00b110% scenario range"
+        }
+      },
+      "calculation_steps": [
+        "Forward EPS = 19.21 [NTM (w0=1.00, w1=0.00); NTM day-weighted blend: 100.0% FY1 (19.21) + 0.0% FY2 (22.50); as_of=2025-01-15; estimated=True]",
+        "P/E multiples (low/base/high) = 19.8000/22.0000/24.2000 [historical; Historical median P/E (AVGO TEST/DEMO fixture)]",
+        "Price (low) = 19.21 \u00d7 19.8000 = 380.36",
+        "Price (base) = 19.21 \u00d7 22.0000 = 422.62",
+        "Price (high) = 19.21 \u00d7 24.2000 = 464.88"
+      ],
+      "low": {
+        "price_per_share": "380.36",
+        "upside_pct": "0.1062",
+        "premium_discount_pct": "-0.0960",
+        "intermediates": {
+          "forward_eps": "19.21",
+          "target_multiple": "19.8000"
+        }
+      },
+      "base": {
+        "price_per_share": "422.62",
+        "upside_pct": "0.2292",
+        "premium_discount_pct": "-0.1864",
+        "intermediates": {
+          "forward_eps": "19.21",
+          "target_multiple": "22.0000"
+        }
+      },
+      "high": {
+        "price_per_share": "464.88",
+        "upside_pct": "0.3521",
+        "premium_discount_pct": "-0.2604",
+        "intermediates": {
+          "forward_eps": "19.21",
+          "target_multiple": "24.2000"
+        }
+      },
+      "dcf_scenarios": null,
+      "sensitivity_matrix": null,
+      "available": true,
+      "unavailable_reason": null,
+      "warnings": [],
+      "data_quality": "LOW"
+    },
+    "ev_ebitda": {
+      "formula": "EV = Forward EBITDA \u00d7 Multiple; Price = (EV - Net Debt) / Shares",
+      "formula_description": "EV = forward EBITDA \u00d7 multiple; equity value = EV \u2212 net debt; price per share = equity value / diluted shares.",
+      "inputs": {
+        "forward_ebitda": "39200000000",
+        "forward_ebitda_period": "forward_1y",
+        "forward_ebitda_source": "Derived from base EBITDA (28000000000) \u00d7 (1 + 40.0%)",
+        "forward_ebitda_source_type": "derived",
+        "forward_ebitda_as_of": "2025-01-15",
+        "current_price": "343.83",
+        "diluted_shares": "4940000000",
+        "cash": "24000000000",
+        "total_debt": "59400000000",
+        "net_debt": "35400000000",
+        "market_cap": "1698520200000.00"
+      },
+      "assumptions": {
+        "multiple_low": "21.6000",
+        "multiple_base": "24.0000",
+        "multiple_high": "26.4000",
+        "source": "fixture",
+        "source_label": "Historical median EV/EBITDA (AVGO TEST/DEMO fixture)",
+        "multiple_source": "historical"
+      },
+      "input_metrics": {
+        "current_price": {
+          "value": "343.83",
+          "unit": "USD",
+          "period": "2025-01-15",
+          "source": "AVGO TEST/DEMO fixture",
+          "source_type": "fixture",
+          "as_of": "2025-01-15",
+          "confidence": 1.0,
+          "is_estimated": false,
+          "notes": null
+        },
+        "diluted_shares": {
+          "value": "4940000000",
+          "unit": "shares",
+          "period": "FY2024",
+          "source": "AVGO TEST/DEMO fixture",
+          "source_type": "fixture",
+          "as_of": "2025-01-15",
+          "confidence": 1.0,
+          "is_estimated": false,
+          "notes": null
+        },
+        "cash": {
+          "value": "24000000000",
+          "unit": "USD",
+          "period": "FY2024",
+          "source": "AVGO TEST/DEMO fixture",
+          "source_type": "fixture",
+          "as_of": "2025-01-15",
+          "confidence": 1.0,
+          "is_estimated": false,
+          "notes": null
+        },
+        "total_debt": {
+          "value": "59400000000",
+          "unit": "USD",
+          "period": "FY2024",
+          "source": "AVGO TEST/DEMO fixture",
+          "source_type": "fixture",
+          "as_of": "2025-01-15",
+          "confidence": 1.0,
+          "is_estimated": false,
+          "notes": null
+        },
+        "net_debt": {
+          "value": "35400000000",
+          "unit": "USD",
+          "period": "FY2024",
+          "source": "Derived from total_debt - cash",
+          "source_type": "derived",
+          "as_of": "2025-01-15",
+          "confidence": 1.0,
+          "is_estimated": false,
+          "notes": "Derived net debt; normalize_snapshot publishes it on the snapshot."
+        },
+        "forward_ebitda": {
+          "value": "39200000000",
+          "unit": "USD",
+          "period": "forward_1y",
+          "source": "Derived from base EBITDA (28000000000) \u00d7 (1 + 40.0%)",
+          "source_type": "derived",
+          "as_of": "2025-01-15",
+          "confidence": 0.5,
+          "is_estimated": true,
+          "notes": "Growth clamped to [-20.0%, 40.0%]"
+        },
+        "market_cap": {
+          "value": "1698520200000.00",
+          "unit": "USD",
+          "period": "valuation date",
+          "source": "Derived from current quote \u00d7 diluted shares",
+          "source_type": "derived",
+          "as_of": "2025-01-15",
+          "confidence": 1.0,
+          "is_estimated": false,
+          "notes": "Market capitalization used as an exposed EV/EBITDA intermediate."
+        }
+      },
+      "assumption_metrics": {
+        "multiple_low": {
+          "value": "21.6000",
+          "unit": "multiple",
+          "period": "5Y median",
+          "source": "Derived low range from historical median (AVGO TEST/DEMO fixture)",
+          "source_type": "derived",
+          "as_of": "2025-01-15",
+          "confidence": 1.0,
+          "is_estimated": true,
+          "notes": "low; multiple_source=historical"
+        },
+        "multiple_base": {
+          "value": "24.0000",
+          "unit": "multiple",
+          "period": "5Y median",
+          "source": "AVGO TEST/DEMO fixture",
+          "source_type": "fixture",
+          "as_of": "2025-01-15",
+          "confidence": 1.0,
+          "is_estimated": false,
+          "notes": "base; multiple_source=historical"
+        },
+        "multiple_high": {
+          "value": "26.4000",
+          "unit": "multiple",
+          "period": "5Y median",
+          "source": "Derived high range from historical median (AVGO TEST/DEMO fixture)",
+          "source_type": "derived",
+          "as_of": "2025-01-15",
+          "confidence": 1.0,
+          "is_estimated": true,
+          "notes": "high; multiple_source=historical"
+        }
+      },
+      "calculation_steps": [
+        "Forward EBITDA = 39200000000 [forward_1y; Derived from base EBITDA (28000000000) \u00d7 (1 + 40.0%); as_of=2025-01-15; estimated=True]",
+        "Market cap = 343.83 \u00d7 4940000000 = 1698520200000.00",
+        "Net debt = total debt 59400000000 - cash 24000000000 = 35400000000",
+        "Multiples (low/base/high) = 21.6000/24.0000/26.4000 [historical; Historical median EV/EBITDA (AVGO TEST/DEMO fixture)]",
+        "[low] EV = 39200000000 \u00d7 21.6000 = 846720000000.00",
+        "[low] Equity = 846720000000.00 - 35400000000 = 811320000000.00",
+        "[low] Price/share = 811320000000.00 / 4940000000 = 164.23",
+        "[base] EV = 39200000000 \u00d7 24.0000 = 940800000000.00",
+        "[base] Equity = 940800000000.00 - 35400000000 = 905400000000.00",
+        "[base] Price/share = 905400000000.00 / 4940000000 = 183.28",
+        "[high] EV = 39200000000 \u00d7 26.4000 = 1034880000000.00",
+        "[high] Equity = 1034880000000.00 - 35400000000 = 999480000000.00",
+        "[high] Price/share = 999480000000.00 / 4940000000 = 202.32"
+      ],
+      "low": {
+        "price_per_share": "164.23",
+        "upside_pct": "-0.5224",
+        "premium_discount_pct": "1.0936",
+        "intermediates": {
+          "ev": "846720000000.00",
+          "equity_value": "811320000000.00",
+          "net_debt": "35400000000",
+          "market_cap": "1698520200000.00",
+          "multiple": "21.6000"
+        }
+      },
+      "base": {
+        "price_per_share": "183.28",
+        "upside_pct": "-0.4669",
+        "premium_discount_pct": "0.8760",
+        "intermediates": {
+          "ev": "940800000000.00",
+          "equity_value": "905400000000.00",
+          "net_debt": "35400000000",
+          "market_cap": "1698520200000.00",
+          "multiple": "24.0000"
+        }
+      },
+      "high": {
+        "price_per_share": "202.32",
+        "upside_pct": "-0.4116",
+        "premium_discount_pct": "0.6994",
+        "intermediates": {
+          "ev": "1034880000000.00",
+          "equity_value": "999480000000.00",
+          "net_debt": "35400000000",
+          "market_cap": "1698520200000.00",
+          "multiple": "26.4000"
+        }
+      },
+      "dcf_scenarios": null,
+      "sensitivity_matrix": null,
+      "available": true,
+      "unavailable_reason": null,
+      "warnings": [],
+      "data_quality": "LOW"
+    },
+    "fcf_yield": {
+      "formula": "Equity Value = Forward FCFE / Yield Rate; Price = Equity / Shares",
+      "formula_description": "FCFE (equity free cash flow) divided by the target yield rate, then divided by shares. FCFF is never substituted or discounted in this model.",
+      "inputs": {
+        "forward_fcfe": "112000000000",
+        "forward_fcfe_period": "forward_1y",
+        "forward_fcfe_source": "Derived from base FCFE (80000000000) \u00d7 (1 + 40.0%)",
+        "forward_fcfe_source_type": "derived",
+        "forward_fcfe_as_of": "2025-01-15",
+        "forward_fcfe_is_estimated": true,
+        "fcf_type": "FCFE (equity FCF, NOT FCFF)",
+        "current_price": "343.83",
+        "diluted_shares": "4940000000"
+      },
+      "assumptions": {
+        "yield_low": "0.055",
+        "yield_base": "0.050",
+        "yield_high": "0.045",
+        "source": "configured_fallback",
+        "source_label": "Configured fallback: 5.5%/5.0%/4.5% (low=high yield=conservative)",
+        "yield_source": "fallback"
+      },
+      "input_metrics": {
+        "current_price": {
+          "value": "343.83",
+          "unit": "USD",
+          "period": "2025-01-15",
+          "source": "AVGO TEST/DEMO fixture",
+          "source_type": "fixture",
+          "as_of": "2025-01-15",
+          "confidence": 1.0,
+          "is_estimated": false,
+          "notes": null
+        },
+        "diluted_shares": {
+          "value": "4940000000",
+          "unit": "shares",
+          "period": "FY2024",
+          "source": "AVGO TEST/DEMO fixture",
+          "source_type": "fixture",
+          "as_of": "2025-01-15",
+          "confidence": 1.0,
+          "is_estimated": false,
+          "notes": null
+        },
+        "cash": {
+          "value": "24000000000",
+          "unit": "USD",
+          "period": "FY2024",
+          "source": "AVGO TEST/DEMO fixture",
+          "source_type": "fixture",
+          "as_of": "2025-01-15",
+          "confidence": 1.0,
+          "is_estimated": false,
+          "notes": null
+        },
+        "total_debt": {
+          "value": "59400000000",
+          "unit": "USD",
+          "period": "FY2024",
+          "source": "AVGO TEST/DEMO fixture",
+          "source_type": "fixture",
+          "as_of": "2025-01-15",
+          "confidence": 1.0,
+          "is_estimated": false,
+          "notes": null
+        },
+        "net_debt": {
+          "value": "35400000000",
+          "unit": "USD",
+          "period": "FY2024",
+          "source": "Derived from total_debt - cash",
+          "source_type": "derived",
+          "as_of": "2025-01-15",
+          "confidence": 1.0,
+          "is_estimated": false,
+          "notes": "Derived net debt; normalize_snapshot publishes it on the snapshot."
+        },
+        "forward_fcfe": {
+          "value": "112000000000",
+          "unit": "USD",
+          "period": "forward_1y",
+          "source": "Derived from base FCFE (80000000000) \u00d7 (1 + 40.0%)",
+          "source_type": "derived",
+          "as_of": "2025-01-15",
+          "confidence": 0.5,
+          "is_estimated": true,
+          "notes": "Growth clamped to [-20.0%, 40.0%]"
+        }
+      },
+      "assumption_metrics": {
+        "yield_low": {
+          "value": "0.055",
+          "unit": "yield",
+          "period": "valuation assumption",
+          "source": "Configured fallback: 5.5%/5.0%/4.5% (low=high yield=conservative)",
+          "source_type": "configured_fallback",
+          "as_of": "2025-01-15",
+          "confidence": 0.8,
+          "is_estimated": true,
+          "notes": "low; low scenario is the high-yield conservative case"
+        },
+        "yield_base": {
+          "value": "0.050",
+          "unit": "yield",
+          "period": "valuation assumption",
+          "source": "Configured fallback: 5.5%/5.0%/4.5% (low=high yield=conservative)",
+          "source_type": "configured_fallback",
+          "as_of": "2025-01-15",
+          "confidence": 0.8,
+          "is_estimated": true,
+          "notes": "base; low scenario is the high-yield conservative case"
+        },
+        "yield_high": {
+          "value": "0.045",
+          "unit": "yield",
+          "period": "valuation assumption",
+          "source": "Configured fallback: 5.5%/5.0%/4.5% (low=high yield=conservative)",
+          "source_type": "configured_fallback",
+          "as_of": "2025-01-15",
+          "confidence": 0.8,
+          "is_estimated": true,
+          "notes": "high; low scenario is the high-yield conservative case"
+        }
+      },
+      "calculation_steps": [
+        "IMPORTANT: Uses FCFE (equity FCF), NOT FCFF (firm FCF used by DCF)",
+        "Forward FCFE = 112000000000 [forward_1y; Derived from base FCFE (80000000000) \u00d7 (1 + 40.0%); as_of=2025-01-15; estimated=True]",
+        "Yield rates (low/base/high) = 0.055/0.050/0.045 [Configured fallback: 5.5%/5.0%/4.5% (low=high yield=conservative)]",
+        "Low valuation uses the highest yield; high valuation uses the lowest yield.",
+        "[low (high yield = conservative)] Equity value = 112000000000 / 0.055 = 2036363636363.64",
+        "[low (high yield = conservative)] Price/share = 2036363636363.64 / 4940000000 = 412.22",
+        "[base] Equity value = 112000000000 / 0.050 = 2240000000000.00",
+        "[base] Price/share = 2240000000000.00 / 4940000000 = 453.44",
+        "[high (low yield = optimistic)] Equity value = 112000000000 / 0.045 = 2488888888888.89",
+        "[high (low yield = optimistic)] Price/share = 2488888888888.89 / 4940000000 = 503.82"
+      ],
+      "low": {
+        "price_per_share": "412.22",
+        "upside_pct": "0.1989",
+        "premium_discount_pct": "-0.1659",
+        "intermediates": {
+          "equity_value": "2036363636363.64",
+          "yield_rate": "0.055",
+          "forward_fcfe": "112000000000"
+        }
+      },
+      "base": {
+        "price_per_share": "453.44",
+        "upside_pct": "0.3188",
+        "premium_discount_pct": "-0.2417",
+        "intermediates": {
+          "equity_value": "2240000000000.00",
+          "yield_rate": "0.050",
+          "forward_fcfe": "112000000000"
+        }
+      },
+      "high": {
+        "price_per_share": "503.82",
+        "upside_pct": "0.4653",
+        "premium_discount_pct": "-0.3176",
+        "intermediates": {
+          "equity_value": "2488888888888.89",
+          "yield_rate": "0.045",
+          "forward_fcfe": "112000000000"
+        }
+      },
+      "dcf_scenarios": null,
+      "sensitivity_matrix": null,
+      "available": true,
+      "unavailable_reason": null,
+      "warnings": [],
+      "data_quality": "LOW"
+    },
+    "dcf": {
+      "formula": "EV = \u03a3 FCFF_t/(1+WACC)^t + TV/(1+WACC)^5; Equity = EV \u2212 Net Debt; Price = Equity/Shares",
+      "formula_description": "Five-year FCFF DCF. PV_t = FCFF_t/(1+WACC)^t; TV = FCFF5\u00d7(1+g)/(WACC-g); PVTV = TV/(1+WACC)^5; EV = \u03a3PV + PVTV; equity = EV \u2212 debt + cash; price = equity/shares.",
+      "inputs": {
+        "fcff_y1": "98000000000.00",
+        "fcff_y1_label": "Forward FCFF FY1E [Derived from base FCFF (70000000000) \u00d7 (1 + 40.0%)]",
+        "fcff_y2": "137200000000",
+        "fcff_y2_label": "Forward FCFF FY2E [Derived from Year 1 FCFF \u00d7 (1 + 40.0%)]",
+        "fcf_type": "FCFF (firm/unlevered FCF \u2014 discounted at WACC, NOT FCFE)",
+        "current_price": "343.83",
+        "diluted_shares": "4940000000",
+        "cash": "24000000000",
+        "total_debt": "59400000000",
+        "net_debt": "35400000000"
+      },
+      "assumptions": {
+        "growth_source": "derived from forward FCFF1\u2192FCFF2 (capped)",
+        "growth_source_type": "derived",
+        "growth_bear": "0.2550",
+        "growth_base": "0.30",
+        "growth_bull": "0.3450",
+        "wacc_bear": "0.12",
+        "wacc_base": "0.10",
+        "wacc_bull": "0.08",
+        "wacc_source": "fallback",
+        "wacc_source_type": "configured_fallback",
+        "wacc_source_label": "Configured fallback: 12%/10%/8% (bear/base/bull)",
+        "terminal_growth_bear": "0.03",
+        "terminal_growth_base": "0.03",
+        "terminal_growth_bull": "0.04",
+        "terminal_growth_max": "0.05",
+        "terminal_growth_source": "configured_fallback",
+        "terminal_growth_source_label": "Configured fallback terminal growth",
+        "n_years": 5
+      },
+      "input_metrics": {
+        "current_price": {
+          "value": "343.83",
+          "unit": "USD",
+          "period": "2025-01-15",
+          "source": "AVGO TEST/DEMO fixture",
+          "source_type": "fixture",
+          "as_of": "2025-01-15",
+          "confidence": 1.0,
+          "is_estimated": false,
+          "notes": null
+        },
+        "diluted_shares": {
+          "value": "4940000000",
+          "unit": "shares",
+          "period": "FY2024",
+          "source": "AVGO TEST/DEMO fixture",
+          "source_type": "fixture",
+          "as_of": "2025-01-15",
+          "confidence": 1.0,
+          "is_estimated": false,
+          "notes": null
+        },
+        "cash": {
+          "value": "24000000000",
+          "unit": "USD",
+          "period": "FY2024",
+          "source": "AVGO TEST/DEMO fixture",
+          "source_type": "fixture",
+          "as_of": "2025-01-15",
+          "confidence": 1.0,
+          "is_estimated": false,
+          "notes": null
+        },
+        "total_debt": {
+          "value": "59400000000",
+          "unit": "USD",
+          "period": "FY2024",
+          "source": "AVGO TEST/DEMO fixture",
+          "source_type": "fixture",
+          "as_of": "2025-01-15",
+          "confidence": 1.0,
+          "is_estimated": false,
+          "notes": null
+        },
+        "net_debt": {
+          "value": "35400000000",
+          "unit": "USD",
+          "period": "FY2024",
+          "source": "Derived from total_debt - cash",
+          "source_type": "derived",
+          "as_of": "2025-01-15",
+          "confidence": 1.0,
+          "is_estimated": false,
+          "notes": "Derived net debt; normalize_snapshot publishes it on the snapshot."
+        },
+        "fcff_ttm": {
+          "value": "70000000000",
+          "unit": "USD",
+          "period": "TTM/FY2025E",
+          "source": "AVGO TEST/DEMO fixture",
+          "source_type": "fixture",
+          "as_of": "2025-01-15",
+          "confidence": 1.0,
+          "is_estimated": false,
+          "notes": "Free Cash Flow to Firm: EBIT*(1-tax) + D&A - capex - \u0394NWC. DCF model ONLY (discounted at WACC)."
+        },
+        "forward_fcff_1y": {
+          "value": "98000000000",
+          "unit": "USD",
+          "period": "FY1E",
+          "source": "Derived from base FCFF (70000000000) \u00d7 (1 + 40.0%)",
+          "source_type": "derived",
+          "as_of": "2025-01-15",
+          "confidence": 0.8,
+          "is_estimated": true,
+          "notes": "Growth clamped to [-20.0%, 40.0%]"
+        },
+        "forward_fcff_2y": {
+          "value": "137200000000",
+          "unit": "USD",
+          "period": "FY2E",
+          "source": "Derived from Year 1 FCFF \u00d7 (1 + 40.0%)",
+          "source_type": "derived",
+          "as_of": "2025-01-15",
+          "confidence": 0.7,
+          "is_estimated": true,
+          "notes": "Growth clamped to [-20.0%, 40.0%]"
+        }
+      },
+      "assumption_metrics": {
+        "wacc_bear": {
+          "value": "0.12",
+          "unit": "rate",
+          "period": "valuation assumption",
+          "source": "Configured fallback: 12%/10%/8% (bear/base/bull)",
+          "source_type": "configured_fallback",
+          "as_of": "2025-01-15",
+          "confidence": 0.8,
+          "is_estimated": true,
+          "notes": "wacc_source=fallback"
+        },
+        "wacc_base": {
+          "value": "0.10",
+          "unit": "rate",
+          "period": "valuation assumption",
+          "source": "Configured fallback: 12%/10%/8% (bear/base/bull)",
+          "source_type": "configured_fallback",
+          "as_of": "2025-01-15",
+          "confidence": 0.8,
+          "is_estimated": true,
+          "notes": "wacc_source=fallback"
+        },
+        "wacc_bull": {
+          "value": "0.08",
+          "unit": "rate",
+          "period": "valuation assumption",
+          "source": "Configured fallback: 12%/10%/8% (bear/base/bull)",
+          "source_type": "configured_fallback",
+          "as_of": "2025-01-15",
+          "confidence": 0.8,
+          "is_estimated": true,
+          "notes": "wacc_source=fallback"
+        },
+        "terminal_growth_bear": {
+          "value": "0.03",
+          "unit": "rate",
+          "period": "valuation assumption",
+          "source": "Configured fallback terminal growth",
+          "source_type": "configured_fallback",
+          "as_of": "2025-01-15",
+          "confidence": 1.0,
+          "is_estimated": true,
+          "notes": "terminal growth cap=0.05"
+        },
+        "terminal_growth_base": {
+          "value": "0.03",
+          "unit": "rate",
+          "period": "valuation assumption",
+          "source": "Configured fallback terminal growth",
+          "source_type": "configured_fallback",
+          "as_of": "2025-01-15",
+          "confidence": 1.0,
+          "is_estimated": true,
+          "notes": "terminal growth cap=0.05"
+        },
+        "terminal_growth_bull": {
+          "value": "0.04",
+          "unit": "rate",
+          "period": "valuation assumption",
+          "source": "Configured fallback terminal growth",
+          "source_type": "configured_fallback",
+          "as_of": "2025-01-15",
+          "confidence": 1.0,
+          "is_estimated": true,
+          "notes": "terminal growth cap=0.05"
+        },
+        "growth_bear": {
+          "value": "0.2550",
+          "unit": "ratio",
+          "period": "FY1E->FY2E",
+          "source": "Derived from forward FCFF FY1E and FY2E; effective bear FCFF growth",
+          "source_type": "derived",
+          "as_of": "2025-01-15",
+          "confidence": 0.7,
+          "is_estimated": true,
+          "notes": "Raw growth=0.4; effective growth=0.2550; floor=-0.10; cap=0.2550; lineage=Derived from forward FCFF FY1E and FY2E."
+        },
+        "growth_base": {
+          "value": "0.30",
+          "unit": "ratio",
+          "period": "FY1E->FY2E",
+          "source": "Derived from forward FCFF FY1E and FY2E; effective base FCFF growth",
+          "source_type": "derived",
+          "as_of": "2025-01-15",
+          "confidence": 0.7,
+          "is_estimated": true,
+          "notes": "Raw growth=0.4; effective growth=0.30; floor=-0.10; cap=0.30; lineage=Derived from forward FCFF FY1E and FY2E."
+        },
+        "growth_bull": {
+          "value": "0.3450",
+          "unit": "ratio",
+          "period": "FY1E->FY2E",
+          "source": "Derived from forward FCFF FY1E and FY2E; effective bull FCFF growth",
+          "source_type": "derived",
+          "as_of": "2025-01-15",
+          "confidence": 0.7,
+          "is_estimated": true,
+          "notes": "Raw growth=0.4; effective growth=0.3450; floor=-0.10; cap=0.3450; lineage=Derived from forward FCFF FY1E and FY2E."
+        }
+      },
+      "calculation_steps": [
+        "IMPORTANT: Uses FCFF (firm/unlevered FCF), NOT FCFE.",
+        "Year 1 and Year 2 use explicit forward FCFF metrics when available; missing years are derived and labelled.",
+        "Growth lineage: derived from forward FCFF1\u2192FCFF2 (capped); source_type=derived",
+        "WACC lineage: fallback; Configured fallback: 12%/10%/8% (bear/base/bull)",
+        "Terminal growth (bear/base/bull) = 0.03/0.03/0.04; max=0.05",
+        "Net debt = debt 59400000000 - cash 24000000000 = 35400000000",
+        "bear: EV=2371136166923.55, PVTV=1760577091883.16, equity=2335736166923.55, price=472.82",
+        "base: EV=3435181460556.05, PVTV=2753255544068.14, equity=3399781460556.05, price=688.21",
+        "bull: EV=6670271284931.40, PVTV=5905871085338.98, equity=6634871284931.40, price=1343.09"
+      ],
+      "low": {
+        "price_per_share": "472.82",
+        "upside_pct": "0.3752",
+        "premium_discount_pct": "-0.2728",
+        "intermediates": {
+          "enterprise_value": "2371136166923.55",
+          "equity_value": "2335736166923.55",
+          "net_debt": "35400000000",
+          "terminal_value": "3103701914327.78",
+          "pv_terminal_value": "1760577091883.16",
+          "fcff_projections": [
+            "98000000000.00",
+            "137200000000.00",
+            "172186000000.00",
+            "216093430000.00",
+            "271197254650.00"
+          ],
+          "pv_projections": [
+            "87500000000.00",
+            "109375000000.00",
+            "122558593750.00",
+            "137288648019.05",
+            "153836833271.34"
+          ]
+        }
+      },
+      "base": {
+        "price_per_share": "688.21",
+        "upside_pct": "1.0016",
+        "premium_discount_pct": "-0.5004",
+        "intermediates": {
+          "enterprise_value": "3435181460556.05",
+          "equity_value": "3399781460556.05",
+          "net_debt": "35400000000",
+          "terminal_value": "4435303600000.00",
+          "pv_terminal_value": "2753255544068.14",
+          "fcff_projections": [
+            "98000000000.00",
+            "137200000000.00",
+            "178360000000.00",
+            "231868000000.00",
+            "301428400000.00"
+          ],
+          "pv_projections": [
+            "89090909090.91",
+            "113388429752.07",
+            "134004507888.81",
+            "158327615304.89",
+            "187114454451.23"
+          ]
+        }
+      },
+      "high": {
+        "price_per_share": "1343.09",
+        "upside_pct": "2.9063",
+        "premium_discount_pct": "-0.7440",
+        "intermediates": {
+          "enterprise_value": "6670271284931.40",
+          "equity_value": "6634871284931.40",
+          "net_debt": "35400000000",
+          "terminal_value": "8679492103100.00",
+          "pv_terminal_value": "5905871085338.98",
+          "fcff_projections": [
+            "98000000000.00",
+            "137200000000.00",
+            "184534000000.00",
+            "248198230000.00",
+            "333826619350.00"
+          ],
+          "pv_projections": [
+            "90740740740.74",
+            "117626886145.40",
+            "146489038764.42",
+            "182394646044.21",
+            "227148887897.65"
+          ]
+        }
+      },
+      "dcf_scenarios": [
+        {
+          "scenario": "bear",
+          "wacc": "0.12",
+          "terminal_growth": "0.03",
+          "growth_rate": "0.2550",
+          "growth_metric": {
+            "value": "0.2550",
+            "unit": "ratio",
+            "period": "FY1E->FY2E",
+            "source": "Derived from forward FCFF FY1E and FY2E; effective bear FCFF growth",
+            "source_type": "derived",
+            "as_of": "2025-01-15",
+            "confidence": 0.7,
+            "is_estimated": true,
+            "notes": "Raw growth=0.4; effective growth=0.2550; floor=-0.10; cap=0.2550; lineage=Derived from forward FCFF FY1E and FY2E."
+          },
+          "growth_metric_raw": {
+            "value": "0.4",
+            "unit": "ratio",
+            "period": "FY1E->FY2E",
+            "source": "Derived from forward FCFF FY1E and FY2E",
+            "source_type": "derived",
+            "as_of": "2025-01-15",
+            "confidence": 0.7,
+            "is_estimated": true,
+            "notes": "Derived FCFF growth; not a separate analyst consensus value."
+          },
+          "growth_cap": "0.2550",
+          "growth_floor": "-0.10",
+          "fcff_year1": "98000000000.00",
+          "fcff_projections": [
+            "98000000000.00",
+            "137200000000.00",
+            "172186000000.00",
+            "216093430000.00",
+            "271197254650.00"
+          ],
+          "projection_periods": [
+            "FY1E",
+            "FY2E",
+            "FY2027E",
+            "FY2028E",
+            "FY2029E"
+          ],
+          "projection_metrics": [
+            {
+              "value": "98000000000",
+              "unit": "USD",
+              "period": "FY1E",
+              "source": "Derived from base FCFF (70000000000) \u00d7 (1 + 40.0%)",
+              "source_type": "derived",
+              "as_of": "2025-01-15",
+              "confidence": 0.8,
+              "is_estimated": true,
+              "notes": "Growth clamped to [-20.0%, 40.0%]"
+            },
+            {
+              "value": "137200000000",
+              "unit": "USD",
+              "period": "FY2E",
+              "source": "Derived from Year 1 FCFF \u00d7 (1 + 40.0%)",
+              "source_type": "derived",
+              "as_of": "2025-01-15",
+              "confidence": 0.7,
+              "is_estimated": true,
+              "notes": "Growth clamped to [-20.0%, 40.0%]"
+            },
+            {
+              "value": "172186000000.00",
+              "unit": "USD",
+              "period": "FY2027E",
+              "source": "Derived from prior FCFF projection \u00d7 (1 + 0.2550)",
+              "source_type": "derived",
+              "as_of": "2025-01-15",
+              "confidence": 0.7,
+              "is_estimated": true,
+              "notes": "Capped deterministic FCFF projection for 2027-01-15 ~ 2028-01-15; no FCFE substitution. Raw growth=0.4; effective growth=0.2550; floor=-0.10; cap=0.2550; lineage=Derived from forward FCFF FY1E and FY2E."
+            },
+            {
+              "value": "216093430000.00",
+              "unit": "USD",
+              "period": "FY2028E",
+              "source": "Derived from prior FCFF projection \u00d7 (1 + 0.2550)",
+              "source_type": "derived",
+              "as_of": "2025-01-15",
+              "confidence": 0.7,
+              "is_estimated": true,
+              "notes": "Capped deterministic FCFF projection for 2028-01-15 ~ 2029-01-15; no FCFE substitution. Raw growth=0.4; effective growth=0.2550; floor=-0.10; cap=0.2550; lineage=Derived from forward FCFF FY1E and FY2E."
+            },
+            {
+              "value": "271197254650.00",
+              "unit": "USD",
+              "period": "FY2029E",
+              "source": "Derived from prior FCFF projection \u00d7 (1 + 0.2550)",
+              "source_type": "derived",
+              "as_of": "2025-01-15",
+              "confidence": 0.7,
+              "is_estimated": true,
+              "notes": "Capped deterministic FCFF projection for 2029-01-15 ~ 2030-01-15; no FCFE substitution. Raw growth=0.4; effective growth=0.2550; floor=-0.10; cap=0.2550; lineage=Derived from forward FCFF FY1E and FY2E."
+            }
+          ],
+          "pv_years": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "year_fractions": [
+            "1.00000000",
+            "2.00000000",
+            "3.00000000",
+            "4.00273973",
+            "5.00273973"
+          ],
+          "period_start_dates": [
+            "2025-01-15",
+            "2026-01-15",
+            "2027-01-15",
+            "2028-01-15",
+            "2029-01-15"
+          ],
+          "period_end_dates": [
+            "2026-01-15",
+            "2027-01-15",
+            "2028-01-15",
+            "2029-01-15",
+            "2030-01-15"
+          ],
+          "growth_compound_horizon": "From valuation as_of 2025-01-15 to Year 1 end 2026-01-15 (ACT/365 convention; annual end-of-year discounting: t1=1.0000, t5=5.0027)",
+          "pv_projections": [
+            "87500000000.00",
+            "109375000000.00",
+            "122558593750.00",
+            "137288648019.05",
+            "153836833271.34"
+          ],
+          "terminal_value": "3103701914327.78",
+          "pv_terminal_value": "1760577091883.16",
+          "enterprise_value": "2371136166923.55",
+          "total_debt": "59400000000",
+          "cash": "24000000000",
+          "net_debt": "35400000000",
+          "equity_value": "2335736166923.55",
+          "diluted_shares": "4940000000",
+          "price_per_share": "472.82",
+          "upside_pct": "0.3752",
+          "premium_discount_pct": "-0.2728",
+          "formulas": {
+            "pv_year": "PV_t = FCFF_t / (1 + WACC)^t (ACT/365 day-fraction)",
+            "terminal_value": "TV = FCFF_5 \u00d7 (1 + g) / (WACC - g)",
+            "pv_terminal_value": "PVTV = TV / (1 + WACC)^t_5 (ACT/365 Year 5 fraction)",
+            "enterprise_value": "EV = \u03a3(PV_1..PV_5) + PVTV",
+            "equity_value": "Equity = EV - debt + cash = EV - net_debt",
+            "price_per_share": "Price = Equity / diluted shares"
+          },
+          "calculation_steps": [
+            "[bear] FCFF projections (FY1E, FY2E, FY2027E, FY2028E, FY2029E) = [Decimal('98000000000.00'), Decimal('137200000000.00'), Decimal('172186000000.00'), Decimal('216093430000.00'), Decimal('271197254650.00')]",
+            "[bear] PV year 1 (t=1.0000) = 98000000000.00 / (1 + 0.12)^1.0000 = 87500000000.00",
+            "[bear] PV year 2 (t=2.0000) = 137200000000.00 / (1 + 0.12)^2.0000 = 109375000000.00",
+            "[bear] PV year 3 (t=3.0000) = 172186000000.00 / (1 + 0.12)^3.0000 = 122558593750.00",
+            "[bear] PV year 4 (t=4.0027) = 216093430000.00 / (1 + 0.12)^4.0027 = 137288648019.05",
+            "[bear] PV year 5 (t=5.0027) = 271197254650.00 / (1 + 0.12)^5.0027 = 153836833271.34",
+            "[bear] TV = 271197254650.00 \u00d7 (1 + 0.03) / (0.12 - 0.03) = 3103701914327.78",
+            "[bear] PVTV = 3103701914327.78 / (1 + 0.12)^5.0027 = 1760577091883.16",
+            "[bear] EV = 610559075040.39 + 1760577091883.16 = 2371136166923.55",
+            "[bear] Equity = 2371136166923.55 - 59400000000 + 24000000000 = 2335736166923.55",
+            "[bear] Price/share = 2335736166923.55 / 4940000000 = 472.82"
+          ],
+          "warnings": []
+        },
+        {
+          "scenario": "base",
+          "wacc": "0.10",
+          "terminal_growth": "0.03",
+          "growth_rate": "0.30",
+          "growth_metric": {
+            "value": "0.30",
+            "unit": "ratio",
+            "period": "FY1E->FY2E",
+            "source": "Derived from forward FCFF FY1E and FY2E; effective base FCFF growth",
+            "source_type": "derived",
+            "as_of": "2025-01-15",
+            "confidence": 0.7,
+            "is_estimated": true,
+            "notes": "Raw growth=0.4; effective growth=0.30; floor=-0.10; cap=0.30; lineage=Derived from forward FCFF FY1E and FY2E."
+          },
+          "growth_metric_raw": {
+            "value": "0.4",
+            "unit": "ratio",
+            "period": "FY1E->FY2E",
+            "source": "Derived from forward FCFF FY1E and FY2E",
+            "source_type": "derived",
+            "as_of": "2025-01-15",
+            "confidence": 0.7,
+            "is_estimated": true,
+            "notes": "Derived FCFF growth; not a separate analyst consensus value."
+          },
+          "growth_cap": "0.30",
+          "growth_floor": "-0.10",
+          "fcff_year1": "98000000000.00",
+          "fcff_projections": [
+            "98000000000.00",
+            "137200000000.00",
+            "178360000000.00",
+            "231868000000.00",
+            "301428400000.00"
+          ],
+          "projection_periods": [
+            "FY1E",
+            "FY2E",
+            "FY2027E",
+            "FY2028E",
+            "FY2029E"
+          ],
+          "projection_metrics": [
+            {
+              "value": "98000000000",
+              "unit": "USD",
+              "period": "FY1E",
+              "source": "Derived from base FCFF (70000000000) \u00d7 (1 + 40.0%)",
+              "source_type": "derived",
+              "as_of": "2025-01-15",
+              "confidence": 0.8,
+              "is_estimated": true,
+              "notes": "Growth clamped to [-20.0%, 40.0%]"
+            },
+            {
+              "value": "137200000000",
+              "unit": "USD",
+              "period": "FY2E",
+              "source": "Derived from Year 1 FCFF \u00d7 (1 + 40.0%)",
+              "source_type": "derived",
+              "as_of": "2025-01-15",
+              "confidence": 0.7,
+              "is_estimated": true,
+              "notes": "Growth clamped to [-20.0%, 40.0%]"
+            },
+            {
+              "value": "178360000000.00",
+              "unit": "USD",
+              "period": "FY2027E",
+              "source": "Derived from prior FCFF projection \u00d7 (1 + 0.30)",
+              "source_type": "derived",
+              "as_of": "2025-01-15",
+              "confidence": 0.7,
+              "is_estimated": true,
+              "notes": "Capped deterministic FCFF projection for 2027-01-15 ~ 2028-01-15; no FCFE substitution. Raw growth=0.4; effective growth=0.30; floor=-0.10; cap=0.30; lineage=Derived from forward FCFF FY1E and FY2E."
+            },
+            {
+              "value": "231868000000.00",
+              "unit": "USD",
+              "period": "FY2028E",
+              "source": "Derived from prior FCFF projection \u00d7 (1 + 0.30)",
+              "source_type": "derived",
+              "as_of": "2025-01-15",
+              "confidence": 0.7,
+              "is_estimated": true,
+              "notes": "Capped deterministic FCFF projection for 2028-01-15 ~ 2029-01-15; no FCFE substitution. Raw growth=0.4; effective growth=0.30; floor=-0.10; cap=0.30; lineage=Derived from forward FCFF FY1E and FY2E."
+            },
+            {
+              "value": "301428400000.00",
+              "unit": "USD",
+              "period": "FY2029E",
+              "source": "Derived from prior FCFF projection \u00d7 (1 + 0.30)",
+              "source_type": "derived",
+              "as_of": "2025-01-15",
+              "confidence": 0.7,
+              "is_estimated": true,
+              "notes": "Capped deterministic FCFF projection for 2029-01-15 ~ 2030-01-15; no FCFE substitution. Raw growth=0.4; effective growth=0.30; floor=-0.10; cap=0.30; lineage=Derived from forward FCFF FY1E and FY2E."
+            }
+          ],
+          "pv_years": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "year_fractions": [
+            "1.00000000",
+            "2.00000000",
+            "3.00000000",
+            "4.00273973",
+            "5.00273973"
+          ],
+          "period_start_dates": [
+            "2025-01-15",
+            "2026-01-15",
+            "2027-01-15",
+            "2028-01-15",
+            "2029-01-15"
+          ],
+          "period_end_dates": [
+            "2026-01-15",
+            "2027-01-15",
+            "2028-01-15",
+            "2029-01-15",
+            "2030-01-15"
+          ],
+          "growth_compound_horizon": "From valuation as_of 2025-01-15 to Year 1 end 2026-01-15 (ACT/365 convention; annual end-of-year discounting: t1=1.0000, t5=5.0027)",
+          "pv_projections": [
+            "89090909090.91",
+            "113388429752.07",
+            "134004507888.81",
+            "158327615304.89",
+            "187114454451.23"
+          ],
+          "terminal_value": "4435303600000.00",
+          "pv_terminal_value": "2753255544068.14",
+          "enterprise_value": "3435181460556.05",
+          "total_debt": "59400000000",
+          "cash": "24000000000",
+          "net_debt": "35400000000",
+          "equity_value": "3399781460556.05",
+          "diluted_shares": "4940000000",
+          "price_per_share": "688.21",
+          "upside_pct": "1.0016",
+          "premium_discount_pct": "-0.5004",
+          "formulas": {
+            "pv_year": "PV_t = FCFF_t / (1 + WACC)^t (ACT/365 day-fraction)",
+            "terminal_value": "TV = FCFF_5 \u00d7 (1 + g) / (WACC - g)",
+            "pv_terminal_value": "PVTV = TV / (1 + WACC)^t_5 (ACT/365 Year 5 fraction)",
+            "enterprise_value": "EV = \u03a3(PV_1..PV_5) + PVTV",
+            "equity_value": "Equity = EV - debt + cash = EV - net_debt",
+            "price_per_share": "Price = Equity / diluted shares"
+          },
+          "calculation_steps": [
+            "[base] FCFF projections (FY1E, FY2E, FY2027E, FY2028E, FY2029E) = [Decimal('98000000000.00'), Decimal('137200000000.00'), Decimal('178360000000.00'), Decimal('231868000000.00'), Decimal('301428400000.00')]",
+            "[base] PV year 1 (t=1.0000) = 98000000000.00 / (1 + 0.10)^1.0000 = 89090909090.91",
+            "[base] PV year 2 (t=2.0000) = 137200000000.00 / (1 + 0.10)^2.0000 = 113388429752.07",
+            "[base] PV year 3 (t=3.0000) = 178360000000.00 / (1 + 0.10)^3.0000 = 134004507888.81",
+            "[base] PV year 4 (t=4.0027) = 231868000000.00 / (1 + 0.10)^4.0027 = 158327615304.89",
+            "[base] PV year 5 (t=5.0027) = 301428400000.00 / (1 + 0.10)^5.0027 = 187114454451.23",
+            "[base] TV = 301428400000.00 \u00d7 (1 + 0.03) / (0.10 - 0.03) = 4435303600000.00",
+            "[base] PVTV = 4435303600000.00 / (1 + 0.10)^5.0027 = 2753255544068.14",
+            "[base] EV = 681925916487.91 + 2753255544068.14 = 3435181460556.05",
+            "[base] Equity = 3435181460556.05 - 59400000000 + 24000000000 = 3399781460556.05",
+            "[base] Price/share = 3399781460556.05 / 4940000000 = 688.21"
+          ],
+          "warnings": []
+        },
+        {
+          "scenario": "bull",
+          "wacc": "0.08",
+          "terminal_growth": "0.04",
+          "growth_rate": "0.3450",
+          "growth_metric": {
+            "value": "0.3450",
+            "unit": "ratio",
+            "period": "FY1E->FY2E",
+            "source": "Derived from forward FCFF FY1E and FY2E; effective bull FCFF growth",
+            "source_type": "derived",
+            "as_of": "2025-01-15",
+            "confidence": 0.7,
+            "is_estimated": true,
+            "notes": "Raw growth=0.4; effective growth=0.3450; floor=-0.10; cap=0.3450; lineage=Derived from forward FCFF FY1E and FY2E."
+          },
+          "growth_metric_raw": {
+            "value": "0.4",
+            "unit": "ratio",
+            "period": "FY1E->FY2E",
+            "source": "Derived from forward FCFF FY1E and FY2E",
+            "source_type": "derived",
+            "as_of": "2025-01-15",
+            "confidence": 0.7,
+            "is_estimated": true,
+            "notes": "Derived FCFF growth; not a separate analyst consensus value."
+          },
+          "growth_cap": "0.3450",
+          "growth_floor": "-0.10",
+          "fcff_year1": "98000000000.00",
+          "fcff_projections": [
+            "98000000000.00",
+            "137200000000.00",
+            "184534000000.00",
+            "248198230000.00",
+            "333826619350.00"
+          ],
+          "projection_periods": [
+            "FY1E",
+            "FY2E",
+            "FY2027E",
+            "FY2028E",
+            "FY2029E"
+          ],
+          "projection_metrics": [
+            {
+              "value": "98000000000",
+              "unit": "USD",
+              "period": "FY1E",
+              "source": "Derived from base FCFF (70000000000) \u00d7 (1 + 40.0%)",
+              "source_type": "derived",
+              "as_of": "2025-01-15",
+              "confidence": 0.8,
+              "is_estimated": true,
+              "notes": "Growth clamped to [-20.0%, 40.0%]"
+            },
+            {
+              "value": "137200000000",
+              "unit": "USD",
+              "period": "FY2E",
+              "source": "Derived from Year 1 FCFF \u00d7 (1 + 40.0%)",
+              "source_type": "derived",
+              "as_of": "2025-01-15",
+              "confidence": 0.7,
+              "is_estimated": true,
+              "notes": "Growth clamped to [-20.0%, 40.0%]"
+            },
+            {
+              "value": "184534000000.00",
+              "unit": "USD",
+              "period": "FY2027E",
+              "source": "Derived from prior FCFF projection \u00d7 (1 + 0.3450)",
+              "source_type": "derived",
+              "as_of": "2025-01-15",
+              "confidence": 0.7,
+              "is_estimated": true,
+              "notes": "Capped deterministic FCFF projection for 2027-01-15 ~ 2028-01-15; no FCFE substitution. Raw growth=0.4; effective growth=0.3450; floor=-0.10; cap=0.3450; lineage=Derived from forward FCFF FY1E and FY2E."
+            },
+            {
+              "value": "248198230000.00",
+              "unit": "USD",
+              "period": "FY2028E",
+              "source": "Derived from prior FCFF projection \u00d7 (1 + 0.3450)",
+              "source_type": "derived",
+              "as_of": "2025-01-15",
+              "confidence": 0.7,
+              "is_estimated": true,
+              "notes": "Capped deterministic FCFF projection for 2028-01-15 ~ 2029-01-15; no FCFE substitution. Raw growth=0.4; effective growth=0.3450; floor=-0.10; cap=0.3450; lineage=Derived from forward FCFF FY1E and FY2E."
+            },
+            {
+              "value": "333826619350.00",
+              "unit": "USD",
+              "period": "FY2029E",
+              "source": "Derived from prior FCFF projection \u00d7 (1 + 0.3450)",
+              "source_type": "derived",
+              "as_of": "2025-01-15",
+              "confidence": 0.7,
+              "is_estimated": true,
+              "notes": "Capped deterministic FCFF projection for 2029-01-15 ~ 2030-01-15; no FCFE substitution. Raw growth=0.4; effective growth=0.3450; floor=-0.10; cap=0.3450; lineage=Derived from forward FCFF FY1E and FY2E."
+            }
+          ],
+          "pv_years": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "year_fractions": [
+            "1.00000000",
+            "2.00000000",
+            "3.00000000",
+            "4.00273973",
+            "5.00273973"
+          ],
+          "period_start_dates": [
+            "2025-01-15",
+            "2026-01-15",
+            "2027-01-15",
+            "2028-01-15",
+            "2029-01-15"
+          ],
+          "period_end_dates": [
+            "2026-01-15",
+            "2027-01-15",
+            "2028-01-15",
+            "2029-01-15",
+            "2030-01-15"
+          ],
+          "growth_compound_horizon": "From valuation as_of 2025-01-15 to Year 1 end 2026-01-15 (ACT/365 convention; annual end-of-year discounting: t1=1.0000, t5=5.0027)",
+          "pv_projections": [
+            "90740740740.74",
+            "117626886145.40",
+            "146489038764.42",
+            "182394646044.21",
+            "227148887897.65"
+          ],
+          "terminal_value": "8679492103100.00",
+          "pv_terminal_value": "5905871085338.98",
+          "enterprise_value": "6670271284931.40",
+          "total_debt": "59400000000",
+          "cash": "24000000000",
+          "net_debt": "35400000000",
+          "equity_value": "6634871284931.40",
+          "diluted_shares": "4940000000",
+          "price_per_share": "1343.09",
+          "upside_pct": "2.9063",
+          "premium_discount_pct": "-0.7440",
+          "formulas": {
+            "pv_year": "PV_t = FCFF_t / (1 + WACC)^t (ACT/365 day-fraction)",
+            "terminal_value": "TV = FCFF_5 \u00d7 (1 + g) / (WACC - g)",
+            "pv_terminal_value": "PVTV = TV / (1 + WACC)^t_5 (ACT/365 Year 5 fraction)",
+            "enterprise_value": "EV = \u03a3(PV_1..PV_5) + PVTV",
+            "equity_value": "Equity = EV - debt + cash = EV - net_debt",
+            "price_per_share": "Price = Equity / diluted shares"
+          },
+          "calculation_steps": [
+            "[bull] FCFF projections (FY1E, FY2E, FY2027E, FY2028E, FY2029E) = [Decimal('98000000000.00'), Decimal('137200000000.00'), Decimal('184534000000.00'), Decimal('248198230000.00'), Decimal('333826619350.00')]",
+            "[bull] PV year 1 (t=1.0000) = 98000000000.00 / (1 + 0.08)^1.0000 = 90740740740.74",
+            "[bull] PV year 2 (t=2.0000) = 137200000000.00 / (1 + 0.08)^2.0000 = 117626886145.40",
+            "[bull] PV year 3 (t=3.0000) = 184534000000.00 / (1 + 0.08)^3.0000 = 146489038764.42",
+            "[bull] PV year 4 (t=4.0027) = 248198230000.00 / (1 + 0.08)^4.0027 = 182394646044.21",
+            "[bull] PV year 5 (t=5.0027) = 333826619350.00 / (1 + 0.08)^5.0027 = 227148887897.65",
+            "[bull] TV = 333826619350.00 \u00d7 (1 + 0.04) / (0.08 - 0.04) = 8679492103100.00",
+            "[bull] PVTV = 8679492103100.00 / (1 + 0.08)^5.0027 = 5905871085338.98",
+            "[bull] EV = 764400199592.42 + 5905871085338.98 = 6670271284931.40",
+            "[bull] Equity = 6670271284931.40 - 59400000000 + 24000000000 = 6634871284931.40",
+            "[bull] Price/share = 6634871284931.40 / 4940000000 = 1343.09"
+          ],
+          "warnings": []
+        }
+      ],
+      "sensitivity_matrix": {
+        "wacc_range": [
+          "0.09",
+          "0.10",
+          "0.11"
+        ],
+        "terminal_growth_range": [
+          "0.025",
+          "0.03",
+          "0.035"
+        ],
+        "cells": [
+          [
+            {
+              "wacc": "0.09",
+              "terminal_growth": "0.025",
+              "price_per_share": "760.40",
+              "enterprise_value": "3791782931594.45",
+              "equity_value": "3756382931594.45",
+              "tv_ratio": "0.8145",
+              "available": true,
+              "unavailable_reason": null
+            },
+            {
+              "wacc": "0.09",
+              "terminal_growth": "0.03",
+              "price_per_share": "815.81",
+              "enterprise_value": "4065486862874.92",
+              "equity_value": "4030086862874.92",
+              "tv_ratio": "0.8270",
+              "available": true,
+              "unavailable_reason": null
+            },
+            {
+              "wacc": "0.09",
+              "terminal_growth": "0.035",
+              "price_per_share": "881.29",
+              "enterprise_value": "4388955145297.28",
+              "equity_value": "4353555145297.28",
+              "tv_ratio": "0.8398",
+              "available": true,
+              "unavailable_reason": null
+            }
+          ],
+          [
+            {
+              "wacc": "0.10",
+              "terminal_growth": "0.025",
+              "price_per_share": "648.53",
+              "enterprise_value": "3239156793988.09",
+              "equity_value": "3203756793988.09",
+              "tv_ratio": "0.7895",
+              "available": true,
+              "unavailable_reason": null
+            },
+            {
+              "wacc": "0.10",
+              "terminal_growth": "0.03",
+              "price_per_share": "688.21",
+              "enterprise_value": "3435181460556.05",
+              "equity_value": "3399781460556.05",
+              "tv_ratio": "0.8015",
+              "available": true,
+              "unavailable_reason": null
+            },
+            {
+              "wacc": "0.10",
+              "terminal_growth": "0.035",
+              "price_per_share": "734.00",
+              "enterprise_value": "3661363768134.46",
+              "equity_value": "3625963768134.46",
+              "tv_ratio": "0.8138",
+              "available": true,
+              "unavailable_reason": null
+            }
+          ],
+          [
+            {
+              "wacc": "0.11",
+              "terminal_growth": "0.025",
+              "price_per_share": "563.30",
+              "enterprise_value": "2818087969743.95",
+              "equity_value": "2782687969743.95",
+              "tv_ratio": "0.7652",
+              "available": true,
+              "unavailable_reason": null
+            },
+            {
+              "wacc": "0.11",
+              "terminal_growth": "0.03",
+              "price_per_share": "592.84",
+              "enterprise_value": "2964046395984.90",
+              "equity_value": "2928646395984.90",
+              "tv_ratio": "0.7768",
+              "available": true,
+              "unavailable_reason": null
+            },
+            {
+              "wacc": "0.11",
+              "terminal_growth": "0.035",
+              "price_per_share": "626.33",
+              "enterprise_value": "3129465945724.65",
+              "equity_value": "3094065945724.65",
+              "tv_ratio": "0.7886",
+              "available": true,
+              "unavailable_reason": null
+            }
+          ]
+        ],
+        "base_tv_ratio": "0.8015",
+        "tv_dependence_warning": "high_tv_dependence_strong"
+      },
+      "available": true,
+      "unavailable_reason": null,
+      "warnings": [
+        "DCF Terminal Value accounts for 80.2% of Enterprise Value (>80%). High sensitivity to terminal assumptions."
+      ],
+      "data_quality": "LOW"
+    }
+  },
+  "composite": {
+    "current_price": "343.83",
+    "low": "348.69",
+    "base": "422.34",
+    "high": "593.56",
+    "fair_value_low": "348.69",
+    "fair_value_base": "422.34",
+    "fair_value_high": "593.56",
+    "weights_used": {
+      "forward_pe": "0.3333",
+      "ev_ebitda": "0.2667",
+      "fcf_yield": "0.1818",
+      "dcf": "0.2182"
+    },
+    "selected_weights": {
+      "forward_pe": "0.25",
+      "ev_ebitda": "0.20",
+      "fcf_yield": "0.25",
+      "dcf": "0.30"
+    },
+    "effective_weights": {
+      "forward_pe": "0.3333",
+      "ev_ebitda": "0.2667",
+      "fcf_yield": "0.1818",
+      "dcf": "0.2182"
+    },
+    "cashflow_group_weight": "0.4000",
+    "cashflow_group_max_weight": "0.40",
+    "cashflow_sensitivity": null,
+    "cashflow_group_policy_message": null,
+    "available_models": [
+      "forward_pe",
+      "ev_ebitda",
+      "fcf_yield",
+      "dcf"
+    ],
+    "classification": "undervalued",
+    "margin_of_safety": "0.1859",
+    "upside_downside": "0.2283",
+    "premium_discount_pct": "-0.1859",
+    "formula": "Weighted average of complete model scenario fair values",
+    "calculation_steps": [
+      "Complete models used: forward_pe, ev_ebitda, fcf_yield, dcf",
+      "Selected weights = {'forward_pe': Decimal('0.25'), 'ev_ebitda': Decimal('0.20'), 'fcf_yield': Decimal('0.25'), 'dcf': Decimal('0.30')}",
+      "Effective weights = {'forward_pe': Decimal('0.3333'), 'ev_ebitda': Decimal('0.2667'), 'fcf_yield': Decimal('0.1818'), 'dcf': Decimal('0.2182')}",
+      "Cash flow group weight = 0.4000 (cap = 0.40)",
+      "Composite low = weighted low values = 348.69",
+      "Composite base = weighted base values = 422.34",
+      "Composite high = weighted high values = 593.56",
+      "MOS = (fair value base - current price) / fair value base = 0.1859",
+      "Upside = (fair value base - current price) / current price = 0.2283"
+    ],
+    "warnings": [],
+    "data_quality": "LOW",
+    "available": true,
+    "unavailable_reason": null
+  },
+  "is_demo": true,
+  "data_quality": "LOW",
+  "warnings": [
+    "DEMO DATA: values come from a fixed fixture.",
+    "DCF Terminal Value accounts for 80.2% of Enterprise Value (>80%). High sensitivity to terminal assumptions."
+  ],
+  "assumptions_used": {
+    "pe_target": {
+      "low": "18",
+      "base": "20",
+      "high": "22"
+    },
+    "pe_source": "configured_fallback",
+    "pe_source_label": "Configured fallback: 18x/20x/22x (low/base/high)",
+    "ev_ebitda_multiple": {
+      "low": "18",
+      "base": "22",
+      "high": "26"
+    },
+    "ev_ebitda_source": "configured_fallback",
+    "ev_ebitda_source_label": "Configured fallback: 18x/22x/26x (low/base/high)",
+    "fcf_yield": {
+      "low": "0.055",
+      "base": "0.050",
+      "high": "0.045"
+    },
+    "fcf_yield_source": "configured_fallback",
+    "fcf_yield_source_label": "Configured fallback: 5.5%/5.0%/4.5% (low=high yield=conservative)",
+    "dcf_wacc": {
+      "low": "0.12",
+      "base": "0.10",
+      "high": "0.08"
+    },
+    "dcf_terminal_growth": {
+      "low": "0.03",
+      "base": "0.03",
+      "high": "0.04"
+    },
+    "dcf_fcf_growth": null,
+    "dcf_wacc_source": "configured_fallback",
+    "dcf_wacc_source_label": "Configured fallback: 12%/10%/8% (bear/base/bull)",
+    "dcf_terminal_growth_source": "configured_fallback",
+    "dcf_terminal_growth_source_label": "Configured fallback terminal growth",
+    "weight_pe": "0.25",
+    "weight_ev_ebitda": "0.20",
+    "weight_fcf_yield": "0.25",
+    "weight_dcf": "0.30",
+    "cashflow_group_max_weight": "0.40",
+    "growth_floor": "-0.20",
+    "growth_cap": "0.40",
+    "forecast_horizon": "ntm"
+  },
+  "provider": null,
+  "provider_label": null,
+  "shares_basis": "ALL_CLASS_RECONCILED",
+  "shares_reconciliation": {
+    "selected_source": "info.impliedSharesOutstanding",
+    "is_multi_class": false,
+    "conflict_detected": false,
+    "implied_shares": 4940000000,
+    "single_class_shares": 4940000000,
+    "reconciliation_notes": "Single-class common stock verified fixture"
+  },
+  "statement_basis": "TTM",
+  "annual_fallback": false,
+  "forecast_fiscal_year_end": null,
+  "ntm_weights": null,
+  "forecast_horizon_effective": "ntm",
+  "growth_cap_effective": "0.40",
+  "growth_floor_effective": "-0.20"
+}

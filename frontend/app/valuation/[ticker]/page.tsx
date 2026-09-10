@@ -47,6 +47,13 @@ const EMPTY_FORM: OverrideForm = {
   dcf_wacc: "",
   dcf_terminal_growth: "",
   dcf_fcf_growth: "",
+  dcf_growth_floor: "",
+  dcf_growth_cap: "",
+  forecast_horizon: undefined,
+  weight_pe: "",
+  weight_ev_ebitda: "",
+  weight_fcf_yield: "",
+  weight_dcf: "",
 };
 
 const MODEL_KEYS = ["forward_pe", "ev_ebitda", "fcf_yield", "dcf"] as const;
@@ -405,7 +412,12 @@ function ModelCard({
                 </div>
                 <span className="fcff-chip">FCFF ≠ FCFE</span>
               </div>
-              <DCFScenarios scenarios={model.dcf_scenarios ?? []} currentPrice={currentPrice} currency={currency} />
+              <DCFScenarios
+                scenarios={model.dcf_scenarios ?? []}
+                currentPrice={currentPrice}
+                currency={currency}
+                sensitivityMatrix={model.sensitivity_matrix}
+              />
             </div>
           )}
         </>
@@ -415,16 +427,23 @@ function ModelCard({
 }
 
 function buildOverrides(form: OverrideForm): { request?: OverrideRequest; error?: string } {
-  const fields: Array<[string, string]> = [
+  const fields: Array<[string, string | undefined]> = [
     ["P/E 基准", form.pe_base],
     ["EV/EBITDA 基准", form.ev_base],
     ["FCF 收益率基准", form.fcf_yield_base],
     ["WACC", form.dcf_wacc],
     ["永续增长率", form.dcf_terminal_growth],
     ["FCFF 预测增长率", form.dcf_fcf_growth],
+    ["DCF 增长下限", form.dcf_growth_floor],
+    ["DCF 增长上限", form.dcf_growth_cap],
+    ["P/E 权重", form.weight_pe],
+    ["EV/EBITDA 权重", form.weight_ev_ebitda],
+    ["FCF 收益率权重", form.weight_fcf_yield],
+    ["DCF 权重", form.weight_dcf],
   ];
   const values: Record<string, number | undefined> = {};
   for (const [label, raw] of fields) {
+    if (!raw) continue;
     const value = raw.trim();
     if (!value) continue;
     const parsed = Number(value);
@@ -439,7 +458,21 @@ function buildOverrides(form: OverrideForm): { request?: OverrideRequest; error?
   if (values.WACC !== undefined) dcf.wacc = values.WACC;
   if (values["永续增长率"] !== undefined) dcf.terminal_growth = values["永续增长率"];
   if (values["FCFF 预测增长率"] !== undefined) dcf.fcf_growth = values["FCFF 预测增长率"];
+  if (values["DCF 增长下限"] !== undefined) dcf.growth_floor = values["DCF 增长下限"];
+  if (values["DCF 增长上限"] !== undefined) dcf.growth_cap = values["DCF 增长上限"];
   if (Object.keys(dcf).length > 0) request.dcf = dcf;
+
+  const weights: NonNullable<OverrideRequest["weights"]> = {};
+  if (values["P/E 权重"] !== undefined) weights.weight_pe = values["P/E 权重"];
+  if (values["EV/EBITDA 权重"] !== undefined) weights.weight_ev_ebitda = values["EV/EBITDA 权重"];
+  if (values["FCF 收益率权重"] !== undefined) weights.weight_fcf_yield = values["FCF 收益率权重"];
+  if (values["DCF 权重"] !== undefined) weights.weight_dcf = values["DCF 权重"];
+  if (Object.keys(weights).length > 0) request.weights = weights;
+
+  if (form.forecast_horizon) {
+    request.forecast_horizon = form.forecast_horizon;
+  }
+
   return { request };
 }
 
@@ -651,7 +684,7 @@ export default function ValuationPage() {
     }
   }
 
-  function updateField(field: keyof OverrideForm, value: string) {
+  function updateField<K extends keyof OverrideForm>(field: K, value: OverrideForm[K]) {
     setForm((current) => ({ ...current, [field]: value }));
     if (formError) setFormError("");
   }
@@ -733,6 +766,35 @@ export default function ValuationPage() {
                     <span>{data.ticker}</span>
                     <span>{data.currency}</span>
                     <span>财报基准日 {fmtDate(data.as_of)}</span>
+                    {data.annual_fallback ? (
+                      <span data-testid="statement-basis-badge" className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs">
+                        年报回退 ({data.statement_basis || "ANNUAL_FALLBACK"})
+                      </span>
+                    ) : (
+                      <span data-testid="statement-basis-badge" className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs">
+                        连续 4 季度 (TTM)
+                      </span>
+                    )}
+                    {data.shares_basis && (
+                      <span
+                        data-testid="shares-basis-badge"
+                        className={`text-xs px-2 py-0.5 rounded ${
+                          data.shares_basis === "CONFLICT_DEGRADED"
+                            ? "bg-amber-500/20 text-amber-300 border border-amber-500/30 font-medium"
+                            : "text-slate-400"
+                        }`}
+                      >
+                        {data.shares_basis === "CONFLICT_DEGRADED"
+                          ? "股本冲突 (相关模型不可用)"
+                          : data.shares_basis === "ALL_CLASS_RECONCILED"
+                          ? "股本口径: 全类别普通股穿透"
+                          : data.shares_basis === "SINGLE_CLASS_VERIFIED"
+                          ? "股本口径: 单类别普通股核验"
+                          : data.shares_basis === "BALANCE_SHEET_ORDINARY"
+                          ? "股本口径: 资产负债表普通股"
+                          : `股本口径: 未知 (${data.shares_basis})`}
+                      </span>
+                    )}
                     {data.provider_label && <span>数据源 {data.provider_label}</span>}
                   </p>
                 </div>
@@ -789,6 +851,11 @@ export default function ValuationPage() {
                     <div className="fair-value-unavailable">
                       <strong>综合估值暂不可用</strong>
                       <p>{composite?.unavailable_reason ?? "由于必要财务输入缺失，未能得出综合公允价值区间。"}</p>
+                      {composite?.cashflow_group_policy_message && (
+                        <p className="mt-2 text-xs text-amber-700 bg-amber-50 p-2 rounded border border-amber-200">
+                          {composite.cashflow_group_policy_message}
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -828,8 +895,25 @@ export default function ValuationPage() {
                   <h2>覆盖假设并重新计算</h2>
                   <p>只填写需要覆盖的基准值；留空项沿用默认值。每次提交仅应用于本次分析。</p>
                 </div>
-                <div className="control-actions">
-                  <button type="button" className="button-secondary" onClick={handleReset} disabled={loading}>↺ 重置默认</button>
+                <div className="control-actions flex gap-2">
+                  <button
+                    type="button"
+                    className="button-secondary"
+                    onClick={handleExportMarkdown}
+                    disabled={!data || loading}
+                    data-testid="export-markdown-btn"
+                  >
+                    📥 导出 Markdown
+                  </button>
+                  <button
+                    type="button"
+                    className="button-secondary"
+                    onClick={handleReset}
+                    disabled={loading}
+                    data-testid="reset-defaults-btn"
+                  >
+                    ↺ 重置默认
+                  </button>
                 </div>
               </div>
               <form className="override-form" onSubmit={handleRecalculate}>
@@ -839,6 +923,102 @@ export default function ValuationPage() {
                 <label><span>WACC</span><input value={form.dcf_wacc} onChange={(e) => updateField("dcf_wacc", e.target.value)} placeholder={asText(data.assumptions_used?.dcf_wacc?.base)} inputMode="decimal" /><small>小数，例如 0.10</small></label>
                 <label><span>永续增长率</span><input value={form.dcf_terminal_growth} onChange={(e) => updateField("dcf_terminal_growth", e.target.value)} placeholder={asText(data.assumptions_used?.dcf_terminal_growth?.base)} inputMode="decimal" /><small>必须低于 WACC，最高 0.05</small></label>
                 <label><span>FCFF 预测增长率（可选）</span><input value={form.dcf_fcf_growth} onChange={(e) => updateField("dcf_fcf_growth", e.target.value)} placeholder="沿用后端增长推导" inputMode="decimal" /><small>仅覆盖第 3-5 年增长</small></label>
+
+                <div className="col-span-full">
+                  <details className="mt-3 p-3 bg-slate-900/50 border border-slate-800 rounded-lg">
+                    <summary className="text-xs font-semibold text-indigo-300 cursor-pointer select-none">
+                      ⚙️ 高级配置：预测周期选择、模型权重与增长上下限
+                    </summary>
+                    <div className="mt-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      <label>
+                        <span>前瞻预测跨期选择</span>
+                        <select
+                          value={form.forecast_horizon || ""}
+                          onChange={(e) =>
+                            updateField(
+                              "forecast_horizon",
+                              (e.target.value as "current_fy" | "next_fy" | "ntm") || undefined
+                            )
+                          }
+                          className="bg-slate-950 border border-slate-800 rounded p-1.5 text-xs text-slate-200"
+                        >
+                          <option value="">默认 (当前财年 / FY1)</option>
+                          <option value="current_fy">当前财年 (Current FY / FY1)</option>
+                          <option value="next_fy">下一财年 (Next FY / FY2)</option>
+                          <option value="ntm">日历加权滚动前瞻 (NTM)</option>
+                        </select>
+                        <small>Forward P/E 预估每股收益周期</small>
+                      </label>
+
+                      <label>
+                        <span>DCF 增长率下限</span>
+                        <input
+                          value={form.dcf_growth_floor || ""}
+                          onChange={(e) => updateField("dcf_growth_floor", e.target.value)}
+                          placeholder="-0.20 (-20%)"
+                          inputMode="decimal"
+                        />
+                        <small>必须大于 -1.0 (-100%)</small>
+                      </label>
+
+                      <label>
+                        <span>DCF 增长率上限</span>
+                        <input
+                          value={form.dcf_growth_cap || ""}
+                          onChange={(e) => updateField("dcf_growth_cap", e.target.value)}
+                          placeholder="0.40 (40%)"
+                          inputMode="decimal"
+                        />
+                        <small>最高 2.0 (200%)</small>
+                      </label>
+
+                      <label>
+                        <span>P/E 权重</span>
+                        <input
+                          value={form.weight_pe || ""}
+                          onChange={(e) => updateField("weight_pe", e.target.value)}
+                          placeholder="0.25 (25%)"
+                          inputMode="decimal"
+                        />
+                        <small>非负数值（自动归一化）</small>
+                      </label>
+
+                      <label>
+                        <span>EV/EBITDA 权重</span>
+                        <input
+                          value={form.weight_ev_ebitda || ""}
+                          onChange={(e) => updateField("weight_ev_ebitda", e.target.value)}
+                          placeholder="0.20 (20%)"
+                          inputMode="decimal"
+                        />
+                        <small>非负数值（自动归一化）</small>
+                      </label>
+
+                      <label>
+                        <span>FCF 收益率权重</span>
+                        <input
+                          value={form.weight_fcf_yield || ""}
+                          onChange={(e) => updateField("weight_fcf_yield", e.target.value)}
+                          placeholder="0.25 (25%)"
+                          inputMode="decimal"
+                        />
+                        <small>现金流组受 40% 上限保护</small>
+                      </label>
+
+                      <label>
+                        <span>DCF 权重</span>
+                        <input
+                          value={form.weight_dcf || ""}
+                          onChange={(e) => updateField("weight_dcf", e.target.value)}
+                          placeholder="0.30 (30%)"
+                          inputMode="decimal"
+                        />
+                        <small>现金流组受 40% 上限保护</small>
+                      </label>
+                    </div>
+                  </details>
+                </div>
+
                 <div className="form-submit-row">
                   {formError && <span className="form-error" role="alert">{formError}</span>}
                   <button type="submit" className="button-primary" disabled={loading}>{loading && action === "recalculate" ? "计算中…" : "应用覆盖并计算"}</button>

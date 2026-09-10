@@ -3,8 +3,10 @@
 import { useState } from "react";
 import type {
   DCFScenario,
+  DCFSensitivityMatrix,
   FinancialMetric,
 } from "@/lib/types";
+import { DCFSensitivityMatrixTable } from "./DCFSensitivityMatrix";
 import {
   displayMetricValue,
   fmtBigNumber,
@@ -21,6 +23,7 @@ interface Props {
   scenarios: DCFScenario[];
   currentPrice: string | number;
   currency?: string;
+  sensitivityMatrix?: DCFSensitivityMatrix;
 }
 
 const SCENARIO_LABELS: Record<string, { zh: string; tone: string }> = {
@@ -162,6 +165,12 @@ function ScenarioPanel({
               <h4>五年 FCFF 预测与折现</h4>
               <span>FCFF（企业自由现金流）仅用于 DCF，并按 WACC 折现</span>
             </div>
+            {scenario.growth_compound_horizon && (
+              <div className="text-xs text-indigo-300 bg-indigo-950/40 border border-indigo-800/40 rounded-lg p-2.5 my-2 flex items-center gap-2">
+                <span>📅</span>
+                <span>预测日历基准：{scenario.growth_compound_horizon}</span>
+              </div>
+            )}
             <div className="table-scroll">
               <table className="data-table">
                 <thead>
@@ -246,7 +255,7 @@ function ScenarioPanel({
   );
 }
 
-export function DCFScenarios({ scenarios, currentPrice, currency = "USD" }: Props) {
+export function DCFScenarios({ scenarios, currentPrice, currency = "USD", sensitivityMatrix }: Props) {
   if (!scenarios || scenarios.length === 0) {
     return <p className="empty-state">暂无 DCF 情景数据</p>;
   }
@@ -256,6 +265,9 @@ export function DCFScenarios({ scenarios, currentPrice, currency = "USD" }: Prop
       {scenarios.map((scenario) => (
         <ScenarioPanel key={scenario.scenario} scenario={scenario} currentPrice={currentPrice} currency={currency} />
       ))}
+      {sensitivityMatrix && (
+        <DCFSensitivityMatrixTable matrix={sensitivityMatrix} currency={currency} />
+      )}
     </div>
   );
 }

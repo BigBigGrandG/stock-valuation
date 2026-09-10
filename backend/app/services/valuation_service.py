@@ -19,6 +19,7 @@ from app.engines.dcf import run_dcf
 from app.engines.ev_ebitda import run_ev_ebitda
 from app.engines.fcf_yield import run_fcf_yield
 from app.engines.forward_pe import run_forward_pe
+from app.services.projections import derive_request_projections
 from app.models.domain import (
     CompanyFinancialSnapshot,
     CompositeValuation,
@@ -653,6 +654,10 @@ class Normalizer:
             forward_eps_2y=self._metric([est], ("forward_eps_2y",), unit=eps2_unit, period=period_est_2, period_keys=("period_2y",), source=str(est.get("source", default_source)), as_of=estimates_as_of, estimated=True),
             forward_ebitda_1y=self._metric([est], ("forward_ebitda_1y",), unit=fin_curr, period=period_est_1, period_keys=("period_1y",), source=str(est.get("source", default_source)), as_of=estimates_as_of, estimated=True),
             forward_ebitda_2y=self._metric([est], ("forward_ebitda_2y",), unit=fin_curr, period=period_est_2, period_keys=("period_2y",), source=str(est.get("source", default_source)), as_of=estimates_as_of, estimated=True),
+            revenue_estimate_1y=self._metric([est], ("forward_revenue_1y", "revenue_estimate_1y"), unit=fin_curr, period=period_est_1, period_keys=("period_1y",), source=str(est.get("source", default_source)), as_of=estimates_as_of, estimated=True),
+            revenue_estimate_2y=self._metric([est], ("forward_revenue_2y", "revenue_estimate_2y"), unit=fin_curr, period=period_est_2, period_keys=("period_2y",), source=str(est.get("source", default_source)), as_of=estimates_as_of, estimated=True),
+            forward_revenue=self._metric([est], ("forward_revenue_1y", "revenue_estimate_1y", "forward_revenue"), unit=fin_curr, period=period_est_1, period_keys=("period_1y",), source=str(est.get("source", default_source)), as_of=estimates_as_of, estimated=True),
+
             historical_forward_pe=self._metric([mult], ("historical_forward_pe",), unit="ratio", period=str(mult.get("period", "historical")), source=str(mult.get("source", default_source)), as_of=multiples_as_of),
             historical_ev_ebitda=self._metric([mult], ("historical_ev_ebitda",), unit="ratio", period=str(mult.get("period", "historical")), source=str(mult.get("source", default_source)), as_of=multiples_as_of),
             revenue_growth=self._metric(maps, ("revenue_growth",), unit="ratio", period="growth", source=str(default_source), as_of=quote_as_of, estimated=True),
@@ -672,6 +677,12 @@ class Normalizer:
             sector=p.get("sector"),
             industry=p.get("industry"),
             is_profitable=p.get("is_profitable"),
+            shares_basis=p.get("shares_basis", "point_in_time_all_classes"),
+            shares_reconciliation=p.get("shares_reconciliation"),
+            statement_basis=inc.get("statement_basis") or cf.get("statement_basis") or ("ANNUAL_FALLBACK" if (inc.get("annual_fallback") or cf.get("annual_fallback")) else "TTM"),
+            annual_fallback=bool(inc.get("annual_fallback") or cf.get("annual_fallback")),
+            forecast_fiscal_year_end=est.get("forecast_fiscal_year_end"),
+            ntm_weights=est.get("ntm_weights"),
             data_quality=DataQuality.LOW if fixture else DataQuality.HIGH,
             is_demo=fixture,
             warnings=list(p.get("warnings") or [])
@@ -702,6 +713,11 @@ def apply_overrides(base_assumptions: ValuationAssumptions, overrides: Optional[
         "ev_ebitda.base", "ev_ebitda.low", "ev_ebitda.high",
         "fcf_yield.base", "fcf_yield.low", "fcf_yield.high",
         "dcf.wacc", "dcf.terminal_growth", "dcf.fcf_growth",
+        "dcf.growth_floor", "dcf.growth_cap",
+        "weights.weight_pe", "weights.weight_ev_ebitda",
+        "weights.weight_fcf_yield", "weights.weight_dcf",
+        "weights.cashflow_group_max_weight",
+        "forecast_horizon",
     }
     unknown = set(overrides) - allowed
     if unknown:
@@ -752,6 +768,59 @@ def apply_overrides(base_assumptions: ValuationAssumptions, overrides: Optional[
         if not (Decimal("-0.5") <= growth <= Decimal("0.5")):
             raise OverrideValidationError("dcf.fcf_growth must be between -0.5 and 0.5")
         data["dcf_fcf_growth"] = {"low": growth, "base": growth, "high": growth}
+    if "dcf.growth_floor" in overrides:
+        g_floor = _decimal_override(overrides["dcf.growth_floor"], "dcf.growth_floor")
+        if not (Decimal("-1.0") < g_floor <= Decimal("2.0")):
+            raise OverrideValidationError("dcf.growth_floor must be > -1.0 and <= 2.0")
+        data["growth_floor"] = g_floor
+    if "dcf.growth_cap" in overrides:
+        g_cap = _decimal_override(overrides["dcf.growth_cap"], "dcf.growth_cap")
+        if not (Decimal("-1.0") < g_cap <= Decimal("2.0")):
+            raise OverrideValidationError("dcf.growth_cap must be > -1.0 and <= 2.0")
+        data["growth_cap"] = g_cap
+    if data.get("growth_floor", Decimal("-0.20")) > data.get("growth_cap", Decimal("0.40")):
+        raise OverrideValidationError("growth_floor must be <= growth_cap")
+
+    if "weights.weight_pe" in overrides:
+        w = _decimal_override(overrides["weights.weight_pe"], "weights.weight_pe")
+        if w < ZERO:
+            raise OverrideValidationError("weight_pe must be >= 0")
+        data["weight_pe"] = w
+    if "weights.weight_ev_ebitda" in overrides:
+        w = _decimal_override(overrides["weights.weight_ev_ebitda"], "weights.weight_ev_ebitda")
+        if w < ZERO:
+            raise OverrideValidationError("weight_ev_ebitda must be >= 0")
+        data["weight_ev_ebitda"] = w
+    if "weights.weight_fcf_yield" in overrides:
+        w = _decimal_override(overrides["weights.weight_fcf_yield"], "weights.weight_fcf_yield")
+        if w < ZERO:
+            raise OverrideValidationError("weight_fcf_yield must be >= 0")
+        data["weight_fcf_yield"] = w
+    if "weights.weight_dcf" in overrides:
+        w = _decimal_override(overrides["weights.weight_dcf"], "weights.weight_dcf")
+        if w < ZERO:
+            raise OverrideValidationError("weight_dcf must be >= 0")
+        data["weight_dcf"] = w
+    if "weights.cashflow_group_max_weight" in overrides:
+        w = _decimal_override(overrides["weights.cashflow_group_max_weight"], "weights.cashflow_group_max_weight")
+        if not (ZERO <= w <= Decimal("1.0")):
+            raise OverrideValidationError("cashflow_group_max_weight must be between 0 and 1.0")
+        data["cashflow_group_max_weight"] = w
+
+    if any(k.startswith("weights.weight_") for k in overrides):
+        if (
+            data["weight_pe"] <= ZERO
+            and data["weight_ev_ebitda"] <= ZERO
+            and data["weight_fcf_yield"] <= ZERO
+            and data["weight_dcf"] <= ZERO
+        ):
+            raise OverrideValidationError("At least one model weight must be greater than 0")
+
+    if "forecast_horizon" in overrides:
+        horizon = str(overrides["forecast_horizon"]).lower()
+        if horizon not in {"ntm", "current_fy", "next_fy"}:
+            raise OverrideValidationError(f"Invalid forecast_horizon: {horizon}")
+        data["forecast_horizon"] = horizon
 
     result = ValuationAssumptions(**data)
     for label, values, maximum in (
@@ -803,7 +872,22 @@ ZERO = Decimal("0")
 
 def run_all_engines(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssumptions) -> dict[str, ModelValuation]:
     """Run each engine independently; one bad model cannot erase others."""
-
+    proj = derive_request_projections(snapshot, assumptions)
+    req_updates: dict[str, Any] = {}
+    if proj.forward_eps is not None:
+        req_updates["forward_eps_1y"] = proj.forward_eps
+    if proj.forward_revenue is not None:
+        req_updates["revenue_estimate_1y"] = proj.forward_revenue
+        req_updates["forward_revenue"] = proj.forward_revenue
+    if proj.forward_ebitda is not None:
+        req_updates["forward_ebitda_1y"] = proj.forward_ebitda
+    if proj.forward_fcfe_1y is not None:
+        req_updates["forward_fcf_1y"] = proj.forward_fcfe_1y
+    if proj.forward_fcff_1y is not None:
+        req_updates["forward_fcff_1y"] = proj.forward_fcff_1y
+    if proj.forward_fcff_2y is not None:
+        req_updates["forward_fcff_2y"] = proj.forward_fcff_2y
+    req_snapshot = snapshot.model_copy(update=req_updates)
     runners = {
         "forward_pe": run_forward_pe,
         "ev_ebitda": run_ev_ebitda,
@@ -813,7 +897,7 @@ def run_all_engines(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAs
     results: dict[str, ModelValuation] = {}
     for name, runner in runners.items():
         try:
-            results[name] = runner(snapshot, assumptions)
+            results[name] = runner(req_snapshot, assumptions)
         except Exception as exc:
             results[name] = _failed_model(name, exc)
     return results
@@ -843,6 +927,17 @@ def assemble_response(snapshot: CompanyFinancialSnapshot, valuations: dict[str, 
         data_quality=quality,
         warnings=list(dict.fromkeys(warnings)),
         assumptions_used=assumptions,
+        provider=getattr(snapshot, "provider", None),
+        provider_label=getattr(snapshot, "provider_label", None),
+        shares_basis=getattr(snapshot, "shares_basis", None),
+        shares_reconciliation=getattr(snapshot, "shares_reconciliation", None),
+        statement_basis=getattr(snapshot, "statement_basis", None),
+        annual_fallback=getattr(snapshot, "annual_fallback", False),
+        forecast_fiscal_year_end=getattr(snapshot, "forecast_fiscal_year_end", None),
+        ntm_weights=getattr(snapshot, "ntm_weights", None),
+        forecast_horizon_effective=getattr(assumptions, "forecast_horizon", "ntm"),
+        growth_cap_effective=getattr(assumptions, "growth_cap", None),
+        growth_floor_effective=getattr(assumptions, "growth_floor", None),
     )
 
 

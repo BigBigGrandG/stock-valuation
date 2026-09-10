@@ -40,17 +40,42 @@ export interface ProjectionMetric {
   [key: string]: unknown;
 }
 
+export interface DCFSensitivityCell {
+  wacc: DecimalLike;
+  terminal_growth: DecimalLike;
+  price_per_share?: DecimalLike;
+  enterprise_value?: DecimalLike;
+  equity_value?: DecimalLike;
+  tv_ratio?: DecimalLike;
+  available: boolean;
+  unavailable_reason?: string;
+}
+
+export interface DCFSensitivityMatrix {
+  wacc_range: DecimalLike[];
+  terminal_growth_range: DecimalLike[];
+  cells: DCFSensitivityCell[][];
+  base_tv_ratio: DecimalLike;
+  tv_dependence_warning?: string;
+}
+
 export interface DCFScenario {
   scenario: "bear" | "base" | "bull" | string;
   wacc: DecimalLike;
   terminal_growth: DecimalLike;
   growth_rate?: DecimalLike;
   growth_metric?: FinancialMetric | Record<string, unknown>;
+  growth_cap?: DecimalLike;
+  growth_floor?: DecimalLike;
   fcff_year1: DecimalLike;
   fcff_projections: DecimalLike[];
   projection_periods?: string[];
   pv_projections: DecimalLike[];
   pv_years?: number[];
+  year_fractions?: DecimalLike[];
+  period_start_dates?: string[];
+  period_end_dates?: string[];
+  growth_compound_horizon?: string;
   projection_years?: Array<number | string>;
   projection_metrics?: ProjectionMetric[] | Record<string, ProjectionMetric>;
   terminal_value: DecimalLike;
@@ -85,6 +110,7 @@ export interface ModelValuation {
   base?: PriceEstimate;
   high?: PriceEstimate;
   dcf_scenarios?: DCFScenario[];
+  sensitivity_matrix?: DCFSensitivityMatrix;
   available: boolean;
   unavailable_reason?: string;
   warnings: string[];
@@ -103,6 +129,12 @@ export interface CompositeValuation {
   fair_value_high?: DecimalLike;
   current_price?: DecimalLike;
   weights_used: Record<string, DecimalLike>;
+  selected_weights?: Record<string, DecimalLike>;
+  effective_weights?: Record<string, DecimalLike>;
+  cashflow_group_weight?: DecimalLike;
+  cashflow_group_max_weight?: DecimalLike;
+  cashflow_sensitivity?: Record<string, unknown>;
+  cashflow_group_policy_message?: string;
   available_models: string[];
   normalized_weights?: Record<string, DecimalLike>;
   formula?: string;
@@ -143,6 +175,10 @@ export interface ValuationAssumptions {
   weight_ev_ebitda: DecimalLike;
   weight_fcf_yield: DecimalLike;
   weight_dcf: DecimalLike;
+  cashflow_group_max_weight?: DecimalLike;
+  growth_floor?: DecimalLike;
+  growth_cap?: DecimalLike;
+  forecast_horizon?: string;
 }
 
 export interface ValuationResponse {
@@ -165,6 +201,15 @@ export interface ValuationResponse {
   assumptions_used: ValuationAssumptions;
   provider?: string;
   provider_label?: string;
+  shares_basis?: string;
+  shares_reconciliation?: Record<string, unknown> | string;
+  statement_basis?: string;
+  annual_fallback?: boolean;
+  forecast_fiscal_year_end?: string;
+  ntm_weights?: Record<string, DecimalLike>;
+  forecast_horizon_effective?: string;
+  growth_cap_effective?: DecimalLike;
+  growth_floor_effective?: DecimalLike;
 }
 
 /** Nested POST contract. Empty fields are omitted by the page before POST. */
@@ -176,7 +221,16 @@ export interface OverrideRequest {
     wacc?: number;
     terminal_growth?: number;
     fcf_growth?: number;
+    growth_floor?: number;
+    growth_cap?: number;
   };
+  weights?: {
+    weight_pe?: number;
+    weight_ev_ebitda?: number;
+    weight_fcf_yield?: number;
+    weight_dcf?: number;
+  };
+  forecast_horizon?: "current_fy" | "next_fy" | "ntm";
 }
 
 export interface OverrideForm {
@@ -186,6 +240,13 @@ export interface OverrideForm {
   dcf_wacc: string;
   dcf_terminal_growth: string;
   dcf_fcf_growth: string;
+  dcf_growth_floor?: string;
+  dcf_growth_cap?: string;
+  forecast_horizon?: "current_fy" | "next_fy" | "ntm";
+  weight_pe?: string;
+  weight_ev_ebitda?: string;
+  weight_fcf_yield?: string;
+  weight_dcf?: string;
 }
 
 export const CLASSIFICATION_LABELS_ZH: Record<string, string> = {

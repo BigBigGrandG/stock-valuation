@@ -316,6 +316,23 @@ export function generateValuationMarkdown(
     }（可能存在延迟）`,
   );
   lines.push(`- **财报基准日**：${fmtDate(data.as_of)}`);
+  if (data.statement_basis) {
+    const basisLabel = data.annual_fallback ? `年报回退 (${data.statement_basis})` : "连续 4 季度 (TTM)";
+    lines.push(`- **财务报表统计口径**：${basisLabel}`);
+  }
+  if (data.shares_basis) {
+    let sharesLabel = `未知股本口径 (${escapeTableCell(data.shares_basis)})`;
+    if (data.shares_basis === "CONFLICT_DEGRADED") {
+      sharesLabel = `股本冲突，相关模型不可用 (${escapeTableCell(data.shares_basis)})`;
+    } else if (data.shares_basis === "ALL_CLASS_RECONCILED") {
+      sharesLabel = `全类别普通股穿透 (${escapeTableCell(data.shares_basis)})`;
+    } else if (data.shares_basis === "SINGLE_CLASS_VERIFIED") {
+      sharesLabel = `单类别普通股核验 (${escapeTableCell(data.shares_basis)})`;
+    } else if (data.shares_basis === "BALANCE_SHEET_ORDINARY") {
+      sharesLabel = `资产负债表普通股 (${escapeTableCell(data.shares_basis)})`;
+    }
+    lines.push(`- **总股本口径**：${sharesLabel}`);
+  }
   lines.push(`- **数据源提供方**：${escapeTableCell(data.provider_label || data.provider || "公开金融数据接口")}`);
   lines.push(
     `- **数据模式**：${
@@ -434,6 +451,21 @@ export function generateValuationMarkdown(
     if (assumptions.dcf_fcf_growth) {
       lines.push(
         `| DCF 预测期增长率 (FCFF Growth) | ${fmtPct(assumptions.dcf_fcf_growth.low)} | **${fmtPct(assumptions.dcf_fcf_growth.base)}** | ${fmtPct(assumptions.dcf_fcf_growth.high)} | 用户覆盖生效 | 分析师预期与历史复合成长 |`,
+      );
+    }
+    if (data.forecast_horizon_effective) {
+      lines.push(
+        `| 预测期跨度 (Forecast Horizon) | — | **${data.forecast_horizon_effective.toUpperCase()}** | — | 生效口径 | 分析师前瞻预测时间视界 |`,
+      );
+    }
+    if (data.growth_cap_effective) {
+      lines.push(
+        `| 衍生增长率上限 (Growth Cap) | — | **${fmtPct(data.growth_cap_effective)}** | — | 生效限制 | 复合增长率上限截断阈值 |`,
+      );
+    }
+    if (data.growth_floor_effective) {
+      lines.push(
+        `| 衍生增长率下限 (Growth Floor) | — | **${fmtPct(data.growth_floor_effective)}** | — | 生效限制 | 复合增长率下限截断阈值 |`,
       );
     }
   }
@@ -662,6 +694,28 @@ export function generateValuationMarkdown(
           }
           lines.push("");
         }
+      }
+
+      if (model.sensitivity_matrix && model.sensitivity_matrix.cells?.length > 0) {
+        const mat = model.sensitivity_matrix;
+        lines.push("#### 终值敏感性分析矩阵 (3×3 Sensitivity Matrix)");
+        lines.push("");
+        lines.push(`- **基准终值占比**：${fmtPct(mat.base_tv_ratio, 1)}`);
+        if (mat.tv_dependence_warning === "high_tv_dependence_strong") {
+          lines.push(`- ⚠️ **终值依赖风险警报**：终值占比高达 ${fmtPct(mat.base_tv_ratio, 1)} (>80%)，估值对折现率与永续增长率高度敏感。`);
+        } else if (mat.tv_dependence_warning === "high_tv_dependence_moderate") {
+          lines.push(`- ℹ️ **中度终值敏感性**：终值占比达 ${fmtPct(mat.base_tv_ratio, 1)} (>70%)，需审慎参考折现区间。`);
+        }
+        lines.push("");
+        const tgHeaders = mat.terminal_growth_range.map((tg, idx) => `${fmtPct(tg, 1)}${idx === 1 ? " (基准)" : ""}`);
+        lines.push(`| WACC \\ g | ${tgHeaders.join(" | ")} |`);
+        lines.push(`| :--- | ${tgHeaders.map(() => ":---:").join(" | ")} |`);
+        mat.cells.forEach((row, rIdx) => {
+          const waccLabel = `${fmtPct(mat.wacc_range[rIdx], 1)}${rIdx === 1 ? " (基准)" : ""}`;
+          const cellValues = row.map((c) => (c.available ? `**${fmtPrice(c.price_per_share, currencySymbol)}** (TV: ${fmtPct(c.tv_ratio, 1)})` : "—"));
+          lines.push(`| **${waccLabel}** | ${cellValues.join(" | ")} |`);
+        });
+        lines.push("");
       }
     }
   });

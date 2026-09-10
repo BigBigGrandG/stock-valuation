@@ -86,6 +86,11 @@ def run_ev_ebitda(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssu
         return _unavailable(f"Current quote must be positive, got {current_price}")
     if diluted_shares <= ZERO:
         return _unavailable(f"Diluted shares must be positive, got {diluted_shares}")
+    if getattr(snapshot, "shares_basis", None) == "CONFLICT_DEGRADED":
+        return _unavailable(
+            "Share capital reconciliation conflict: severe divergence across share classes/sources; model fails closed to prevent erroneous price targets.",
+            warnings=["Diluted share count is in CONFLICT_DEGRADED state; per-share valuation model is unavailable."],
+        )
     if snapshot.financial_currency and snapshot.financial_currency.upper() != snapshot.currency.upper():
         return _unavailable(
             f"Currency mismatch: quote currency ({snapshot.currency}) differs from statement reporting currency ({snapshot.financial_currency}) without FX conversion"

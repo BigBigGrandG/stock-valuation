@@ -35,6 +35,12 @@ from app.providers.base import (
     TickerNotFoundError,
     UnsupportedCompanyError,
 )
+from app.providers.share_reconciliation import reconcile_share_capital
+from app.providers.statement_aggregator import (
+    aggregate_ttm_cashflow,
+    aggregate_ttm_income,
+    extract_latest_balance_sheet,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -328,11 +334,29 @@ class _TickerBundle:
     def get_balance_sheet(self, budget: Optional[_RequestBudget] = None) -> Any:
         return self._fetch_property("_bs", lambda: self.ticker.balance_sheet, budget, "balance sheet")
 
+    def get_quarterly_balance_sheet(self, budget: Optional[_RequestBudget] = None) -> Any:
+        try:
+            return self._fetch_property("_qbs", lambda: self.ticker.quarterly_balance_sheet, budget, "quarterly balance sheet")
+        except Exception:
+            return None
+
     def get_cashflow(self, budget: Optional[_RequestBudget] = None) -> Any:
         return self._fetch_property("_cf", lambda: self.ticker.cashflow, budget, "cashflow")
 
+    def get_quarterly_cashflow(self, budget: Optional[_RequestBudget] = None) -> Any:
+        try:
+            return self._fetch_property("_qcf", lambda: self.ticker.quarterly_cashflow, budget, "quarterly cashflow")
+        except Exception:
+            return None
+
     def get_financials(self, budget: Optional[_RequestBudget] = None) -> Any:
         return self._fetch_property("_fin", lambda: self.ticker.financials, budget, "financials")
+
+    def get_quarterly_financials(self, budget: Optional[_RequestBudget] = None) -> Any:
+        try:
+            return self._fetch_property("_qfin", lambda: self.ticker.quarterly_financials, budget, "quarterly financials")
+        except Exception:
+            return None
 
     def get_earnings_estimate(self, budget: Optional[_RequestBudget] = None) -> Any:
         try:
@@ -465,35 +489,26 @@ class YFinanceProvider(FinancialDataProvider):
         else:
             as_of_date = date.today()
 
-        shares_raw = info.get("sharesOutstanding") or info.get("impliedSharesOutstanding")
-        shares_source = f"Yahoo Finance info.sharesOutstanding ({bundle.query_symbol})"
-        shares_as_of = as_of_date
-        shares_period = "latest"
-        shares_notes = "Common shares outstanding approximation; not weighted-average diluted shares"
-        shares_estimated = True
-
-        if shares_raw is None:
-            # Fallback: check balance sheet Ordinary Shares Number using latest column only
-            bs = bundle.get_balance_sheet(budget)
-            if bs is not None and not bs.empty and len(bs.columns) > 0:
-                col = bs.columns[0]
-                col_dt = col.date() if hasattr(col, "date") else (col.date() if isinstance(col, datetime) else None)
-                series = bs[col]
-                for row_name in ["Ordinary Shares Number", "Share Issued"]:
-                    if row_name in series.index:
-                        val = _to_decimal(series.loc[row_name])
-                        if val is not None and val > 0:
-                            shares_raw = float(val)
-                            shares_source = f"Yahoo Finance balance sheet ({bundle.query_symbol})"
-                            shares_as_of = col_dt or as_of_date
-                            shares_period = f"FY{shares_as_of.year}" if col_dt else "latest"
-                            shares_notes = f"Ordinary shares count from balance sheet column {shares_period}; statement date as of {shares_as_of}, not weighted-average diluted shares"
-                            break
-
-        if shares_raw is None or float(shares_raw) <= 0:
-            raise FinancialDataValidationError(f"Could not determine diluted shares for ticker '{ticker}'")
-
-        shares = Decimal(str(int(shares_raw)))
+        q_bs = bundle.get_quarterly_balance_sheet(req_budget)
+        a_bs = bundle.get_balance_sheet(req_budget)
+        try:
+            share_res = reconcile_share_capital(
+                info=info,
+                quarterly_bs=q_bs,
+                annual_bs=a_bs,
+                default_as_of=as_of_date,
+                ticker=bundle.query_symbol,
+            )
+            shares = share_res.shares
+            shares_source = share_res.source
+            shares_as_of = share_res.as_of
+            shares_period = share_res.period
+            shares_notes = share_res.notes
+            shares_estimated = share_res.is_estimated
+            shares_basis = share_res.basis
+            shares_reconciliation = share_res.reconciliation
+        except Exception as exc:
+            raise FinancialDataValidationError(f"Could not determine diluted shares for ticker '{ticker}': {exc}") from exc
         country = info.get("country", "US")
         sector = info.get("sector")
         industry = info.get("industry")
@@ -528,6 +543,8 @@ class YFinanceProvider(FinancialDataProvider):
             "diluted_shares_notes": shares_notes,
             "diluted_shares_is_estimated": shares_estimated,
             "diluted_shares_source_type": "derived",
+            "shares_basis": shares_basis,
+            "shares_reconciliation": shares_reconciliation,
             "currency": str(info.get("currency") or "USD").upper(),
             "financial_currency": financial_currency,
             "country": country,
@@ -550,45 +567,18 @@ class YFinanceProvider(FinancialDataProvider):
         req_budget.check(ticker, "get_balance_sheet")
         bundle = self._get_bundle(ticker)
         info = bundle.get_info(req_budget)
-        bs = bundle.get_balance_sheet(req_budget)
+        q_bs = bundle.get_quarterly_balance_sheet(req_budget)
+        a_bs = bundle.get_balance_sheet(req_budget)
+        agg_bs = extract_latest_balance_sheet(q_bs, a_bs, date.today())
 
-        cash_val: Optional[Decimal] = None
-        debt_val: Optional[Decimal] = None
-        period_str = "latest"
-        bs_as_of = date.today()
+        cash_val = agg_bs["cash"]
+        debt_val = agg_bs["total_debt"]
+        net_debt = agg_bs["net_debt"]
+        period_str = agg_bs["period"]
+        bs_as_of = agg_bs["as_of"]
 
-        if bs is not None and not bs.empty and len(bs.columns) > 0:
-            first_col = bs.columns[0]
-            if hasattr(first_col, "date"):
-                bs_as_of = first_col.date()
-            elif isinstance(first_col, datetime):
-                bs_as_of = first_col.date()
-            period_str = f"FY{bs_as_of.year}"
-
-            # Select single column to never dropna across columns and mix years
-            series = bs[first_col]
-
-            # Cash lookup in single statement column (exclude "Other Short Term Investments")
-            for row in [
-                "Cash Cash Equivalents And Short Term Investments",
-                "Cash And Cash Equivalents",
-                "Cash Financial",
-            ]:
-                if row in series.index:
-                    val = _to_decimal(series.loc[row])
-                    if val is not None and val >= 0:
-                        cash_val = val
-                        break
-
-            # Debt lookup in single statement column: Total Debt only (never partial debt)
-            if "Total Debt" in series.index:
-                val = _to_decimal(series.loc["Total Debt"])
-                if val is not None and val >= 0:
-                    debt_val = val
-            # Note: Do NOT fall back to info when statement is present; leaving missing values unavailable prevents period mixing.
-        else:
-            # Fallback ONLY when balance sheet statement is completely missing:
-            # Consistent latest dataset from quote summary info
+        # Fallback to quote info only if statement data is completely missing
+        if cash_val is None and debt_val is None:
             cash_info = info.get("totalCash")
             if cash_info is not None:
                 c_dec = _to_decimal(cash_info)
@@ -599,10 +589,8 @@ class YFinanceProvider(FinancialDataProvider):
                 d_dec = _to_decimal(debt_info)
                 if d_dec is not None and d_dec >= 0:
                     debt_val = d_dec
+            net_debt = (debt_val - cash_val) if (debt_val is not None and cash_val is not None) else None
             period_str = "latest"
-
-        # Missing cash or debt must NOT become zero without explicit assumptions!
-        net_debt = (debt_val - cash_val) if (debt_val is not None and cash_val is not None) else None
 
         return {
             "cash": cash_val,
@@ -626,6 +614,8 @@ class YFinanceProvider(FinancialDataProvider):
 
         cf_as_of = date.today()
         period_str = "TTM"
+        statement_basis = "TTM"
+        annual_fallback = False
         is_annual_statement = False
 
         cfo: Optional[Decimal] = None
@@ -633,56 +623,27 @@ class YFinanceProvider(FinancialDataProvider):
         net_borrowing: Optional[Decimal] = None
         has_net_borrowing = False
 
-        if cf is not None and not cf.empty and len(cf.columns) > 0:
-            first_col = cf.columns[0]
-            if hasattr(first_col, "date"):
-                cf_as_of = first_col.date()
-            elif isinstance(first_col, datetime):
-                cf_as_of = first_col.date()
-            period_str = f"FY{cf_as_of.year}"
-            is_annual_statement = True
+        agg = aggregate_ttm_cashflow(
+            quarterly_cf=bundle.get_quarterly_cashflow(req_budget),
+            annual_cf=bundle.get_cashflow(req_budget),
+            quarterly_fin=bundle.get_quarterly_financials(req_budget),
+            annual_fin=bundle.get_financials(req_budget),
+            default_as_of=date.today(),
+        )
+        cfo = agg["cfo"]
+        capex = agg["capex"]
+        net_borrowing = agg["net_borrowing"]
+        has_net_borrowing = agg["has_net_borrowing"]
+        interest = agg["interest"]
+        tax_rate = agg["tax_rate"]
+        statement_basis = agg["statement_basis"]
+        annual_fallback = agg["annual_fallback"]
+        cf_as_of = agg["as_of"]
+        period_str = agg["period"]
+        is_annual_statement = annual_fallback
 
-            # Select single column to never dropna across columns and mix years
-            series = cf[first_col]
-
-            # Operating Cash Flow in single statement column
-            for row in ["Operating Cash Flow", "Cash Flow From Continuing Operating Activities"]:
-                if row in series.index:
-                    val = _to_decimal(series.loc[row])
-                    if val is not None:
-                        cfo = val
-                        break
-
-            # Capital Expenditure in single statement column
-            for row in ["Capital Expenditure", "Purchase Of PPE"]:
-                if row in series.index:
-                    val = _to_decimal(series.loc[row])
-                    if val is not None:
-                        capex = abs(val)
-                        break
-
-            # Net Borrowing in single statement column
-            for row in [
-                "Net Issuance Payments Of Debt",
-                "Net Long Term Debt Issuance",
-            ]:
-                if row in series.index:
-                    nb = _to_decimal(series.loc[row])
-                    if nb is not None:
-                        net_borrowing = nb
-                        has_net_borrowing = True
-                        break
-
-            if not has_net_borrowing and "Issuance Of Debt" in series.index and "Repayment Of Debt" in series.index:
-                iss = _to_decimal(series.loc["Issuance Of Debt"])
-                rep = _to_decimal(series.loc["Repayment Of Debt"])
-                if iss is not None and rep is not None:
-                    net_borrowing = iss + rep  # repayment is typically negative
-                    has_net_borrowing = True
-
-        else:
-            # Fallback ONLY when cash-flow statement was completely absent:
-            # Consistent TTM dataset from quote summary info
+        # Fallback to info ONLY when statements are completely missing
+        if cfo is None and capex is None:
             cfo_info = info.get("operatingCashflow")
             fcf_info = info.get("freeCashflow")
             if cfo_info is not None:
@@ -692,40 +653,9 @@ class YFinanceProvider(FinancialDataProvider):
                 if fcf_dec is not None:
                     capex = max(Decimal("0"), cfo - fcf_dec)
             period_str = "TTM"
-
-        # Interest and Tax Rate from financials for FCFF calculation
-        interest: Optional[Decimal] = None
-        tax_rate: Optional[Decimal] = None
-
-        if fin is not None and not fin.empty and len(fin.columns) > 0:
-            fin_series = None
-            if is_annual_statement:
-                # Must match the EXACT fiscal date as CFO/capex
-                for col in fin.columns:
-                    col_dt = col.date() if hasattr(col, "date") else (col.date() if isinstance(col, datetime) else None)
-                    if col_dt == cf_as_of or str(col)[:10] == str(cf.columns[0])[:10]:
-                        fin_series = fin[col]
-                        break
-            else:
-                fin_series = fin[fin.columns[0]]
-
-            if fin_series is not None:
-                if "Interest Expense" in fin_series.index:
-                    raw_int = _to_decimal(fin_series.loc["Interest Expense"])
-                    if raw_int is not None:
-                        interest = abs(raw_int)
-
-                if "Tax Rate For Calcs" in fin_series.index:
-                    tr = _to_decimal(fin_series.loc["Tax Rate For Calcs"])
-                    if tr is not None and Decimal("0") <= tr <= Decimal("1"):
-                        tax_rate = tr
-                elif "Tax Provision" in fin_series.index and "Pretax Income" in fin_series.index:
-                    tp = _to_decimal(fin_series.loc["Tax Provision"])
-                    pt = _to_decimal(fin_series.loc["Pretax Income"])
-                    if tp is not None and pt is not None and pt > 0:
-                        calc_tr = tp / pt
-                        if Decimal("0") <= calc_tr <= Decimal("1"):
-                            tax_rate = calc_tr
+            statement_basis = "TTM"
+            is_annual_statement = False
+            annual_fallback = False
 
         # --------------------------------------------------------------
         # CRUCIAL: FCFE vs FCFF formulas
@@ -863,6 +793,8 @@ class YFinanceProvider(FinancialDataProvider):
             "forward_fcff_2y_period": fcff_period_2y,
             "forward_fcff_2y_notes": forward_fcff_2y_notes,
             "period": period_str,
+            "statement_basis": statement_basis,
+            "annual_fallback": annual_fallback,
             "as_of": cf_as_of,
             "notes": period_note,
             "source": f"Yahoo Finance cash flow statement ({bundle.query_symbol})",
@@ -883,50 +815,33 @@ class YFinanceProvider(FinancialDataProvider):
         eps: Optional[Decimal] = None
         inc_as_of = date.today()
         period_str = "TTM"
+        statement_basis = "TTM"
+        annual_fallback = False
         is_annual = False
 
-        if fin is not None and not fin.empty and len(fin.columns) > 0:
-            first_col = fin.columns[0]
-            if hasattr(first_col, "date"):
-                inc_as_of = first_col.date()
-            elif isinstance(first_col, datetime):
-                inc_as_of = first_col.date()
-            period_str = f"FY{inc_as_of.year}"
-            is_annual = True
+        agg = aggregate_ttm_income(
+            quarterly_fin=bundle.get_quarterly_financials(req_budget),
+            annual_fin=bundle.get_financials(req_budget),
+            default_as_of=date.today(),
+        )
+        rev = agg["revenue"]
+        ebitda = agg["ebitda"]
+        statement_basis = agg["statement_basis"]
+        annual_fallback = agg["annual_fallback"]
+        inc_as_of = agg["as_of"]
+        period_str = agg["period"]
 
-            # Select single column to never dropna across columns and mix years
-            series = fin[first_col]
+        # Trailing EPS from quote info
+        eps = _to_decimal(info.get("trailingEps"))
 
-            if "Total Revenue" in series.index:
-                val = _to_decimal(series.loc["Total Revenue"])
-                if val is not None:
-                    rev = val
-            if "EBITDA" in series.index:
-                val = _to_decimal(series.loc["EBITDA"])
-                if val is not None:
-                    ebitda = val
-            elif "Operating Income" in series.index and "Reconciled Depreciation" in series.index:
-                oi = _to_decimal(series.loc["Operating Income"])
-                da = _to_decimal(series.loc["Reconciled Depreciation"])
-                if oi is not None and da is not None:
-                    ebitda = oi + da
-            if "Diluted EPS" in series.index:
-                val = _to_decimal(series.loc["Diluted EPS"])
-                if val is not None:
-                    eps = val
-            # Note: Do NOT fall back to info when statement is present; leaving missing values unavailable prevents period mixing.
-        else:
-            # Fallback ONLY when financials statement is completely missing:
-            # Consistent TTM dataset from quote summary info
+        # Fallback to info ONLY when statements are completely missing
+        if rev is None and ebitda is None:
             rev_info = info.get("totalRevenue")
             if rev_info is not None:
                 rev = _to_decimal(rev_info)
             ebitda_info = info.get("ebitda")
             if ebitda_info is not None:
                 ebitda = _to_decimal(ebitda_info)
-            eps_info = info.get("trailingEps")
-            if eps_info is not None:
-                eps = _to_decimal(eps_info)
             period_str = "TTM"
 
         return {
@@ -934,6 +849,8 @@ class YFinanceProvider(FinancialDataProvider):
             "ebitda_ttm": ebitda,
             "eps_ttm": eps,
             "period": period_str,
+            "statement_basis": statement_basis,
+            "annual_fallback": annual_fallback,
             "as_of": inc_as_of,
             "source": f"Yahoo Finance income statement ({bundle.query_symbol})",
         }
@@ -1037,7 +954,13 @@ class YFinanceProvider(FinancialDataProvider):
 
         g_rev1: Optional[Decimal] = None
         g_rev2: Optional[Decimal] = None
+        f_rev1: Optional[Decimal] = None
+        f_rev2: Optional[Decimal] = None
         if re_est is not None and hasattr(re_est, "index") and not re_est.empty:
+            if "0y" in re_est.index and "avg" in re_est.columns:
+                f_rev1 = _to_decimal(re_est.loc["0y", "avg"])
+            if "+1y" in re_est.index and "avg" in re_est.columns:
+                f_rev2 = _to_decimal(re_est.loc["+1y", "avg"])
             if "0y" in re_est.index and "growth" in re_est.columns:
                 g_rev1 = _to_decimal(re_est.loc["0y", "growth"])
             if "+1y" in re_est.index and "growth" in re_est.columns:
@@ -1071,7 +994,30 @@ class YFinanceProvider(FinancialDataProvider):
         f_fcff1 = cf_data.get("forward_fcff_1y")
         f_fcff2 = cf_data.get("forward_fcff_2y")
 
+        next_fy_ts = info.get("nextFiscalYearEnd")
+        forecast_fy_end = None
+        ntm_weights = None
+        if isinstance(next_fy_ts, (int, float)) and next_fy_ts > 0:
+            try:
+                forecast_fy_end = datetime.fromtimestamp(next_fy_ts, tz=timezone.utc).date()
+                days_to_fy = (forecast_fy_end - as_of_date).days
+                if 0 < days_to_fy <= 366:
+                    w1 = Decimal(str(round(days_to_fy / 365.0, 4)))
+                    w2 = (Decimal("1.0000") - w1).quantize(Decimal("0.0001"), ROUND_HALF_UP)
+                    ntm_weights = {"current_fy": w1, "next_fy": w2}
+            except Exception:
+                pass
+
         return {
+            "forward_revenue_1y": f_rev1,
+            "forward_revenue_1y_source_type": "analyst_estimate" if f_rev1 is not None else None,
+            "forward_revenue_1y_period": eps_period_1y,
+            "forward_revenue_1y_notes": "Analyst consensus mean revenue for period 0y" if f_rev1 else None,
+            "forward_revenue_2y": f_rev2,
+            "forward_revenue_2y_source_type": "analyst_estimate" if f_rev2 is not None else None,
+            "forward_revenue_2y_period": eps_period_2y,
+            "forward_revenue_2y_notes": "Analyst consensus mean revenue for period +1y" if f_rev2 else None,
+
             "forward_eps_1y": f_eps1,
             "forward_eps_1y_source_type": "analyst_estimate" if f_eps1 is not None else None,
             "forward_eps_1y_period": eps_period_1y,
@@ -1084,6 +1030,9 @@ class YFinanceProvider(FinancialDataProvider):
             "forward_eps_2y_notes": "Analyst consensus mean EPS for period +1y",
             "forward_eps_2y_currency": est_2y_currency,
             "forward_eps_basis": eps_basis,
+            "forecast_fiscal_year_end": forecast_fy_end,
+            "ntm_weights": ntm_weights,
+
 
             "forward_ebitda_1y": f_ebitda1,
             "forward_ebitda_1y_source_type": "derived" if f_ebitda1 is not None else None,
@@ -1114,6 +1063,7 @@ class YFinanceProvider(FinancialDataProvider):
 
             "period_1y": eps_period_1y,
             "period_2y": eps_period_2y,
+            "revenue_growth": g_rev1,
             "as_of": as_of_date,
             "source": f"Yahoo Finance forward estimates ({bundle.query_symbol})",
         }

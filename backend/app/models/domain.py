@@ -117,6 +117,12 @@ class CompanyFinancialSnapshot(BaseModel):
         default=None,
         description="Deprecated alias for net_debt.",
     )
+    shares_basis: Optional[str] = "point_in_time_all_classes"
+    shares_reconciliation: Optional[dict[str, Any] | str] = None
+    statement_basis: Optional[str] = "TTM"
+    annual_fallback: bool = False
+    forecast_fiscal_year_end: Optional[date] = None
+    ntm_weights: Optional[dict[str, Decimal]] = None
 
     revenue_ttm: Optional[FinancialMetric] = None
     ebitda_ttm: Optional[FinancialMetric] = None
@@ -136,6 +142,10 @@ class CompanyFinancialSnapshot(BaseModel):
     forward_eps_2y: Optional[FinancialMetric] = None
     forward_ebitda_1y: Optional[FinancialMetric] = None
     forward_ebitda_2y: Optional[FinancialMetric] = None
+    revenue_estimate_1y: Optional[FinancialMetric] = None
+    revenue_estimate_2y: Optional[FinancialMetric] = None
+    forward_revenue: Optional[FinancialMetric] = None
+
 
     historical_forward_pe: Optional[FinancialMetric] = None
     historical_ev_ebitda: Optional[FinancialMetric] = None
@@ -262,6 +272,12 @@ class ValuationAssumptions(BaseModel):
     weight_ev_ebitda: Decimal = Field(default_factory=lambda: _default_decimal("DEFAULT_WEIGHT_EV_EBITDA"))
     weight_fcf_yield: Decimal = Field(default_factory=lambda: _default_decimal("DEFAULT_WEIGHT_FCF_YIELD"))
     weight_dcf: Decimal = Field(default_factory=lambda: _default_decimal("DEFAULT_WEIGHT_DCF"))
+    cashflow_group_max_weight: Decimal = Field(
+        default_factory=lambda: _default_decimal("DEFAULT_CASHFLOW_GROUP_MAX_WEIGHT")
+    )
+    growth_floor: Decimal = Field(default_factory=lambda: _default_decimal("DEFAULT_GROWTH_FLOOR"))
+    growth_cap: Decimal = Field(default_factory=lambda: _default_decimal("DEFAULT_GROWTH_CAP"))
+    forecast_horizon: str = Field(default="ntm")
 
 
 class PriceEstimate(BaseModel):
@@ -289,6 +305,10 @@ class DCFScenario(BaseModel):
     projection_periods: list[str] = Field(default_factory=list)
     projection_metrics: list[dict[str, Any]] = Field(default_factory=list)
     pv_years: list[int] = Field(default_factory=list)
+    year_fractions: list[Decimal] = Field(default_factory=list)
+    period_start_dates: list[str] = Field(default_factory=list)
+    period_end_dates: list[str] = Field(default_factory=list)
+    growth_compound_horizon: Optional[str] = None
     pv_projections: list[Decimal]
     terminal_value: Decimal
     pv_terminal_value: Decimal
@@ -304,6 +324,29 @@ class DCFScenario(BaseModel):
     formulas: dict[str, str] = Field(default_factory=dict)
     calculation_steps: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
+
+    model_config = {"frozen": True}
+
+
+class DCFSensitivityCell(BaseModel):
+    wacc: Decimal
+    terminal_growth: Decimal
+    price_per_share: Optional[Decimal] = None
+    enterprise_value: Optional[Decimal] = None
+    equity_value: Optional[Decimal] = None
+    tv_ratio: Optional[Decimal] = None
+    available: bool = True
+    unavailable_reason: Optional[str] = None
+
+    model_config = {"frozen": True}
+
+
+class DCFSensitivityMatrix(BaseModel):
+    wacc_range: list[Decimal]
+    terminal_growth_range: list[Decimal]
+    cells: list[list[DCFSensitivityCell]]
+    base_tv_ratio: Decimal
+    tv_dependence_warning: Optional[str] = None
 
     model_config = {"frozen": True}
 
@@ -327,6 +370,7 @@ class ModelValuation(BaseModel):
     base: Optional[PriceEstimate] = None
     high: Optional[PriceEstimate] = None
     dcf_scenarios: Optional[list[DCFScenario]] = None
+    sensitivity_matrix: Optional[DCFSensitivityMatrix] = None
     available: bool = True
     unavailable_reason: Optional[str] = None
     warnings: list[str] = Field(default_factory=list)
@@ -347,6 +391,12 @@ class CompositeValuation(BaseModel):
     fair_value_base: Optional[Decimal] = None
     fair_value_high: Optional[Decimal] = None
     weights_used: dict[str, Decimal] = Field(default_factory=dict)
+    selected_weights: dict[str, Decimal] = Field(default_factory=dict)
+    effective_weights: dict[str, Decimal] = Field(default_factory=dict)
+    cashflow_group_weight: Optional[Decimal] = None
+    cashflow_group_max_weight: Optional[Decimal] = None
+    cashflow_sensitivity: Optional[dict[str, Any]] = None
+    cashflow_group_policy_message: Optional[str] = None
     available_models: list[str] = Field(default_factory=list)
     classification: Optional[ValuationClassification] = None
     margin_of_safety: Optional[Decimal] = None
@@ -375,8 +425,20 @@ class ValuationResponse(BaseModel):
     data_quality: DataQuality
     warnings: list[str] = Field(default_factory=list)
     assumptions_used: ValuationAssumptions
+    provider: Optional[str] = None
+    provider_label: Optional[str] = None
+    shares_basis: Optional[str] = None
+    shares_reconciliation: Optional[dict[str, Any] | str] = None
+    statement_basis: Optional[str] = None
+    annual_fallback: bool = False
+    forecast_fiscal_year_end: Optional[date] = None
+    ntm_weights: Optional[dict[str, Decimal]] = None
+    forecast_horizon_effective: Optional[str] = None
+    growth_cap_effective: Optional[Decimal] = None
+    growth_floor_effective: Optional[Decimal] = None
 
     model_config = {"frozen": True}
+
 
 
 # Kept for import compatibility. The operative thresholds live in config.py;

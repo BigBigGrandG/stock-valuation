@@ -40,6 +40,10 @@ DEFAULT_WEIGHT_PE = Decimal("0.25")
 DEFAULT_WEIGHT_EV_EBITDA = Decimal("0.20")
 DEFAULT_WEIGHT_FCF_YIELD = Decimal("0.25")
 DEFAULT_WEIGHT_DCF = Decimal("0.30")
+DEFAULT_CASHFLOW_GROUP_MAX_WEIGHT = Decimal("0.40")
+DEFAULT_GROWTH_FLOOR = Decimal("-0.20")
+DEFAULT_GROWTH_CAP = Decimal("0.40")
+DEFAULT_FORECAST_HORIZON = "ntm"
 assert (
     DEFAULT_WEIGHT_PE
     + DEFAULT_WEIGHT_EV_EBITDA
@@ -77,6 +81,10 @@ DEFAULT_ASSUMPTIONS = ValuationAssumptions(
     weight_ev_ebitda=DEFAULT_WEIGHT_EV_EBITDA,
     weight_fcf_yield=DEFAULT_WEIGHT_FCF_YIELD,
     weight_dcf=DEFAULT_WEIGHT_DCF,
+    cashflow_group_max_weight=DEFAULT_CASHFLOW_GROUP_MAX_WEIGHT,
+    growth_floor=DEFAULT_GROWTH_FLOOR,
+    growth_cap=DEFAULT_GROWTH_CAP,
+    forecast_horizon=DEFAULT_FORECAST_HORIZON,
 )
 
 
