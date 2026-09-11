@@ -1204,6 +1204,16 @@ class TestModelExceptionIsolation:
         snap = _make_snapshot(extra={
             "forward_ebitda_1y": None,
             "forward_ebitda_2y": None,
+            # Remove the independent bridge inputs as well; otherwise the
+            # service is correctly allowed to derive EBITDA from revenue ×
+            # historical margin, so the test would not represent an EV-only
+            # failure.
+            "revenue_ttm": None,
+            "ebitda_ttm": None,
+            "revenue_growth": None,
+            "forward_revenue": None,
+            "revenue_estimate_1y": None,
+            "revenue_estimate_2y": None,
         })
         results = run_all_engines(snap, DEFAULT_ASSUMPTIONS)
         assert results["ev_ebitda"].available is False

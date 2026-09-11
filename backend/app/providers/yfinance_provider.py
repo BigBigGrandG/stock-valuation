@@ -231,6 +231,9 @@ class _TickerBundle:
         self._bs: Any = None
         self._cf: Any = None
         self._fin: Any = None
+        self._qbs: Any = None
+        self._qcf: Any = None
+        self._qfin: Any = None
         self._ee: Any = None
         self._re: Any = None
 
@@ -321,6 +324,8 @@ class _TickerBundle:
             raise ProviderUnavailableError(
                 f"Upstream request timed out ({req_budget.timeout:.1f}s) for {self.raw_ticker} during {context}"
             ) from exc
+        except (ProviderError, AttributeError, TypeError, NameError):
+            raise
         except Exception as exc:
             _classify_and_raise(exc, self.raw_ticker, context)
             raise ProviderUnavailableError(
@@ -337,7 +342,12 @@ class _TickerBundle:
     def get_quarterly_balance_sheet(self, budget: Optional[_RequestBudget] = None) -> Any:
         try:
             return self._fetch_property("_qbs", lambda: self.ticker.quarterly_balance_sheet, budget, "quarterly balance sheet")
-        except Exception:
+        except (ProviderRateLimitError, ProviderUnavailableError):
+            raise
+        except (AttributeError, TypeError, NameError):
+            raise
+        except Exception as exc:
+            logger.debug(f"Quarterly balance sheet unavailable for {self.raw_ticker}: {exc}")
             return None
 
     def get_cashflow(self, budget: Optional[_RequestBudget] = None) -> Any:
@@ -346,7 +356,12 @@ class _TickerBundle:
     def get_quarterly_cashflow(self, budget: Optional[_RequestBudget] = None) -> Any:
         try:
             return self._fetch_property("_qcf", lambda: self.ticker.quarterly_cashflow, budget, "quarterly cashflow")
-        except Exception:
+        except (ProviderRateLimitError, ProviderUnavailableError):
+            raise
+        except (AttributeError, TypeError, NameError):
+            raise
+        except Exception as exc:
+            logger.debug(f"Quarterly cashflow unavailable for {self.raw_ticker}: {exc}")
             return None
 
     def get_financials(self, budget: Optional[_RequestBudget] = None) -> Any:
@@ -355,7 +370,12 @@ class _TickerBundle:
     def get_quarterly_financials(self, budget: Optional[_RequestBudget] = None) -> Any:
         try:
             return self._fetch_property("_qfin", lambda: self.ticker.quarterly_financials, budget, "quarterly financials")
-        except Exception:
+        except (ProviderRateLimitError, ProviderUnavailableError):
+            raise
+        except (AttributeError, TypeError, NameError):
+            raise
+        except Exception as exc:
+            logger.debug(f"Quarterly financials unavailable for {self.raw_ticker}: {exc}")
             return None
 
     def get_earnings_estimate(self, budget: Optional[_RequestBudget] = None) -> Any:
@@ -636,6 +656,8 @@ class YFinanceProvider(FinancialDataProvider):
         has_net_borrowing = agg["has_net_borrowing"]
         interest = agg["interest"]
         tax_rate = agg["tax_rate"]
+        nwc_change = agg.get("nwc_change")
+        da = agg.get("da")
         statement_basis = agg["statement_basis"]
         annual_fallback = agg["annual_fallback"]
         cf_as_of = agg["as_of"]
@@ -694,10 +716,8 @@ class YFinanceProvider(FinancialDataProvider):
             fcff = cfo + after_tax_interest - capex
             fcff_def = f"FCFF = CFO + interest*(1-tax) - capex (unlevered firm cash flow at tax_rate={tax_rate})"
 
-        # Forward estimates from analyst growth if positive and base statement is annual
-        ee = bundle.get_earnings_estimate(req_budget)
-        re_est = bundle.get_revenue_estimate(req_budget)
-
+        # Upstream provider does not invent forward FCFF or FCFE from single growth rates.
+        # Forward projections belong to the service layer (projections.py) driven by independent financial drivers.
         forward_fcfe_1y: Optional[Decimal] = None
         forward_fcfe_2y: Optional[Decimal] = None
         forward_fcff_1y: Optional[Decimal] = None
@@ -707,90 +727,40 @@ class YFinanceProvider(FinancialDataProvider):
         forward_fcff_1y_notes: Optional[str] = None
         forward_fcff_2y_notes: Optional[str] = None
 
-        g_eps1: Optional[Decimal] = None
-        g_eps2: Optional[Decimal] = None
-        g_rev1: Optional[Decimal] = None
-        g_rev2: Optional[Decimal] = None
-
-        if ee is not None and hasattr(ee, "index") and not ee.empty:
-            if "0y" in ee.index and "growth" in ee.columns:
-                g_eps1 = _to_decimal(ee.loc["0y", "growth"])
-            if "+1y" in ee.index and "growth" in ee.columns:
-                g_eps2 = _to_decimal(ee.loc["+1y", "growth"])
-
-        if re_est is not None and hasattr(re_est, "index") and not re_est.empty:
-            if "0y" in re_est.index and "growth" in re_est.columns:
-                g_rev1 = _to_decimal(re_est.loc["0y", "growth"])
-            if "+1y" in re_est.index and "growth" in re_est.columns:
-                g_rev2 = _to_decimal(re_est.loc["+1y", "growth"])
-
-        # Growth rates capped reasonably (-20% to +40%) for justified projections
-        g_fe1 = g_eps1 if g_eps1 is not None else g_rev1
-        g_fe2 = g_eps2 if g_eps2 is not None else g_rev2
-        g_ff1 = g_rev1 if g_rev1 is not None else g_eps1
-        g_ff2 = g_rev2 if g_rev2 is not None else g_eps2
-
-        g_fe1_clamped = min(max(g_fe1, Decimal("-0.20")), Decimal("0.40")) if g_fe1 is not None else None
-        g_fe2_clamped = min(max(g_fe2, Decimal("-0.20")), Decimal("0.40")) if g_fe2 is not None else None
-        g_ff1_clamped = min(max(g_ff1, Decimal("-0.20")), Decimal("0.40")) if g_ff1 is not None else None
-        g_ff2_clamped = min(max(g_ff2, Decimal("-0.20")), Decimal("0.40")) if g_ff2 is not None else None
-
-        # Verify exact fiscal end and forecast horizon alignment
-        aligned_cf, target_cf_date, target_cf_label, align_cf_fail = _verify_forecast_alignment(
-            cf_as_of if is_annual_statement else None,
-            period_str,
-            info,
-        )
-
-        fcfe_period_1y = "0y"
-        fcfe_period_2y = "+1y"
-        fcff_period_1y = "0y"
-        fcff_period_2y = "+1y"
-
-        # Only apply growth if base is an annual statement with proven, non-lagging fiscal date
-        if aligned_cf and fcfe is not None and fcfe > 0 and g_fe1_clamped is not None:
-            forward_fcfe_1y = (fcfe * (Decimal("1") + g_fe1_clamped)).quantize(Decimal("0.01"), ROUND_HALF_UP)
-            forward_fcfe_1y_notes = f"Derived forward FCFE for {target_cf_label} (0y) from base {period_str} annual FCFE ({fcfe}) as of {cf_as_of}; raw_growth={g_fe1}, capped_growth={g_fe1_clamped}, formula={period_str}_FCFE × (1 + g)"
-            if g_fe2_clamped is not None:
-                forward_fcfe_2y = (forward_fcfe_1y * (Decimal("1") + g_fe2_clamped)).quantize(Decimal("0.01"), ROUND_HALF_UP)
-                forward_fcfe_2y_notes = f"Derived forward FCFE for (+1y) from forward {target_cf_label} FCFE ({forward_fcfe_1y}); raw_growth={g_fe2}, capped_growth={g_fe2_clamped}, formula=FCFE_1y × (1 + g)"
-        elif not aligned_cf:
-            forward_fcfe_1y_notes = f"Forward FCFE unavailable: {align_cf_fail}"
-            forward_fcfe_2y_notes = f"Forward FCFE unavailable: {align_cf_fail}"
-
-        if aligned_cf and fcff is not None and fcff > 0 and g_ff1_clamped is not None:
-            forward_fcff_1y = (fcff * (Decimal("1") + g_ff1_clamped)).quantize(Decimal("0.01"), ROUND_HALF_UP)
-            forward_fcff_1y_notes = f"Derived forward FCFF for {target_cf_label} (0y) from base {period_str} annual FCFF ({fcff}) as of {cf_as_of}; raw_growth={g_ff1}, capped_growth={g_ff1_clamped}, formula={period_str}_FCFF × (1 + g)"
-            if g_ff2_clamped is not None:
-                forward_fcff_2y = (forward_fcff_1y * (Decimal("1") + g_ff2_clamped)).quantize(Decimal("0.01"), ROUND_HALF_UP)
-                forward_fcff_2y_notes = f"Derived forward FCFF for (+1y) from forward {target_cf_label} FCFF ({forward_fcff_1y}); raw_growth={g_ff2}, capped_growth={g_ff2_clamped}, formula=FCFF_1y × (1 + g)"
-        elif not aligned_cf:
-            forward_fcff_1y_notes = f"Forward FCFF unavailable: {align_cf_fail}"
-            forward_fcff_2y_notes = f"Forward FCFF unavailable: {align_cf_fail}"
-
         period_note = "Annual fiscal year statement" if is_annual_statement else "TTM quote summary"
         return {
+            "cfo": cfo,
+            "capex": capex,
+            "net_borrowing": net_borrowing,
+            "has_net_borrowing": has_net_borrowing,
+            "interest": interest,
+            "tax_rate": tax_rate,
+            "nwc_change": nwc_change,
+            "da": da,
+            "da_period": agg.get("da_period"),
+            "da_as_of": agg.get("da_as_of"),
+            "da_is_fallback": agg.get("da_is_fallback"),
             "fcfe_ttm": fcfe,
             "fcfe_ttm_source_type": "derived" if fcfe is not None else None,
             "fcfe_definition": fcfe_def,
             "forward_fcfe_1y": forward_fcfe_1y,
-            "forward_fcfe_1y_source_type": "derived" if forward_fcfe_1y is not None else None,
-            "forward_fcfe_1y_period": fcfe_period_1y,
+            "forward_fcfe_1y_source_type": None,
+            "forward_fcfe_1y_period": "0y",
             "forward_fcfe_1y_notes": forward_fcfe_1y_notes,
             "forward_fcfe_2y": forward_fcfe_2y,
-            "forward_fcfe_2y_source_type": "derived" if forward_fcfe_2y is not None else None,
-            "forward_fcfe_2y_period": fcfe_period_2y,
+            "forward_fcfe_2y_source_type": None,
+            "forward_fcfe_2y_period": "+1y",
             "forward_fcfe_2y_notes": forward_fcfe_2y_notes,
             "fcff_ttm": fcff,
             "fcff_ttm_source_type": "derived" if fcff is not None else None,
             "fcff_definition": fcff_def,
             "forward_fcff_1y": forward_fcff_1y,
-            "forward_fcff_1y_source_type": "derived" if forward_fcff_1y is not None else None,
-            "forward_fcff_1y_period": fcff_period_1y,
+            "forward_fcff_1y_source_type": None,
+            "forward_fcff_1y_period": "0y",
             "forward_fcff_1y_notes": forward_fcff_1y_notes,
             "forward_fcff_2y": forward_fcff_2y,
-            "forward_fcff_2y_source_type": "derived" if forward_fcff_2y is not None else None,
-            "forward_fcff_2y_period": fcff_period_2y,
+            "forward_fcff_2y_source_type": None,
+            "forward_fcff_2y_period": "+1y",
             "forward_fcff_2y_notes": forward_fcff_2y_notes,
             "period": period_str,
             "statement_basis": statement_basis,
@@ -848,6 +818,10 @@ class YFinanceProvider(FinancialDataProvider):
             "revenue_ttm": rev,
             "ebitda_ttm": ebitda,
             "eps_ttm": eps,
+            "da": agg.get("da"),
+            "da_period": agg.get("da_period"),
+            "da_as_of": agg.get("da_as_of"),
+            "da_is_fallback": agg.get("da_is_fallback"),
             "period": period_str,
             "statement_basis": statement_basis,
             "annual_fallback": annual_fallback,
@@ -940,11 +914,6 @@ class YFinanceProvider(FinancialDataProvider):
                     eps1_source = f"Yahoo Finance info.forwardEps for {bundle.query_symbol}"
                     eps1_notes = "Yahoo Finance forward EPS from quote summary (source field: info.forwardEps)"
 
-        # Forward EBITDA from revenue growth projection if base statement is an annual statement
-        inc_data = self.get_income_statement(ticker, budget=req_budget)
-        ebitda_val = inc_data.get("ebitda_ttm")
-        inc_period = str(inc_data.get("period") or "")
-        inc_as_of = inc_data.get("as_of") or as_of_date
         f_ebitda1: Optional[Decimal] = None
         f_ebitda2: Optional[Decimal] = None
         ebitda1_notes: Optional[str] = None
@@ -969,23 +938,33 @@ class YFinanceProvider(FinancialDataProvider):
         g_rev1_clamped = min(max(g_rev1, Decimal("-0.20")), Decimal("0.40")) if g_rev1 is not None else None
         g_rev2_clamped = min(max(g_rev2, Decimal("-0.20")), Decimal("0.40")) if g_rev2 is not None else None
 
+        inc_data = self.get_income_statement(ticker, budget=req_budget)
+        ebitda_val = inc_data.get("ebitda_ttm")
+        inc_period = str(inc_data.get("period") or "")
+        inc_as_of = inc_data.get("as_of") or as_of_date
+
         aligned_inc, target_inc_date, target_inc_label, align_inc_fail = _verify_forecast_alignment(
             inc_as_of if inc_period.startswith("FY") else None,
             inc_period,
             info,
         )
 
-        # Only apply 0y growth if base EBITDA is from a verified, non-lagging annual statement column (not arbitrary TTM or stale base)
-        if aligned_inc and ebitda_val is not None and ebitda_val > 0 and g_rev1_clamped is not None:
-            ebitda_period_1y = "0y"
-            f_ebitda1 = (ebitda_val * (Decimal("1") + g_rev1_clamped)).quantize(Decimal("0.01"), ROUND_HALF_UP)
-            ebitda1_notes = f"Derived forward EBITDA for {target_inc_label} (0y) from base {inc_period} annual EBITDA ({ebitda_val}) as of {inc_as_of}; raw_growth={g_rev1}, capped_growth={g_rev1_clamped}, formula={inc_period}_EBITDA × (1 + g)"
-            if g_rev2_clamped is not None:
-                f_ebitda2 = (f_ebitda1 * (Decimal("1") + g_rev2_clamped)).quantize(Decimal("0.01"), ROUND_HALF_UP)
-                ebitda2_notes = f"Derived forward EBITDA for (+1y) from forward {target_inc_label} EBITDA ({f_ebitda1}); raw_growth={g_rev2}, capped_growth={g_rev2_clamped}, formula=EBITDA_1y × (1 + g)"
-        elif not aligned_inc:
-            ebitda1_notes = f"Forward EBITDA unavailable: {align_inc_fail}"
-            ebitda2_notes = f"Forward EBITDA unavailable: {align_inc_fail}"
+        # Eliminate synthetic EBITDA growth formulas (Issue 01 remediation).
+        # Provider must never synthesize forward EBITDA via base * (1 + g).
+        # Genuine forward EBITDA comes from analyst consensus or service-layer financial bridge.
+        f_ebitda1 = None
+        f_ebitda2 = None
+        ebitda_period_1y = None
+        ebitda_period_2y = None
+        if align_inc_fail:
+            ebitda1_notes = f"Forward EBITDA unavailable: {align_inc_fail}; no synthetic growth extrapolation applied."
+            ebitda2_notes = f"Forward EBITDA unavailable: {align_inc_fail}; no synthetic growth extrapolation applied."
+        else:
+            ebitda1_notes = (
+                "Forward EBITDA unavailable: Yahoo Finance did not provide an independent analyst EBITDA consensus; "
+                "service-layer driver bridge may derive EBITDA only from verified revenue and margin inputs."
+            )
+            ebitda2_notes = ebitda1_notes
 
         # Forward cash flows from cash flow category
         cf_data = self.get_cash_flow(ticker, budget=req_budget)

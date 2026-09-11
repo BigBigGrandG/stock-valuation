@@ -138,6 +138,14 @@ class CompanyFinancialSnapshot(BaseModel):
     forward_fcff_1y: Optional[FinancialMetric] = Field(None, description="Forward FCFF Y1; DCF only")
     forward_fcff_2y: Optional[FinancialMetric] = Field(None, description="Forward FCFF Y2; DCF only")
 
+    # Financial driver base items for auditable bridge derivation.
+    cfo_ttm: Optional[FinancialMetric] = None
+    capex_ttm: Optional[FinancialMetric] = None
+    net_borrowing_ttm: Optional[FinancialMetric] = None
+    da_ttm: Optional[FinancialMetric] = None
+    nwc_change_ttm: Optional[FinancialMetric] = None
+    interest_ttm: Optional[FinancialMetric] = None
+
     forward_eps_1y: Optional[FinancialMetric] = None
     forward_eps_2y: Optional[FinancialMetric] = None
     forward_ebitda_1y: Optional[FinancialMetric] = None
@@ -278,6 +286,17 @@ class ValuationAssumptions(BaseModel):
     growth_floor: Decimal = Field(default_factory=lambda: _default_decimal("DEFAULT_GROWTH_FLOOR"))
     growth_cap: Decimal = Field(default_factory=lambda: _default_decimal("DEFAULT_GROWTH_CAP"))
     forecast_horizon: str = Field(default="ntm")
+
+    # Financial driver overrides for forward cash flow bridge
+    driver_ebitda_margin: Optional[Decimal] = None
+    driver_capex: Optional[Decimal] = None
+    driver_capex_ratio: Optional[Decimal] = None
+    driver_nwc_change: Optional[Decimal] = None
+    driver_nwc_ratio: Optional[Decimal] = None
+    driver_net_borrowing: Optional[Decimal] = None
+    driver_da: Optional[Decimal] = None
+    driver_da_ratio: Optional[Decimal] = None
+    driver_tax_rate: Optional[Decimal] = None
 
 
 class PriceEstimate(BaseModel):
@@ -436,6 +455,7 @@ class ValuationResponse(BaseModel):
     forecast_horizon_effective: Optional[str] = None
     growth_cap_effective: Optional[Decimal] = None
     growth_floor_effective: Optional[Decimal] = None
+    financial_bridge: Optional[dict[str, Any]] = None
 
     model_config = {"frozen": True}
 

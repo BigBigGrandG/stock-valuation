@@ -99,6 +99,10 @@ class BalanceSheetData(_RawData):
 
 
 class CashFlowData(_RawData):
+    da: Optional[Decimal] = None
+    da_period: Optional[str] = None
+    da_as_of: Optional[date] = None
+    da_is_fallback: Optional[bool] = None
     period: str = "TTM"
     as_of: Optional[date] = None
     source: str = "provider"
@@ -108,6 +112,10 @@ class IncomeStatementData(_RawData):
     revenue_ttm: Optional[Decimal] = None
     ebitda_ttm: Optional[Decimal] = None
     eps_ttm: Optional[Decimal] = None
+    da: Optional[Decimal] = None
+    da_period: Optional[str] = None
+    da_as_of: Optional[date] = None
+    da_is_fallback: Optional[bool] = None
     period: str = "TTM"
     as_of: Optional[date] = None
     source: str = "provider"

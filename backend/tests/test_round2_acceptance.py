@@ -182,7 +182,7 @@ def test_balance_sheet_does_not_mix_info_when_statement_present():
 # 4. Forward Estimates provenance & growth formula
 # ----------------------------------------------------------------------
 def test_forward_estimates_provenance_and_capping():
-    """Forward EPS is labeled NTM; forward EBITDA specifies base fiscal period, formula, and capping."""
+    """Forward EPS is labeled; provider does not invent forward EBITDA from growth."""
     provider = YFinanceProvider()
     with patch("yfinance.Ticker") as mock_yf:
         mock_t = MagicMock()
@@ -212,9 +212,9 @@ def test_forward_estimates_provenance_and_capping():
         est = provider.get_forward_estimates("TEST")
 
         assert est["forward_eps_1y_period"] == "forward_1y", "Forward EPS from info summary must be labeled forward_1y without unwarranted NTM assumption"
-        assert est["forward_ebitda_1y"] is not None
-        assert "FY2024" in est["forward_ebitda_1y_notes"]
-        assert "capped_growth=0.40" in est["forward_ebitda_1y_notes"] or "capped" in est["forward_ebitda_1y_notes"]
+        assert est["forward_ebitda_1y"] is None
+        assert est["forward_ebitda_1y_source_type"] is None
+        assert "independent analyst" in est["forward_ebitda_1y_notes"]
 
 
 # ----------------------------------------------------------------------

@@ -30,6 +30,10 @@ export default defineConfig({
       cwd: __dirname,
       env: {
         NEXT_DIST_DIR: ".next-test",
+        // Route browser requests to the deterministic fixture API started by
+        // the sibling webServer entry; never rely on an unrelated local :8002
+        // process during the no-mock fullstack contract.
+        NEXT_PUBLIC_BACKEND_URL: "http://127.0.0.1:18082",
       },
       url: "http://127.0.0.1:13002",
       reuseExistingServer: false,

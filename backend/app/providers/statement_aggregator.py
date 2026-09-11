@@ -202,6 +202,8 @@ def aggregate_ttm_cashflow(
         cfo_list: list[Decimal] = []
         capex_list: list[Decimal] = []
         nb_list: list[Decimal] = []
+        nwc_list: list[Decimal] = []
+        da_list: list[Decimal] = []
         has_full_cfo = True
         has_full_capex = True
 
@@ -246,6 +248,28 @@ def aggregate_ttm_cashflow(
             if nb_val is not None:
                 nb_list.append(nb_val)
 
+            # Change in working capital extraction (cash flow statement)
+            nwc_val = None
+            for row in ["Change In Working Capital", "Changes In Working Capital"]:
+                if row in series.index:
+                    v = _to_dec(series.loc[row])
+                    if v is not None:
+                        nwc_val = v
+                        break
+            if nwc_val is not None:
+                nwc_list.append(nwc_val)
+
+            # Depreciation & Amortization extraction from cash flow
+            da_val = None
+            for row in ["Depreciation And Amortization", "Depreciation Amortization Depletion", "Depreciation"]:
+                if row in series.index:
+                    v = _to_dec(series.loc[row])
+                    if v is not None:
+                        da_val = abs(v)
+                        break
+            if da_val is not None:
+                da_list.append(da_val)
+
         if has_full_cfo and has_full_capex and len(cfo_list) == 4 and len(capex_list) == 4:
             # yfinance quarterly tables are discrete single-quarter statements by contract.
             # STRICT RULE: Never deduce cumulative reporting from amount ratios or annual total coincidence.
@@ -258,17 +282,25 @@ def aggregate_ttm_cashflow(
             cfo_sum = sum(final_cfo_list)
             capex_sum = sum(final_capex_list)
             nb_sum = sum(nb_list) if len(nb_list) == 4 else None
+            # In cash flow statement: cfs_wc is cash flow contribution.
+            # When working capital increases (cash outflow), cfs_wc is negative.
+            # Balance sheet investment in working capital: ΔNWC = -cfs_wc (reduces FCFF).
+            cfs_wc_sum = sum(nwc_list) if len(nwc_list) == 4 else None
+            nwc_investment_sum = -cfs_wc_sum if cfs_wc_sum is not None else None
+            da_cf_sum = sum(da_list) if len(da_list) == 4 else None
 
             latest_q_date = _col_date(selected_q_cols[0]) or as_of
 
-            # Match interest and tax rate from quarterly financials across same 4 quarters
+            # Match interest, tax rate, and D&A from quarterly financials across same 4 quarters
             interest_sum: Optional[Decimal] = None
             tax_rate: Optional[Decimal] = None
+            da_fin_sum: Optional[Decimal] = None
             qfin_cols = _sort_cols_descending(quarterly_fin)
             if qfin_cols and len(qfin_cols) >= 4:
                 qf_interest_list: list[Decimal] = []
                 qf_tax_list: list[Decimal] = []
                 qf_pretax_list: list[Decimal] = []
+                qf_da_list: list[Decimal] = []
                 for c in selected_q_cols:
                     if c in quarterly_fin.columns:
                         fs = quarterly_fin[c]
@@ -284,6 +316,12 @@ def aggregate_ttm_cashflow(
                             pt_v = _to_dec(fs.loc["Pretax Income"])
                             if pt_v is not None:
                                 qf_pretax_list.append(pt_v)
+                        for da_row in ["Reconciled Depreciation", "Depreciation And Amortization", "Depreciation Amortization Depletion"]:
+                            if da_row in fs.index:
+                                da_v = _to_dec(fs.loc[da_row])
+                                if da_v is not None:
+                                    qf_da_list.append(abs(da_v))
+                                    break
                 if len(qf_interest_list) == 4:
                     interest_sum = sum(qf_interest_list)
                 if len(qf_tax_list) == 4 and len(qf_pretax_list) == 4:
@@ -293,6 +331,10 @@ def aggregate_ttm_cashflow(
                         calc_tr = tot_tax / tot_pretax
                         if Decimal("0") <= calc_tr <= Decimal("1"):
                             tax_rate = calc_tr
+                if len(qf_da_list) == 4:
+                    da_fin_sum = sum(qf_da_list)
+
+            da_sum = da_cf_sum if da_cf_sum is not None else da_fin_sum
 
             if interest_sum is None and a_cols and annual_fin is not None and hasattr(annual_fin, "columns"):
                 target_a = a_cols[0]
@@ -329,6 +371,10 @@ def aggregate_ttm_cashflow(
                 "has_net_borrowing": nb_sum is not None,
                 "interest": interest_sum,
                 "tax_rate": tax_rate,
+                "nwc_change": nwc_investment_sum,
+                "nwc_investment": nwc_investment_sum,
+                "nwc_cfs_flow": cfs_wc_sum,
+                "da": da_sum,
                 "statement_basis": "TTM",
                 "annual_fallback": False,
                 "as_of": latest_q_date,
@@ -371,9 +417,29 @@ def aggregate_ttm_cashflow(
             if iss is not None and rep is not None:
                 nb = iss + rep
 
+        # Change in working capital extraction (annual cash flow)
+        cfs_nwc = None
+        for row in ["Change In Working Capital", "Changes In Working Capital"]:
+            if row in series.index:
+                v = _to_dec(series.loc[row])
+                if v is not None:
+                    cfs_nwc = v
+                    break
+        annual_nwc_investment = -cfs_nwc if cfs_nwc is not None else None
+
+        # Depreciation & Amortization extraction from annual cash flow
+        da_cf = None
+        for row in ["Depreciation And Amortization", "Depreciation Amortization Depletion", "Depreciation"]:
+            if row in series.index:
+                v = _to_dec(series.loc[row])
+                if v is not None:
+                    da_cf = abs(v)
+                    break
+
         # Interest & Tax from annual financials matching column
         interest = None
         tax_rate = None
+        da_fin = None
         if annual_fin is not None and hasattr(annual_fin, "columns"):
             fin_series = None
             for fc in annual_fin.columns:
@@ -397,6 +463,14 @@ def aggregate_ttm_cashflow(
                         tr = tp / pt
                         if Decimal("0") <= tr <= Decimal("1"):
                             tax_rate = tr
+                for da_row in ["Reconciled Depreciation", "Depreciation And Amortization", "Depreciation Amortization Depletion"]:
+                    if da_row in fin_series.index:
+                        da_v = _to_dec(fin_series.loc[da_row])
+                        if da_v is not None:
+                            da_fin = abs(da_v)
+                            break
+
+        da = da_cf if da_cf is not None else da_fin
 
         return {
             "cfo": cfo,
@@ -405,6 +479,10 @@ def aggregate_ttm_cashflow(
             "has_net_borrowing": nb is not None,
             "interest": interest,
             "tax_rate": tax_rate,
+            "nwc_change": annual_nwc_investment,
+            "nwc_investment": annual_nwc_investment,
+            "nwc_cfs_flow": cfs_nwc,
+            "da": da,
             "statement_basis": "ANNUAL_FALLBACK",
             "annual_fallback": True,
             "as_of": col_dt,
@@ -419,6 +497,8 @@ def aggregate_ttm_cashflow(
         "has_net_borrowing": False,
         "interest": None,
         "tax_rate": None,
+        "nwc_change": None,
+        "da": None,
         "statement_basis": "UNAVAILABLE",
         "annual_fallback": False,
         "as_of": as_of,
@@ -447,6 +527,9 @@ def aggregate_ttm_income(
 
         rev_list: list[Decimal] = []
         ebitda_list: list[Decimal] = []
+        op_ebitda_list: list[Decimal] = []
+        vendor_ebitda_list: list[Decimal] = []
+        da_list: list[Decimal] = []
         has_full_rev = True
         has_full_ebitda = True
 
@@ -462,20 +545,38 @@ def aggregate_ttm_income(
             else:
                 has_full_rev = False
 
-            ebitda_val = None
-            if "EBITDA" in series.index:
-                v = _to_dec(series.loc["EBITDA"])
-                if v is not None:
-                    ebitda_val = v
-            elif "Operating Income" in series.index and "Reconciled Depreciation" in series.index:
+            da_v = None
+            for da_row in ["Reconciled Depreciation", "Depreciation And Amortization", "Depreciation Amortization Depletion"]:
+                if da_row in series.index:
+                    d_dec = _to_dec(series.loc[da_row])
+                    if d_dec is not None:
+                        da_v = abs(d_dec)
+                        break
+            if da_v is not None:
+                da_list.append(da_v)
+
+            # Operating EBITDA vs vendor EBITDA:
+            # Operating EBITDA = Operating Income + D&A (or Normalized EBITDA)
+            # Isolates core operating profitability from one-off non-operating security gains (e.g. GOOG).
+            op_ebitda_val = None
+            if "Operating Income" in series.index and da_v is not None:
                 oi = _to_dec(series.loc["Operating Income"])
-                da = _to_dec(series.loc["Reconciled Depreciation"])
-                if oi is not None and da is not None:
-                    ebitda_val = oi + da
+                if oi is not None:
+                    op_ebitda_val = oi + da_v
+            elif "Normalized EBITDA" in series.index:
+                op_ebitda_val = _to_dec(series.loc["Normalized EBITDA"])
+
+            vendor_ebitda_val = _to_dec(series.loc["EBITDA"]) if "EBITDA" in series.index else None
+
+            ebitda_val = op_ebitda_val if op_ebitda_val is not None else vendor_ebitda_val
             if ebitda_val is not None:
                 ebitda_list.append(ebitda_val)
             else:
                 has_full_ebitda = False
+            if op_ebitda_val is not None:
+                op_ebitda_list.append(op_ebitda_val)
+            if vendor_ebitda_val is not None:
+                vendor_ebitda_list.append(vendor_ebitda_val)
 
         if has_full_rev and len(rev_list) == 4:
             period_labels = [str(getattr(c, "name", c)) for c in chron_cols]
@@ -483,19 +584,49 @@ def aggregate_ttm_income(
             final_rev_list, rev_ytd = detect_and_handle_ytd(rev_list, is_cumulative_metadata=is_cumulative_rev, period_labels=period_labels)
             rev_sum = sum(final_rev_list)
             latest_q_date = _col_date(selected_q_cols[0]) or as_of
+            da_sum = sum(da_list) if len(da_list) == 4 else None
+
+            op_ebitda_sum = sum(op_ebitda_list) if len(op_ebitda_list) == 4 else None
+            vendor_ebitda_sum = sum(vendor_ebitda_list) if len(vendor_ebitda_list) == 4 else None
 
             annual_ebitda = None
+            annual_da = None
             if a_cols and annual_fin is not None and hasattr(annual_fin, "columns"):
                 target_a = a_cols[0]
                 if target_a in annual_fin.columns:
                     a_series = annual_fin[target_a]
+                    for da_row in ["Reconciled Depreciation", "Depreciation And Amortization", "Depreciation Amortization Depletion"]:
+                        if da_row in a_series.index:
+                            d_dec = _to_dec(a_series.loc[da_row])
+                            if d_dec is not None:
+                                annual_da = abs(d_dec)
+                                break
                     if "EBITDA" in a_series.index:
                         annual_ebitda = _to_dec(a_series.loc["EBITDA"])
-                    elif "Operating Income" in a_series.index and "Reconciled Depreciation" in a_series.index:
+                    elif "Operating Income" in a_series.index and annual_da is not None:
                         oi = _to_dec(a_series.loc["Operating Income"])
-                        da = _to_dec(a_series.loc["Reconciled Depreciation"])
-                        if oi is not None and da is not None:
-                            annual_ebitda = oi + da
+                        if oi is not None:
+                            annual_ebitda = oi + annual_da
+
+            da_period: Optional[str] = None
+            da_as_of: Optional[date] = None
+            da_is_fallback: bool = False
+            if da_sum is not None:
+                effective_da = da_sum
+                da_period = "TTM"
+                da_as_of = latest_q_date
+                da_is_fallback = False
+            elif annual_da is not None:
+                effective_da = annual_da
+                target_a_col = a_cols[0] if a_cols else None
+                da_as_of = _col_date(target_a_col) or as_of
+                da_period = f"FY{da_as_of.year}"
+                da_is_fallback = True
+            else:
+                effective_da = None
+                da_period = None
+                da_as_of = None
+                da_is_fallback = False
 
             if has_full_ebitda and len(ebitda_list) == 4:
                 ebitda_sum = sum(ebitda_list)
@@ -517,6 +648,12 @@ def aggregate_ttm_income(
                         return {
                             "revenue": rev,
                             "ebitda": None,
+                            "operating_ebitda": None,
+                            "vendor_ebitda": None,
+                            "da": effective_da,
+                            "da_period": da_period,
+                            "da_as_of": da_as_of,
+                            "da_is_fallback": da_is_fallback,
                             "statement_basis": "ANNUAL_FALLBACK",
                             "annual_fallback": True,
                             "as_of": col_dt,
@@ -531,6 +668,12 @@ def aggregate_ttm_income(
             return {
                 "revenue": rev_sum,
                 "ebitda": ebitda_sum,
+                "operating_ebitda": op_ebitda_sum or ebitda_sum,
+                "vendor_ebitda": vendor_ebitda_sum or ebitda_sum,
+                "da": effective_da,
+                "da_period": da_period,
+                "da_as_of": da_as_of,
+                "da_is_fallback": da_is_fallback,
                 "statement_basis": statement_basis,
                 "annual_fallback": annual_fallback,
                 "as_of": latest_q_date,
@@ -550,20 +693,35 @@ def aggregate_ttm_income(
             if v is not None:
                 rev = v
 
+        da_val = None
+        for da_row in ["Reconciled Depreciation", "Depreciation And Amortization", "Depreciation Amortization Depletion"]:
+            if da_row in series.index:
+                d_dec = _to_dec(series.loc[da_row])
+                if d_dec is not None:
+                    da_val = abs(d_dec)
+                    break
+
         ebitda = None
-        if "EBITDA" in series.index:
-            v = _to_dec(series.loc["EBITDA"])
-            if v is not None:
-                ebitda = v
-        elif "Operating Income" in series.index and "Reconciled Depreciation" in series.index:
+        op_ebitda = None
+        if "Operating Income" in series.index and da_val is not None:
             oi = _to_dec(series.loc["Operating Income"])
-            da = _to_dec(series.loc["Reconciled Depreciation"])
-            if oi is not None and da is not None:
-                ebitda = oi + da
+            if oi is not None:
+                op_ebitda = oi + da_val
+        elif "Normalized EBITDA" in series.index:
+            op_ebitda = _to_dec(series.loc["Normalized EBITDA"])
+
+        vendor_ebitda = _to_dec(series.loc["EBITDA"]) if "EBITDA" in series.index else None
+        ebitda = op_ebitda if op_ebitda is not None else vendor_ebitda
 
         return {
             "revenue": rev,
             "ebitda": ebitda,
+            "operating_ebitda": op_ebitda or ebitda,
+            "vendor_ebitda": vendor_ebitda or ebitda,
+            "da": da_val,
+            "da_period": f"FY{col_dt.year}",
+            "da_as_of": col_dt,
+            "da_is_fallback": True,
             "statement_basis": "ANNUAL_FALLBACK",
             "annual_fallback": True,
             "as_of": col_dt,
@@ -574,6 +732,12 @@ def aggregate_ttm_income(
     return {
         "revenue": None,
         "ebitda": None,
+        "operating_ebitda": None,
+        "vendor_ebitda": None,
+        "da": None,
+        "da_period": None,
+        "da_as_of": None,
+        "da_is_fallback": False,
         "statement_basis": "ANNUAL_FALLBACK",
         "annual_fallback": True,
         "as_of": as_of,

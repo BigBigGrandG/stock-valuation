@@ -47,3 +47,19 @@
 - **禁止重复无效探索**：严禁推翻或重做前任已经充分调查、验证并形成确定结论的事项。
 - **优先复用现有资源**：优先复用 HANDOFF 中记录的现有 Orca task、worker 终端及 dispatch 会话，避免不必要地启动新终端或破坏已存在的上下文。
 - **历史关闭状态保护**：若最新权威章节已明确某些历史需求或前序轮次已验收关闭（例如真实多 Ticker 需求已在第 13 节闭环交付），接手代理严禁擅自重新激活或恢复该已结算任务，本次工作仅聚焦当前新任务范围。
+
+## 3. Weekly Review & Provider-Fallback Addendum (周复盘与提供商回退附录)
+
+周复盘与交接承担不同职责：`HANDOFF.md` 只在触发交接时更新并承载恢复所需的最小权威状态；周期性复盘应写入 `.scratch/<feature>/weekly-review.md`，不得为了记录本周工作而覆盖当前交接或重新激活已关闭任务。
+
+周复盘和交接在涉及代理执行时，至少区分并记录：
+
+- 周期/时区、分支与 HEAD，以及 `committed`、`workspace dirty`、`untracked`、`historical`、`inference` 的事实来源；
+- Task/Dispatch、Worker terminal、Ownership、Acceptance 和每项结论对应的 artifact 路径；
+- 实际 provider/model、额度或可用性状态、fallback 原因、时间、已知 `resets_at`/下次探测时间；不可验证时写 `Not verified`；
+- 已执行命令、工作目录、退出码、测试的 `PASS`/`FAIL`/`NOT RUN`，以及副作用是否已经发生；
+- 当前完成边界、未完成事项、风险、第一恢复动作和停止条件。
+
+当默认 **Antigravity / `gemini-3.8-flash-high` / Full Access** 不可用或额度受限时，只有在宿主实际暴露并授权的前提下，才按 `PrimaryAvailable → Limited → FallbackActive → ProbePrimary` 采用 **Codex Luna Max**。回退不能改变财务不变量、来源链、仓库安全或验收门槛；已经产生工具/文件/外部请求副作用后，不得重放非幂等动作，必须在交接中写出 continuation boundary 和已执行产物，恢复时沿原 Task/Dispatch 继续而不是重复执行。
+
+交接、复盘和验证报告严禁包含 API key、token、密码、凭据内容、内部能力密钥或可直接重放的敏感请求；只记录脱敏后的 provider/model、状态和证据路径。

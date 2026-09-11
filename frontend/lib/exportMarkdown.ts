@@ -76,6 +76,33 @@ export const SOURCE_LABELS: Record<string, string> = {
   fixture: "固定演示数据",
 };
 
+function driverSourceText(value: unknown, fallback = "derived"): string {
+  if (value === null || value === undefined || value === "") return fallback;
+  if (typeof value === "string") return value;
+  if (typeof value !== "object") return String(value);
+
+  const metadata = value as {
+    type?: unknown;
+    period?: unknown;
+    as_of?: unknown;
+    description?: unknown;
+  };
+  const parts: string[] = [];
+  if (typeof metadata.type === "string" && metadata.type) {
+    parts.push(SOURCE_LABELS[metadata.type] ?? metadata.type);
+  }
+  if (typeof metadata.period === "string" && metadata.period) {
+    parts.push(metadata.period);
+  }
+  if (typeof metadata.as_of === "string" && metadata.as_of) {
+    parts.push(metadata.as_of);
+  }
+  if (parts.length > 0) return parts.join(" · ");
+  return typeof metadata.description === "string" && metadata.description
+    ? metadata.description
+    : fallback;
+}
+
 export const SCENARIO_NAMES_ZH: Record<string, string> = {
   bear: "悲观情景",
   base: "基准情景",
@@ -471,10 +498,111 @@ export function generateValuationMarkdown(
   }
   lines.push("");
 
+  // Financial Driver Bridge (Issue 01 remediation)
+  if (data.financial_bridge) {
+    const fb = data.financial_bridge;
+    const src = fb.drivers_source || {};
+    lines.push("---");
+    lines.push("");
+    lines.push("## 三、前瞻财务驱动与对账桥接 (Financial Driver Bridge)");
+    lines.push("");
+    lines.push(
+      `> 本系统采用严谨的企业自由现金流 (FCFF) 与股权自由现金流 (FCFE) 细分财务科目驱动模型，前瞻预测基于驱动桥接对账，杜绝机械外推。预测期间目标：**${escapeTableCell(fb.period ?? "FY1E")}**。`,
+    );
+    if (fb.forecast_start_date && fb.forecast_end_date) {
+      lines.push(`> 预测区间：**${fb.forecast_start_date} 至 ${fb.forecast_end_date}**（数据基准日：${fb.as_of ?? "—"} · 币种：${fb.currency ?? "USD"}）。`);
+    }
+    if (fb.restrictions_note) {
+      lines.push(`> 口径说明：${escapeTableCell(fb.restrictions_note)}`);
+    }
+    lines.push("");
+    lines.push("| 财务科目 | 预测金额 / 数值 | 假设与驱动来源 | 对账公式 / 依据 |");
+    lines.push("| :--- | :--- | :--- | :--- |");
+    if (fb.revenue !== undefined) {
+      lines.push(`| 预测营业收入 (Revenue) | **${fmtBigNumber(fb.revenue, currencySymbol)}** | 分析师一致预期 / NTM权重 | 驱动推导基准收入 |`);
+    }
+    if (fb.ebitda_margin !== undefined) {
+      lines.push(`| EBITDA 利润率 (Margin) | ${fmtPct(fb.ebitda_margin, 2)} | ${escapeTableCell(driverSourceText(src.ebitda_margin))} | 历史同口径延续 / 用户覆盖 |`);
+    }
+    if (fb.ebitda !== undefined) {
+      lines.push(`| 前瞻 EBITDA | **${fmtBigNumber(fb.ebitda, currencySymbol)}** | 驱动乘积 | Revenue × EBITDA Margin |`);
+    }
+    if (fb.da !== undefined) {
+      lines.push(`| 折旧与摊销 (D&A) | ${fmtBigNumber(fb.da, currencySymbol)} | ${escapeTableCell(driverSourceText(src.da))} | 历史比例或覆盖延续 |`);
+    }
+    if (fb.ebit !== undefined) {
+      lines.push(`| 息税前利润 (EBIT) | ${fmtBigNumber(fb.ebit, currencySymbol)} | 会计勾稽 | EBITDA − D&A |`);
+    }
+    if (fb.tax_rate !== undefined) {
+      lines.push(`| 预测有效税率 (Tax Rate) | ${fmtPct(fb.tax_rate, 1)} | ${escapeTableCell(driverSourceText(src.tax_rate))} | 法定税率或历史有效税率 |`);
+    }
+    if (fb.nopat !== undefined) {
+      lines.push(`| 税后经营净利润 (NOPAT) | ${fmtBigNumber(fb.nopat, currencySymbol)} | 税后营业利润 | EBIT × (1 − Tax Rate) |`);
+    }
+    if (fb.capex !== undefined) {
+      lines.push(`| 资本开支 (CapEx) | ${fmtBigNumber(fb.capex, currencySymbol)} | ${escapeTableCell(driverSourceText(src.capex))} | 维持/扩张性资本开支驱动 |`);
+    }
+    if (fb.nwc_change !== undefined) {
+      lines.push(`| 营运资本变动 (ΔNWC) | ${fmtBigNumber(fb.nwc_change, currencySymbol)} | ${escapeTableCell(driverSourceText(src.nwc_change))} | 经营性营运资本净变动 |`);
+    }
+    if (fb.fcff !== undefined) {
+      lines.push(`| **企业自由现金流 (FCFF)** | **${fmtBigNumber(fb.fcff, currencySymbol)}** | **核心对账科目** | **NOPAT + D&A − CapEx − ΔNWC** |`);
+    }
+    if (fb.bridge_fcff !== undefined) {
+      lines.push(`| FCFF 驱动桥接值 | ${fmtBigNumber(fb.bridge_fcff, currencySymbol)} | 独立财务驱动桥 | 与分析师 FCFF 对账，不替代共识值 |`);
+    }
+    if (fb.interest !== undefined) {
+      lines.push(`| 利息支出 (Interest) | ${fmtBigNumber(fb.interest, currencySymbol)} | 财务报表利息 | 债务融资利息成本 |`);
+    }
+    if (fb.after_tax_interest !== undefined) {
+      lines.push(`| 税后利息支出 | ${fmtBigNumber(fb.after_tax_interest, currencySymbol)} | 扣税调整 | Interest × (1 − Tax Rate) |`);
+    }
+    if (fb.net_borrowing !== undefined) {
+      lines.push(`| 净借款增加额 (Net Borrowing) | ${fmtBigNumber(fb.net_borrowing, currencySymbol)} | ${escapeTableCell(driverSourceText(src.net_borrowing))} | 债务净发行(+) / 净偿还(−) |`);
+    }
+    if (fb.fcfe !== undefined) {
+      lines.push(`| **股权自由现金流 (FCFE)** | **${fmtBigNumber(fb.fcfe, currencySymbol)}** | **核心对账科目** | **FCFF − 税后利息 + 净借款** |`);
+    }
+    if (fb.bridge_fcfe !== undefined) {
+      lines.push(`| FCFE 驱动桥接值 | ${fmtBigNumber(fb.bridge_fcfe, currencySymbol)} | 独立股权现金流桥 | 与分析师 FCFE 分开对账 |`);
+    }
+    const identityLabel = fb.identity_holds === true
+      ? "已验证"
+      : fb.identity_holds === false
+        ? "存在差异"
+        : "证据不足，无法完整验证";
+    lines.push(`| **五项会计恒等式状态** | **${identityLabel}** | EBITDA / EBIT / NOPAT / FCFF / FCFE | 缺失输入不视为通过 |`);
+    if (fb.identity_checks) {
+      const checkText = Object.entries(fb.identity_checks)
+        .map(([key, value]) => `${key}=${value === true ? "通过" : value === false ? "差异" : "未验证"}`)
+        .join("；");
+      lines.push(`| 恒等式逐项结果 | ${escapeTableCell(checkText)} | 独立校验 | identity_checks |`);
+    }
+    if (fb.reconciliation_difference !== undefined) {
+      lines.push(`| FCFF 对账差额 | ${fmtBigNumber(fb.reconciliation_difference, currencySymbol)} | 分析师共识 − 驱动桥 | 共识值保留用于估值 |`);
+    }
+    if (fb.fcfe_reconciliation_difference !== undefined) {
+      lines.push(`| FCFE 对账差额 | ${fmtBigNumber(fb.fcfe_reconciliation_difference, currencySymbol)} | 分析师共识 − FCFF/利息/净借款桥 | 共识值保留用于估值 |`);
+    }
+    lines.push("");
+    if (fb.dcf_forecasts && fb.dcf_forecasts.length > 0) {
+      lines.push("### DCF 显式年度预测证据");
+      lines.push("");
+      lines.push("| 年度 | 期间 | 金额 | 起始日 | 结束日 | 数据基准日 | 来源 |");
+      lines.push("| :--- | :--- | ---: | :--- | :--- | :--- | :--- |");
+      for (const forecast of fb.dcf_forecasts) {
+        lines.push(`| FY${escapeTableCell(forecast.year ?? "—")} | ${escapeTableCell(forecast.period ?? "—")} | ${fmtBigNumber(forecast.value ?? "—", currencySymbol)} | ${escapeTableCell(forecast.start_date ?? "—")} | ${escapeTableCell(forecast.end_date ?? "—")} | ${escapeTableCell(forecast.as_of ?? "—")} | ${escapeTableCell(forecast.source_type ?? forecast.source ?? "—")} |`);
+      }
+      lines.push("");
+    }
+    lines.push("> **隔离约束说明**：净借款变动（Net Borrowing）仅调整归属于普通股股东之现金流 (FCFE)，**严禁加入企业自由现金流 (FCFF)**，确保 DCF 企业价值与股权价值评估之财务保真。");
+    lines.push("");
+  }
+
   // 5. Four Independent Valuation Models
   lines.push("---");
   lines.push("");
-  lines.push("## 三、四套独立估值模型明细");
+  lines.push(data.financial_bridge ? "## 四、四套独立估值模型明细" : "## 三、四套独立估值模型明细");
   lines.push("");
 
   const modelKeys: Array<keyof ValuationResponse["valuations"]> = [

@@ -645,6 +645,12 @@ class Normalizer:
             ebitda_ttm=self._metric(income_maps, ("ebitda_ttm",), unit=fin_curr, period=period_income, source=str(inc.get("source", default_source)), as_of=income_as_of),
             eps_ttm=self._metric(income_maps, ("eps_ttm",), unit=f"{fin_curr}/share", period=period_income, source=str(inc.get("source", default_source)), as_of=income_as_of),
             fcf_ttm=self._metric([cf], ("fcfe_ttm", "fcf_ttm"), unit=fin_curr, period=str(cf.get("period", "TTM")), source=str(cf.get("source", default_source)), as_of=cash_flow_as_of, notes=str(cf.get("fcfe_definition", "FCFE; FCF-yield model only."))),
+            cfo_ttm=self._metric([cf], ("cfo", "cfo_ttm", "operating_cash_flow"), unit=fin_curr, period=str(cf.get("period", "TTM")), source=str(cf.get("source", default_source)), as_of=cash_flow_as_of),
+            capex_ttm=self._metric([cf], ("capex", "capex_ttm", "capital_expenditure"), unit=fin_curr, period=str(cf.get("period", "TTM")), source=str(cf.get("source", default_source)), as_of=cash_flow_as_of),
+            net_borrowing_ttm=self._metric([cf], ("net_borrowing", "net_borrowing_ttm"), unit=fin_curr, period=str(cf.get("period", "TTM")), source=str(cf.get("source", default_source)), as_of=cash_flow_as_of),
+            da_ttm=self._metric([inc, cf], ("da", "da_ttm", "reconciled_depreciation"), unit=fin_curr, period=str(inc.get("da_period") or cf.get("da_period") or period_income), source=str(inc.get("source", default_source)), as_of=inc.get("da_as_of") or cf.get("da_as_of") or income_as_of),
+            nwc_change_ttm=self._metric([cf], ("nwc_change", "nwc_change_ttm", "change_in_working_capital"), unit=fin_curr, period=str(cf.get("period", "TTM")), source=str(cf.get("source", default_source)), as_of=cash_flow_as_of),
+            interest_ttm=self._metric([cf, inc], ("interest", "interest_ttm", "interest_expense"), unit=fin_curr, period=str(cf.get("period", period_income)), source=str(cf.get("source", default_source)), as_of=cash_flow_as_of),
             forward_fcf_1y=self._metric(estimate_maps, ("forward_fcfe_1y", "forward_fcf_1y"), unit=fin_curr, period=period_est_1, period_keys=("period_1y",), source=str(est.get("source", default_source)), as_of=estimates_as_of, estimated=True, notes="Forward FCFE; FCF-yield model only."),
             forward_fcf_2y=self._metric(estimate_maps, ("forward_fcfe_2y", "forward_fcf_2y"), unit=fin_curr, period=period_est_2, period_keys=("period_2y",), source=str(est.get("source", default_source)), as_of=estimates_as_of, estimated=True, notes="Forward FCFE; FCF-yield model only."),
             fcff_ttm=self._metric([cf], ("fcff_ttm",), unit=fin_curr, period=str(cf.get("period", "TTM")), source=str(cf.get("source", default_source)), as_of=cash_flow_as_of, notes=str(cf.get("fcff_definition", "FCFF; DCF model only."))),
@@ -718,11 +724,41 @@ def apply_overrides(base_assumptions: ValuationAssumptions, overrides: Optional[
         "weights.weight_fcf_yield", "weights.weight_dcf",
         "weights.cashflow_group_max_weight",
         "forecast_horizon",
+        "drivers.ebitda_margin",
+        "drivers.capex",
+        "drivers.capex_ratio",
+        "drivers.nwc_change",
+        "drivers.nwc_ratio",
+        "drivers.net_borrowing",
+        "drivers.da",
+        "drivers.da_ratio",
+        "drivers.tax_rate",
     }
     unknown = set(overrides) - allowed
     if unknown:
         raise OverrideValidationError(f"Unknown override fields: {sorted(unknown)}")
     data = base_assumptions.model_dump()
+
+    # Process driver overrides
+    driver_fields = (
+        ("drivers.ebitda_margin", "driver_ebitda_margin"),
+        ("drivers.capex", "driver_capex"),
+        ("drivers.capex_ratio", "driver_capex_ratio"),
+        ("drivers.nwc_change", "driver_nwc_change"),
+        ("drivers.nwc_ratio", "driver_nwc_ratio"),
+        ("drivers.net_borrowing", "driver_net_borrowing"),
+        ("drivers.da", "driver_da"),
+        ("drivers.da_ratio", "driver_da_ratio"),
+        ("drivers.tax_rate", "driver_tax_rate"),
+    )
+    for override_key, data_field in driver_fields:
+        if override_key in overrides:
+            val = _decimal_override(overrides[override_key], override_key)
+            if override_key in ("drivers.ebitda_margin", "drivers.tax_rate") and not (Decimal("-1.0") <= val <= Decimal("1.0")):
+                raise OverrideValidationError(f"{override_key} must be between -1.0 and 1.0")
+            if override_key in ("drivers.capex_ratio", "drivers.da_ratio") and not (Decimal("0") <= val <= Decimal("2.0")):
+                raise OverrideValidationError(f"{override_key} must be between 0 and 2.0")
+            data[data_field] = val
 
     def update_scenarios(field: str, prefix: str, inverse: bool = False) -> None:
         sv = dict(data[field])
@@ -874,19 +910,52 @@ def run_all_engines(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAs
     """Run each engine independently; one bad model cannot erase others."""
     proj = derive_request_projections(snapshot, assumptions)
     req_updates: dict[str, Any] = {}
+
+    def _source_type(field: str) -> SourceType | None:
+        metric = getattr(snapshot, field, None)
+        return getattr(metric, "source_type", None)
+
     if proj.forward_eps is not None:
         req_updates["forward_eps_1y"] = proj.forward_eps
+    elif _source_type("forward_eps_1y") != SourceType.ANALYST_ESTIMATE:
+        req_updates["forward_eps_1y"] = None
+
     if proj.forward_revenue is not None:
         req_updates["revenue_estimate_1y"] = proj.forward_revenue
         req_updates["forward_revenue"] = proj.forward_revenue
+
     if proj.forward_ebitda is not None:
         req_updates["forward_ebitda_1y"] = proj.forward_ebitda
+    elif _source_type("forward_ebitda_1y") != SourceType.ANALYST_ESTIMATE:
+        req_updates["forward_ebitda_1y"] = None
+        if _source_type("forward_ebitda_2y") != SourceType.ANALYST_ESTIMATE:
+            req_updates["forward_ebitda_2y"] = None
+
     if proj.forward_fcfe_1y is not None:
         req_updates["forward_fcf_1y"] = proj.forward_fcfe_1y
-    if proj.forward_fcff_1y is not None:
-        req_updates["forward_fcff_1y"] = proj.forward_fcff_1y
-    if proj.forward_fcff_2y is not None:
-        req_updates["forward_fcff_2y"] = proj.forward_fcff_2y
+    elif _source_type("forward_fcf_1y") != SourceType.ANALYST_ESTIMATE:
+        req_updates["forward_fcf_1y"] = None
+
+    # DCF is the only consumer of FCFF. The request projection is the
+    # authority for explicit FY1/FY2 eligibility and driver overrides; do not
+    # re-introduce an NTM/derived metric (or a stale cached metric) when that
+    # projection is unavailable. A complete production DCF requires both
+    # explicit forecast years: submitting only FY1 would let the standalone
+    # engine synthesize FY2 from historical FCFF/growth, which is not a
+    # verified second-year driver. The standalone ``run_dcf`` engine may retain
+    # its documented historical fallback for explicit direct callers, but no
+    # partial request projection can reach that fallback here.
+    dcf_projection_complete = all(
+        metric is not None and metric.value.is_finite() and metric.value > ZERO
+        for metric in (proj.dcf_fcff_1y, proj.dcf_fcff_2y)
+    )
+    if dcf_projection_complete:
+        req_updates["forward_fcff_1y"] = proj.dcf_fcff_1y
+        req_updates["forward_fcff_2y"] = proj.dcf_fcff_2y
+    else:
+        req_updates["forward_fcff_1y"] = None
+        req_updates["forward_fcff_2y"] = None
+        req_updates["fcff_ttm"] = None
     req_snapshot = snapshot.model_copy(update=req_updates)
     runners = {
         "forward_pe": run_forward_pe,
@@ -903,7 +972,13 @@ def run_all_engines(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAs
     return results
 
 
-def assemble_response(snapshot: CompanyFinancialSnapshot, valuations: dict[str, ModelValuation], composite: CompositeValuation, assumptions: ValuationAssumptions) -> ValuationResponse:
+def assemble_response(
+    snapshot: CompanyFinancialSnapshot,
+    valuations: dict[str, ModelValuation],
+    composite: CompositeValuation,
+    assumptions: ValuationAssumptions,
+    financial_bridge: Optional[dict[str, Any]] = None,
+) -> ValuationResponse:
     active_quality = [model.data_quality for model in valuations.values() if model.available]
     if snapshot.is_demo or not active_quality or DataQuality.LOW in active_quality:
         quality = DataQuality.LOW
@@ -938,6 +1013,7 @@ def assemble_response(snapshot: CompanyFinancialSnapshot, valuations: dict[str, 
         forecast_horizon_effective=getattr(assumptions, "forecast_horizon", "ntm"),
         growth_cap_effective=getattr(assumptions, "growth_cap", None),
         growth_floor_effective=getattr(assumptions, "growth_floor", None),
+        financial_bridge=financial_bridge,
     )
 
 
@@ -1076,7 +1152,8 @@ class ValuationService:
             dcf_result=valuations["dcf"],
             assumptions=assumptions,
         )
-        return assemble_response(snapshot, valuations, composite, assumptions)
+        proj = derive_request_projections(snapshot, assumptions)
+        return assemble_response(snapshot, valuations, composite, assumptions, financial_bridge=proj.financial_bridge)
 
     # Familiar name for callers that previously invoked FinancialDataService.
     def compute_valuation(

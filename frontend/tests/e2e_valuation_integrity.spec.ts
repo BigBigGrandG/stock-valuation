@@ -33,10 +33,16 @@ test.describe("Fullstack Real Browser E2E Valuation Integrity (No API Mocks)", (
     await expect(sharesBadge).toBeVisible();
     await expect(sharesBadge).toContainText("股本口径: 单类别普通股核验");
 
-    // 4. Record default DCF price from DOM (calculated by production engine: $23.63)
+    // 4. Record default DCF price from DOM (calculated by production engine: $21.47)
     const dcfCard = page.locator('.model-card:has(h3:has-text("现金流折现"))');
     await expect(dcfCard).toBeVisible();
-    await expect(dcfCard).toContainText("$23.63");
+    await expect(dcfCard).toContainText("$21.47");
+
+    // The bridge is visible even when some accounting identities are not
+    // verifiable; missing evidence must be shown as such rather than passing.
+    const bridgeIdentity = page.locator('[data-testid="financial-bridge-identity"]');
+    await expect(bridgeIdentity).toBeVisible();
+    await expect(bridgeIdentity).toContainText("对账状态");
 
     // 5. Open Advanced Settings
     const advancedDetails = page.locator('summary:has-text("高级配置")');
@@ -52,6 +58,8 @@ test.describe("Fullstack Real Browser E2E Valuation Integrity (No API Mocks)", (
 
     const peWeightInput = page.locator('label:has-text("P/E 权重") input');
     await peWeightInput.fill("0.40");
+    const driverCapexInput = page.locator('label:has-text("资本开支 CapEx") input');
+    await driverCapexInput.fill("1000000000");
 
     // 7. Submit override form and observe REAL POST request/response from backend (NO MOCK)
     const [recalcResponse] = await Promise.all([
@@ -68,14 +76,16 @@ test.describe("Fullstack Real Browser E2E Valuation Integrity (No API Mocks)", (
     expect(["0.8", "0.80"]).toContain(postData.growth_cap_effective);
     expect(postData.forecast_horizon_effective).toBe("ntm");
     expect(postData.valuations.dcf.available).toBe(true);
+    expect(postData.assumptions_used.driver_capex).toBe("1000000000");
 
-    // Assert that growth_cap=0.80 scaled DCF price higher than default ($23.63 -> $64.73)
+    // Assert that growth_cap=0.80 plus the driver override scaled DCF price
+    // higher than default ($21.47 -> $68.46 in this deterministic fixture).
     const recalculatedDcfPrice = postData.valuations.dcf.base.price_per_share;
-    expect(parseFloat(recalculatedDcfPrice)).toBeGreaterThan(23.63);
-    expect(recalculatedDcfPrice).toBe("64.73");
+    expect(parseFloat(recalculatedDcfPrice)).toBeGreaterThan(21.47);
+    expect(recalculatedDcfPrice).toBe("68.46");
 
     // 8. Verify DOM updated with recalculated price
-    await expect(dcfCard).toContainText("$64.73");
+    await expect(dcfCard).toContainText("$68.46");
 
     // 9. Export Markdown after override and assert downloaded content
     const [downloadOverride] = await Promise.all([
@@ -94,7 +104,8 @@ test.describe("Fullstack Real Browser E2E Valuation Integrity (No API Mocks)", (
     expect(overrideMd).toContain("**财务报表统计口径**：连续 4 季度 (TTM)");
     expect(overrideMd).toContain("SINGLE_CLASS_VERIFIED");
     expect(overrideMd).toContain("#### 终值敏感性分析矩阵 (3×3 Sensitivity Matrix)");
-    expect(overrideMd).toContain("64.73");
+    expect(overrideMd).toContain("五项会计恒等式状态");
+    expect(overrideMd).toContain("68.46");
 
     // 10. Reset to defaults and observe REAL GET request from backend
     const [resetResponse] = await Promise.all([
@@ -106,10 +117,12 @@ test.describe("Fullstack Real Browser E2E Valuation Integrity (No API Mocks)", (
 
     expect(resetResponse.status()).toBe(200);
     const resetData = await resetResponse.json();
-    expect(resetData.valuations.dcf.base.price_per_share).toBe("23.63");
+    expect(resetData.valuations.dcf.base.price_per_share).toBe("21.47");
 
     // Verify DOM restored to default DCF price
-    await expect(dcfCard).toContainText("$23.63");
+    await expect(dcfCard).toContainText("$21.47");
+    await expect(driverCapexInput).toHaveValue("");
+    await expect(growthCapInput).toHaveValue("");
 
     // 11. Export Markdown after reset and assert default price is restored
     const [downloadReset] = await Promise.all([
@@ -123,7 +136,21 @@ test.describe("Fullstack Real Browser E2E Valuation Integrity (No API Mocks)", (
       resetChunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
     }
     const resetMd = Buffer.concat(resetChunks).toString("utf-8");
-    expect(resetMd).toContain("23.63");
+    expect(resetMd).toContain("21.47");
+
+    // Switching tickers starts a fresh request-scoped form and must not carry
+    // the previous ticker's override values into the new analysis.
+    const [tickerResponse] = await Promise.all([
+      page.waitForResponse(
+        (res) => res.url().includes("/api/v1/valuation/AAPL") && res.request().method() === "GET"
+      ),
+      page.getByRole("button", { name: "AAPL", exact: true }).click(),
+    ]);
+    expect(tickerResponse.status()).toBe(200);
+    await expect(page).toHaveURL(/\/valuation\/AAPL$/);
+    await expect(page.locator("h1")).toContainText("AAPL");
+    await expect(page.locator('label:has-text("资本开支 CapEx") input')).toHaveValue("");
+    await expect(page.locator('label:has-text("DCF 增长率上限") input')).toHaveValue("");
 
     // 12. Capture full-page screenshot
     fs.mkdirSync(screenshotDir, { recursive: true });

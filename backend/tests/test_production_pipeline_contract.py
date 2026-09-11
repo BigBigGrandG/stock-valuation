@@ -273,8 +273,8 @@ def test_forecast_revenue_consensus_and_day_weights():
         assert proj.forward_revenue.value == expected_blended_rev
 
 
-def test_growth_bounds_scaling_and_cache_purity():
-    """Requirement A: growth_cap=0.80 vs 0.40 scales derived metrics; post-check default doesn't leak."""
+def test_growth_cap_does_not_reenable_missing_dcf_or_leak_cache_state():
+    """Missing FY1/FY2 FCFF stays isolated under every growth cap override."""
     provider = YFinanceProvider()
     mock_bundle = _build_mock_bundle()
 
@@ -284,24 +284,29 @@ def test_growth_bounds_scaling_and_cache_purity():
 
         # 1. Base run
         res_default = val_svc.compute("OCTO")
-        dcf_def = res_default.valuations["dcf"].base.price_per_share
+        dcf_def = res_default.valuations["dcf"]
 
         # 2. Override 0.80
         req_80 = ValuationOverrideRequest(dcf=DCFOverride(growth_cap=Decimal("0.80")))
         res_80 = val_svc.compute("OCTO", overrides=req_80.to_override_dict())
-        dcf_80 = res_80.valuations["dcf"].base.price_per_share
+        dcf_80 = res_80.valuations["dcf"]
 
         # 3. Override 0.40
         req_40 = ValuationOverrideRequest(dcf=DCFOverride(growth_cap=Decimal("0.40")))
         res_40 = val_svc.compute("OCTO", overrides=req_40.to_override_dict())
-        dcf_40 = res_40.valuations["dcf"].base.price_per_share
+        dcf_40 = res_40.valuations["dcf"]
 
         # 4. Post-check default
         res_after = val_svc.compute("OCTO")
-        dcf_after = res_after.valuations["dcf"].base.price_per_share
+        dcf_after = res_after.valuations["dcf"]
 
-        assert dcf_80 > dcf_40, f"DCF price at 0.80 ({dcf_80}) must exceed 0.40 ({dcf_40})"
-        assert dcf_def == dcf_after, "Default cache must not be contaminated by override"
+        for dcf in (dcf_def, dcf_80, dcf_40, dcf_after):
+            assert dcf.available is False
+            assert "No FCFF data" in (dcf.unavailable_reason or "")
+        assert res_default.growth_cap_effective == Decimal("0.40")
+        assert res_80.growth_cap_effective == Decimal("0.80")
+        assert res_40.growth_cap_effective == Decimal("0.40")
+        assert dcf_def.unavailable_reason == dcf_after.unavailable_reason, "Default cache must not be contaminated by override"
 
 
 def test_expired_fiscal_year_weights():
@@ -328,9 +333,9 @@ def test_fastapi_testclient_serialization_contract():
         assert data["shares_basis"] == "SINGLE_CLASS_VERIFIED"
         assert data["annual_fallback"] is False
         assert "dcf" in data["valuations"]
-        assert data["valuations"]["dcf"]["available"] is True
-        assert "sensitivity_matrix" in data["valuations"]["dcf"]
-        assert data["valuations"]["dcf"]["sensitivity_matrix"] is not None
+        assert data["valuations"]["dcf"]["available"] is False
+        assert "No FCFF data" in data["valuations"]["dcf"]["unavailable_reason"]
+        assert data["valuations"]["dcf"]["sensitivity_matrix"] is None
 
         # Test POST override serialization
         post_resp = client.post(
@@ -359,4 +364,3 @@ def test_cors_policy_rejects_unauthorized_and_allows_test_app():
     test_client = TestClient(test_app)
     r_test_allowed = test_client.get("/e2e/health", headers={"Origin": "http://127.0.0.1:13002"})
     assert r_test_allowed.headers.get("access-control-allow-origin") == "http://127.0.0.1:13002"
-

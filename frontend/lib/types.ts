@@ -210,6 +210,74 @@ export interface ValuationResponse {
   forecast_horizon_effective?: string;
   growth_cap_effective?: DecimalLike;
   growth_floor_effective?: DecimalLike;
+  financial_bridge?: FinancialBridge | null;
+}
+
+export interface DriverSourceMetadata {
+  type?: string;
+  as_of?: string;
+  period?: string;
+  description?: string;
+}
+
+export interface FinancialBridgeDCFForecast {
+  year?: number;
+  value?: DecimalLike;
+  period?: string;
+  as_of?: string;
+  source?: string;
+  source_type?: string;
+  start_date?: string;
+  end_date?: string;
+}
+
+export interface FinancialBridge {
+  period?: string;
+  forecast_start_date?: string;
+  forecast_end_date?: string;
+  as_of?: string;
+  currency?: string;
+  revenue?: DecimalLike;
+  ebitda_margin?: DecimalLike;
+  ebitda?: DecimalLike;
+  da?: DecimalLike;
+  ebit?: DecimalLike;
+  tax_rate?: DecimalLike;
+  nopat?: DecimalLike;
+  capex?: DecimalLike;
+  nwc_change?: DecimalLike;
+  fcff?: DecimalLike;
+  bridge_fcff?: DecimalLike;
+  bridge_fcfe?: DecimalLike;
+  identity_holds?: boolean | null;
+  identity_checks?: Record<string, boolean | null>;
+  ebitda_identity_holds?: boolean | null;
+  ebit_identity_holds?: boolean | null;
+  nopat_identity_holds?: boolean | null;
+  fcff_identity_holds?: boolean | null;
+  fcfe_identity_holds?: boolean | null;
+  reconciliation_difference?: DecimalLike;
+  fcfe_reconciliation_difference?: DecimalLike;
+  reconciliation_note?: string;
+  interest?: DecimalLike;
+  after_tax_interest?: DecimalLike;
+  net_borrowing?: DecimalLike;
+  fcfe?: DecimalLike;
+  dcf_forecasts?: FinancialBridgeDCFForecast[];
+  restrictions_note?: string;
+  drivers_source?: Record<string, DriverSourceMetadata | string>;
+}
+
+export interface FinancialDriversOverride {
+  ebitda_margin?: number;
+  capex?: number;
+  capex_ratio?: number;
+  nwc_change?: number;
+  nwc_ratio?: number;
+  da?: number;
+  da_ratio?: number;
+  tax_rate?: number;
+  net_borrowing?: number;
 }
 
 /** Nested POST contract. Empty fields are omitted by the page before POST. */
@@ -224,6 +292,7 @@ export interface OverrideRequest {
     growth_floor?: number;
     growth_cap?: number;
   };
+  drivers?: FinancialDriversOverride;
   weights?: {
     weight_pe?: number;
     weight_ev_ebitda?: number;
@@ -247,6 +316,12 @@ export interface OverrideForm {
   weight_ev_ebitda?: string;
   weight_fcf_yield?: string;
   weight_dcf?: string;
+  driver_ebitda_margin?: string;
+  driver_capex?: string;
+  driver_nwc_change?: string;
+  driver_net_borrowing?: string;
+  driver_da?: string;
+  driver_tax_rate?: string;
 }
 
 export const CLASSIFICATION_LABELS_ZH: Record<string, string> = {

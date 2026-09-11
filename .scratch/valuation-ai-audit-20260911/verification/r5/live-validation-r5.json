@@ -1,0 +1,4088 @@
+{
+  "schema": "valuation-ai-audit-r5-live-v1",
+  "collected_at": "2026-09-11T13:24:30.035307+00:00",
+  "provider_kind": "live",
+  "provider_class": "YFinanceProvider",
+  "is_demo": false,
+  "timeout_seconds": 25.0,
+  "tickers": [
+    "AMD",
+    "META",
+    "GOOG",
+    "NVDA"
+  ],
+  "results": [
+    {
+      "ticker": "AMD",
+      "provider_kind": "live",
+      "provider_class": "YFinanceProvider",
+      "is_demo": false,
+      "timeout_seconds": 25.0,
+      "raw_sources": {
+        "quote": {
+          "status": "ok",
+          "provider_method": "get_quote",
+          "payload": {
+            "price": "503.60",
+            "currency": "USD",
+            "exchange": "NMS",
+            "market": "us_market",
+            "timestamp": "2026-09-10T20:00:01",
+            "as_of": "2026-09-10",
+            "source": "Yahoo Finance live quote (AMD)"
+          }
+        },
+        "profile": {
+          "status": "ok",
+          "provider_method": "get_company_profile",
+          "payload": {
+            "name": "Advanced Micro Devices, Inc.",
+            "ticker": "AMD",
+            "diluted_shares": "1632475042",
+            "diluted_shares_source": "Yahoo Finance info.impliedSharesOutstanding (AMD)",
+            "diluted_shares_as_of": "2026-06-30",
+            "diluted_shares_period": "PIT_Q_2026-06-30",
+            "diluted_shares_notes": "Common shares outstanding (1,632,475,042 shares) verified",
+            "diluted_shares_is_estimated": true,
+            "diluted_shares_source_type": "derived",
+            "shares_basis": "ALL_CLASS_RECONCILED",
+            "shares_reconciliation": {
+              "implied_shares": 1632475042,
+              "single_class_shares": 1632475042,
+              "quarterly_bs_shares": 1632000000,
+              "annual_bs_shares": 1630000000,
+              "cap_price_cross_check": 1632475082,
+              "split_detected": false,
+              "split_factor": null,
+              "selected_source": "info.impliedSharesOutstanding",
+              "is_multi_class": false,
+              "conflict_detected": false,
+              "variance_with_cap_price": 2.4502671692300213e-08,
+              "notes": "Point-in-time common shares across all classes reconciled with market consensus."
+            },
+            "currency": "USD",
+            "financial_currency": "USD",
+            "country": "United States",
+            "exchange": "NMS",
+            "market": "us_market",
+            "security_type": "EQUITY",
+            "sector": "Technology",
+            "industry": "Semiconductors",
+            "is_profitable": true,
+            "as_of": "2026-09-10",
+            "notes": null,
+            "source": "Yahoo Finance profile (AMD)"
+          }
+        },
+        "balance_sheet": {
+          "status": "ok",
+          "provider_method": "get_balance_sheet",
+          "payload": {
+            "cash": "13111000000.0",
+            "total_debt": "4276000000.0",
+            "net_debt": "-8835000000.0",
+            "period": "Q_2026-06-30",
+            "as_of": "2026-06-30",
+            "source": "Yahoo Finance balance sheet (AMD)"
+          }
+        },
+        "cash_flow": {
+          "status": "ok",
+          "provider_method": "get_cash_flow",
+          "payload": {
+            "cfo": "10080000000.0",
+            "capex": "1677000000.0",
+            "net_borrowing": "0.0",
+            "has_net_borrowing": true,
+            "interest": "147000000.0",
+            "tax_rate": "0.1455461293743372216330858961",
+            "nwc_change": "2368000000.0",
+            "da": "3027000000.0",
+            "da_period": null,
+            "da_as_of": null,
+            "da_is_fallback": null,
+            "fcfe_ttm": "8403000000.0",
+            "fcfe_ttm_source_type": "derived",
+            "fcfe_definition": "FCFE = CFO - capex + net borrowing",
+            "forward_fcfe_1y": null,
+            "forward_fcfe_1y_source_type": null,
+            "forward_fcfe_1y_period": "0y",
+            "forward_fcfe_1y_notes": null,
+            "forward_fcfe_2y": null,
+            "forward_fcfe_2y_source_type": null,
+            "forward_fcfe_2y_period": "+1y",
+            "forward_fcfe_2y_notes": null,
+            "fcff_ttm": "8528604718.98",
+            "fcff_ttm_source_type": "derived",
+            "fcff_definition": "FCFF = CFO + interest*(1-tax) - capex (unlevered firm cash flow at tax_rate=0.1455461293743372216330858961)",
+            "forward_fcff_1y": null,
+            "forward_fcff_1y_source_type": null,
+            "forward_fcff_1y_period": "0y",
+            "forward_fcff_1y_notes": null,
+            "forward_fcff_2y": null,
+            "forward_fcff_2y_source_type": null,
+            "forward_fcff_2y_period": "+1y",
+            "forward_fcff_2y_notes": null,
+            "period": "TTM",
+            "statement_basis": "TTM",
+            "annual_fallback": false,
+            "as_of": "2026-06-30",
+            "notes": "TTM quote summary",
+            "source": "Yahoo Finance cash flow statement (AMD)"
+          }
+        },
+        "income_statement": {
+          "status": "ok",
+          "provider_method": "get_income_statement",
+          "payload": {
+            "revenue_ttm": "41305000000.0",
+            "ebitda_ttm": "9515000000.0",
+            "eps_ttm": "3.93",
+            "da": "3027000000.0",
+            "da_period": "TTM",
+            "da_as_of": "2026-06-30",
+            "da_is_fallback": false,
+            "period": "TTM",
+            "statement_basis": "TTM",
+            "annual_fallback": false,
+            "as_of": "2026-06-30",
+            "source": "Yahoo Finance income statement (AMD)"
+          }
+        },
+        "forward_estimates": {
+          "status": "ok",
+          "provider_method": "get_forward_estimates",
+          "payload": {
+            "forward_revenue_1y": "50833550950",
+            "forward_revenue_1y_source_type": "analyst_estimate",
+            "forward_revenue_1y_period": "0y",
+            "forward_revenue_1y_notes": "Analyst consensus mean revenue for period 0y",
+            "forward_revenue_2y": "87776363720",
+            "forward_revenue_2y_source_type": "analyst_estimate",
+            "forward_revenue_2y_period": "+1y",
+            "forward_revenue_2y_notes": "Analyst consensus mean revenue for period +1y",
+            "forward_eps_1y": "7.56",
+            "forward_eps_1y_source_type": "analyst_estimate",
+            "forward_eps_1y_period": "0y",
+            "forward_eps_1y_notes": "Analyst consensus mean EPS for current fiscal year (0y); basis: share",
+            "forward_eps_1y_source": "Yahoo Finance earnings_estimate (0y) for AMD",
+            "forward_eps_1y_currency": "USD",
+            "forward_eps_2y": "15.51",
+            "forward_eps_2y_source_type": "analyst_estimate",
+            "forward_eps_2y_period": "+1y",
+            "forward_eps_2y_notes": "Analyst consensus mean EPS for period +1y",
+            "forward_eps_2y_currency": "USD",
+            "forward_eps_basis": "share",
+            "forecast_fiscal_year_end": "2026-12-27",
+            "ntm_weights": {
+              "current_fy": "0.2959",
+              "next_fy": "0.7041"
+            },
+            "forward_ebitda_1y": null,
+            "forward_ebitda_1y_source_type": null,
+            "forward_ebitda_1y_period": null,
+            "forward_ebitda_1y_notes": "Forward EBITDA unavailable: Base statement is not an annual fiscal year statement (period=TTM); no synthetic growth extrapolation applied.",
+            "forward_ebitda_2y": null,
+            "forward_ebitda_2y_source_type": null,
+            "forward_ebitda_2y_period": null,
+            "forward_ebitda_2y_notes": "Forward EBITDA unavailable: Base statement is not an annual fiscal year statement (period=TTM); no synthetic growth extrapolation applied.",
+            "forward_fcfe_1y": null,
+            "forward_fcfe_1y_source_type": null,
+            "forward_fcfe_1y_period": "0y",
+            "forward_fcfe_1y_notes": null,
+            "forward_fcfe_2y": null,
+            "forward_fcfe_2y_source_type": null,
+            "forward_fcfe_2y_period": "+1y",
+            "forward_fcfe_2y_notes": null,
+            "forward_fcff_1y": null,
+            "forward_fcff_1y_source_type": null,
+            "forward_fcff_1y_period": "0y",
+            "forward_fcff_1y_notes": null,
+            "forward_fcff_2y": null,
+            "forward_fcff_2y_source_type": null,
+            "forward_fcff_2y_period": "+1y",
+            "forward_fcff_2y_notes": null,
+            "period_1y": "0y",
+            "period_2y": "+1y",
+            "revenue_growth": "0.4675",
+            "as_of": "2026-09-10",
+            "source": "Yahoo Finance forward estimates (AMD)"
+          }
+        },
+        "historical_multiples": {
+          "status": "ok",
+          "provider_method": "get_historical_multiples",
+          "payload": {
+            "historical_forward_pe": null,
+            "historical_ev_ebitda": null,
+            "period": "historical",
+            "as_of": "2026-09-10",
+            "source": "Yahoo Finance multiples (AMD)"
+          }
+        }
+      },
+      "response": {
+        "ticker": "AMD",
+        "company_name": "Advanced Micro Devices, Inc.",
+        "current_price": "503.60",
+        "currency": "USD",
+        "as_of": "2026-09-10T20:00:01",
+        "price_timestamp": "2026-09-10T20:00:01",
+        "valuations": {
+          "forward_pe": {
+            "formula": "Price = Forward EPS × Target P/E",
+            "formula_description": "Price target derived from forward EPS multiplied by a target P/E. Historical median is used when available; otherwise the configured fallback applies.",
+            "inputs": {
+              "forward_eps": "13.16",
+              "forward_eps_period": "NTM (w0=0.30, w1=0.70)",
+              "forward_eps_source": "NTM day-weighted blend: 29.6% FY1 (7.56) + 70.4% FY2 (15.51)",
+              "forward_eps_source_type": "derived",
+              "forward_eps_as_of": "2026-09-10",
+              "forward_eps_is_estimated": true,
+              "current_price": "503.60"
+            },
+            "assumptions": {
+              "pe_multiple_low": "18",
+              "pe_multiple_base": "20",
+              "pe_multiple_high": "22",
+              "pe_source": "configured_fallback",
+              "pe_source_label": "Configured fallback: 18x/20x/22x (low/base/high)",
+              "multiple_source": "fallback",
+              "forecast_horizon": "ntm"
+            },
+            "input_metrics": {
+              "current_price": {
+                "value": "503.60",
+                "unit": "USD",
+                "period": "2026-09-10",
+                "source": "Yahoo Finance live quote (AMD)",
+                "source_type": "actual",
+                "as_of": "2026-09-10",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "diluted_shares": {
+                "value": "1632475042",
+                "unit": "shares",
+                "period": "PIT_Q_2026-06-30",
+                "source": "Yahoo Finance info.impliedSharesOutstanding (AMD)",
+                "source_type": "derived",
+                "as_of": "2026-06-30",
+                "confidence": 0.5,
+                "is_estimated": true,
+                "notes": "Common shares outstanding (1,632,475,042 shares) verified"
+              },
+              "cash": {
+                "value": "13111000000.0",
+                "unit": "USD",
+                "period": "Q_2026-06-30",
+                "source": "Yahoo Finance balance sheet (AMD)",
+                "source_type": "actual",
+                "as_of": "2026-06-30",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "total_debt": {
+                "value": "4276000000.0",
+                "unit": "USD",
+                "period": "Q_2026-06-30",
+                "source": "Yahoo Finance balance sheet (AMD)",
+                "source_type": "actual",
+                "as_of": "2026-06-30",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "net_debt": {
+                "value": "-8835000000.0",
+                "unit": "USD",
+                "period": "Q_2026-06-30",
+                "source": "Derived from total_debt - cash",
+                "source_type": "derived",
+                "as_of": "2026-06-30",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": "Derived net debt; normalize_snapshot publishes it on the snapshot."
+              },
+              "forward_eps": {
+                "value": "13.16",
+                "unit": "USD",
+                "period": "NTM (w0=0.30, w1=0.70)",
+                "source": "NTM day-weighted blend: 29.6% FY1 (7.56) + 70.4% FY2 (15.51)",
+                "source_type": "derived",
+                "as_of": "2026-09-10",
+                "confidence": 0.5,
+                "is_estimated": true,
+                "notes": "Calculated from 108/365 remaining days in fiscal year"
+              }
+            },
+            "assumption_metrics": {
+              "pe_multiple_low": {
+                "value": "18",
+                "unit": "multiple",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 18x/20x/22x (low/base/high)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "P/E low: multiple_source=fallback"
+              },
+              "pe_multiple_base": {
+                "value": "20",
+                "unit": "multiple",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 18x/20x/22x (low/base/high)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "P/E base: multiple_source=fallback"
+              },
+              "pe_multiple_high": {
+                "value": "22",
+                "unit": "multiple",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 18x/20x/22x (low/base/high)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "P/E high: multiple_source=fallback"
+              }
+            },
+            "calculation_steps": [
+              "Forward EPS = 13.16 [NTM (w0=0.30, w1=0.70); NTM day-weighted blend: 29.6% FY1 (7.56) + 70.4% FY2 (15.51); as_of=2026-09-10; estimated=True]",
+              "P/E multiples (low/base/high) = 18/20/22 [fallback; Configured fallback: 18x/20x/22x (low/base/high)]",
+              "Price (low) = 13.16 × 18 = 236.88",
+              "Price (base) = 13.16 × 20 = 263.20",
+              "Price (high) = 13.16 × 22 = 289.52"
+            ],
+            "low": {
+              "price_per_share": "236.88",
+              "upside_pct": "-0.5296",
+              "premium_discount_pct": "1.1260",
+              "intermediates": {
+                "forward_eps": "13.16",
+                "target_multiple": "18"
+              }
+            },
+            "base": {
+              "price_per_share": "263.20",
+              "upside_pct": "-0.4774",
+              "premium_discount_pct": "0.9134",
+              "intermediates": {
+                "forward_eps": "13.16",
+                "target_multiple": "20"
+              }
+            },
+            "high": {
+              "price_per_share": "289.52",
+              "upside_pct": "-0.4251",
+              "premium_discount_pct": "0.7394",
+              "intermediates": {
+                "forward_eps": "13.16",
+                "target_multiple": "22"
+              }
+            },
+            "dcf_scenarios": null,
+            "sensitivity_matrix": null,
+            "available": true,
+            "unavailable_reason": null,
+            "warnings": [],
+            "data_quality": "MEDIUM"
+          },
+          "ev_ebitda": {
+            "formula": "EV = Forward EBITDA × Multiple; Price = (EV - Net Debt) / Shares",
+            "formula_description": "EV = forward EBITDA × multiple; equity value = EV − net debt; price per share = equity value / diluted shares.",
+            "inputs": {
+              "forward_ebitda": "17705084641",
+              "forward_ebitda_period": "NTM (w0=0.30, w1=0.70)",
+              "forward_ebitda_source": "Financial driver bridge: Revenue (76844985421) × EBITDA Margin (23.04%)",
+              "forward_ebitda_source_type": "derived",
+              "forward_ebitda_as_of": "2026-09-10",
+              "current_price": "503.60",
+              "diluted_shares": "1632475042",
+              "cash": "13111000000.0",
+              "total_debt": "4276000000.0",
+              "net_debt": "-8835000000.0",
+              "market_cap": "822114431151.20"
+            },
+            "assumptions": {
+              "multiple_low": "18",
+              "multiple_base": "22",
+              "multiple_high": "26",
+              "source": "configured_fallback",
+              "source_label": "Configured fallback: 18x/22x/26x (low/base/high)",
+              "multiple_source": "fallback"
+            },
+            "input_metrics": {
+              "current_price": {
+                "value": "503.60",
+                "unit": "USD",
+                "period": "2026-09-10",
+                "source": "Yahoo Finance live quote (AMD)",
+                "source_type": "actual",
+                "as_of": "2026-09-10",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "diluted_shares": {
+                "value": "1632475042",
+                "unit": "shares",
+                "period": "PIT_Q_2026-06-30",
+                "source": "Yahoo Finance info.impliedSharesOutstanding (AMD)",
+                "source_type": "derived",
+                "as_of": "2026-06-30",
+                "confidence": 0.5,
+                "is_estimated": true,
+                "notes": "Common shares outstanding (1,632,475,042 shares) verified"
+              },
+              "cash": {
+                "value": "13111000000.0",
+                "unit": "USD",
+                "period": "Q_2026-06-30",
+                "source": "Yahoo Finance balance sheet (AMD)",
+                "source_type": "actual",
+                "as_of": "2026-06-30",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "total_debt": {
+                "value": "4276000000.0",
+                "unit": "USD",
+                "period": "Q_2026-06-30",
+                "source": "Yahoo Finance balance sheet (AMD)",
+                "source_type": "actual",
+                "as_of": "2026-06-30",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "net_debt": {
+                "value": "-8835000000.0",
+                "unit": "USD",
+                "period": "Q_2026-06-30",
+                "source": "Derived from total_debt - cash",
+                "source_type": "derived",
+                "as_of": "2026-06-30",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": "Derived net debt; normalize_snapshot publishes it on the snapshot."
+              },
+              "forward_ebitda": {
+                "value": "17705084641",
+                "unit": "USD",
+                "period": "NTM (w0=0.30, w1=0.70)",
+                "source": "Financial driver bridge: Revenue (76844985421) × EBITDA Margin (23.04%)",
+                "source_type": "derived",
+                "as_of": "2026-09-10",
+                "confidence": 0.85,
+                "is_estimated": true,
+                "notes": "EBITDA margin source: derived_historical"
+              },
+              "market_cap": {
+                "value": "822114431151.20",
+                "unit": "USD",
+                "period": "valuation date",
+                "source": "Derived from current quote × diluted shares",
+                "source_type": "derived",
+                "as_of": "2026-09-10",
+                "confidence": 0.5,
+                "is_estimated": true,
+                "notes": "Market capitalization used as an exposed EV/EBITDA intermediate."
+              }
+            },
+            "assumption_metrics": {
+              "multiple_low": {
+                "value": "18",
+                "unit": "multiple",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 18x/22x/26x (low/base/high)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "low; multiple_source=fallback"
+              },
+              "multiple_base": {
+                "value": "22",
+                "unit": "multiple",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 18x/22x/26x (low/base/high)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "base; multiple_source=fallback"
+              },
+              "multiple_high": {
+                "value": "26",
+                "unit": "multiple",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 18x/22x/26x (low/base/high)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "high; multiple_source=fallback"
+              }
+            },
+            "calculation_steps": [
+              "Forward EBITDA = 17705084641 [NTM (w0=0.30, w1=0.70); Financial driver bridge: Revenue (76844985421) × EBITDA Margin (23.04%); as_of=2026-09-10; estimated=True]",
+              "Market cap = 503.60 × 1632475042 = 822114431151.20",
+              "Net debt = total debt 4276000000.0 - cash 13111000000.0 = -8835000000.0",
+              "Multiples (low/base/high) = 18/22/26 [fallback; Configured fallback: 18x/22x/26x (low/base/high)]",
+              "[low] EV = 17705084641 × 18 = 318691523538.00",
+              "[low] Equity = 318691523538.00 - -8835000000.0 = 327526523538.00",
+              "[low] Price/share = 327526523538.00 / 1632475042 = 200.63",
+              "[base] EV = 17705084641 × 22 = 389511862102.00",
+              "[base] Equity = 389511862102.00 - -8835000000.0 = 398346862102.00",
+              "[base] Price/share = 398346862102.00 / 1632475042 = 244.01",
+              "[high] EV = 17705084641 × 26 = 460332200666.00",
+              "[high] Equity = 460332200666.00 - -8835000000.0 = 469167200666.00",
+              "[high] Price/share = 469167200666.00 / 1632475042 = 287.40"
+            ],
+            "low": {
+              "price_per_share": "200.63",
+              "upside_pct": "-0.6016",
+              "premium_discount_pct": "1.5101",
+              "intermediates": {
+                "ev": "318691523538.00",
+                "equity_value": "327526523538.00",
+                "net_debt": "-8835000000.0",
+                "market_cap": "822114431151.20",
+                "multiple": "18"
+              }
+            },
+            "base": {
+              "price_per_share": "244.01",
+              "upside_pct": "-0.5155",
+              "premium_discount_pct": "1.0638",
+              "intermediates": {
+                "ev": "389511862102.00",
+                "equity_value": "398346862102.00",
+                "net_debt": "-8835000000.0",
+                "market_cap": "822114431151.20",
+                "multiple": "22"
+              }
+            },
+            "high": {
+              "price_per_share": "287.40",
+              "upside_pct": "-0.4293",
+              "premium_discount_pct": "0.7523",
+              "intermediates": {
+                "ev": "460332200666.00",
+                "equity_value": "469167200666.00",
+                "net_debt": "-8835000000.0",
+                "market_cap": "822114431151.20",
+                "multiple": "26"
+              }
+            },
+            "dcf_scenarios": null,
+            "sensitivity_matrix": null,
+            "available": true,
+            "unavailable_reason": null,
+            "warnings": [],
+            "data_quality": "MEDIUM"
+          },
+          "fcf_yield": {
+            "formula": "Equity Value = Forward FCFE / Yield Rate; Price = Equity / Shares",
+            "formula_description": "FCFE (equity free cash flow) divided by the target yield rate, then divided by shares. FCFF is never substituted or discounted in this model.",
+            "inputs": {
+              "forward_fcfe": "8296786814",
+              "forward_fcfe_period": "NTM (w0=0.30, w1=0.70)",
+              "forward_fcfe_source": "Financial driver bridge: FCFF (8422391533) - Interest*(1-T) (125604719) + NetBorrowing (0.0)",
+              "forward_fcfe_source_type": "derived",
+              "forward_fcfe_as_of": "2026-09-10",
+              "forward_fcfe_is_estimated": true,
+              "fcf_type": "FCFE (equity FCF, NOT FCFF)",
+              "current_price": "503.60",
+              "diluted_shares": "1632475042"
+            },
+            "assumptions": {
+              "yield_low": "0.055",
+              "yield_base": "0.050",
+              "yield_high": "0.045",
+              "source": "configured_fallback",
+              "source_label": "Configured fallback: 5.5%/5.0%/4.5% (low=high yield=conservative)",
+              "yield_source": "fallback"
+            },
+            "input_metrics": {
+              "current_price": {
+                "value": "503.60",
+                "unit": "USD",
+                "period": "2026-09-10",
+                "source": "Yahoo Finance live quote (AMD)",
+                "source_type": "actual",
+                "as_of": "2026-09-10",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "diluted_shares": {
+                "value": "1632475042",
+                "unit": "shares",
+                "period": "PIT_Q_2026-06-30",
+                "source": "Yahoo Finance info.impliedSharesOutstanding (AMD)",
+                "source_type": "derived",
+                "as_of": "2026-06-30",
+                "confidence": 0.5,
+                "is_estimated": true,
+                "notes": "Common shares outstanding (1,632,475,042 shares) verified"
+              },
+              "cash": {
+                "value": "13111000000.0",
+                "unit": "USD",
+                "period": "Q_2026-06-30",
+                "source": "Yahoo Finance balance sheet (AMD)",
+                "source_type": "actual",
+                "as_of": "2026-06-30",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "total_debt": {
+                "value": "4276000000.0",
+                "unit": "USD",
+                "period": "Q_2026-06-30",
+                "source": "Yahoo Finance balance sheet (AMD)",
+                "source_type": "actual",
+                "as_of": "2026-06-30",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "net_debt": {
+                "value": "-8835000000.0",
+                "unit": "USD",
+                "period": "Q_2026-06-30",
+                "source": "Derived from total_debt - cash",
+                "source_type": "derived",
+                "as_of": "2026-06-30",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": "Derived net debt; normalize_snapshot publishes it on the snapshot."
+              },
+              "forward_fcfe": {
+                "value": "8296786814",
+                "unit": "USD",
+                "period": "NTM (w0=0.30, w1=0.70)",
+                "source": "Financial driver bridge: FCFF (8422391533) - Interest*(1-T) (125604719) + NetBorrowing (0.0)",
+                "source_type": "derived",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "FCFE derived from FCFF with debt cash flow adjustment."
+              }
+            },
+            "assumption_metrics": {
+              "yield_low": {
+                "value": "0.055",
+                "unit": "yield",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 5.5%/5.0%/4.5% (low=high yield=conservative)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "low; low scenario is the high-yield conservative case"
+              },
+              "yield_base": {
+                "value": "0.050",
+                "unit": "yield",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 5.5%/5.0%/4.5% (low=high yield=conservative)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "base; low scenario is the high-yield conservative case"
+              },
+              "yield_high": {
+                "value": "0.045",
+                "unit": "yield",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 5.5%/5.0%/4.5% (low=high yield=conservative)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "high; low scenario is the high-yield conservative case"
+              }
+            },
+            "calculation_steps": [
+              "IMPORTANT: Uses FCFE (equity FCF), NOT FCFF (firm FCF used by DCF)",
+              "Forward FCFE = 8296786814 [NTM (w0=0.30, w1=0.70); Financial driver bridge: FCFF (8422391533) - Interest*(1-T) (125604719) + NetBorrowing (0.0); as_of=2026-09-10; estimated=True]",
+              "Yield rates (low/base/high) = 0.055/0.050/0.045 [Configured fallback: 5.5%/5.0%/4.5% (low=high yield=conservative)]",
+              "Low valuation uses the highest yield; high valuation uses the lowest yield.",
+              "[low (high yield = conservative)] Equity value = 8296786814 / 0.055 = 150850669345.45",
+              "[low (high yield = conservative)] Price/share = 150850669345.45 / 1632475042 = 92.41",
+              "[base] Equity value = 8296786814 / 0.050 = 165935736280.00",
+              "[base] Price/share = 165935736280.00 / 1632475042 = 101.65",
+              "[high (low yield = optimistic)] Equity value = 8296786814 / 0.045 = 184373040311.11",
+              "[high (low yield = optimistic)] Price/share = 184373040311.11 / 1632475042 = 112.94"
+            ],
+            "low": {
+              "price_per_share": "92.41",
+              "upside_pct": "-0.8165",
+              "premium_discount_pct": "4.4496",
+              "intermediates": {
+                "equity_value": "150850669345.45",
+                "yield_rate": "0.055",
+                "forward_fcfe": "8296786814"
+              }
+            },
+            "base": {
+              "price_per_share": "101.65",
+              "upside_pct": "-0.7982",
+              "premium_discount_pct": "3.9543",
+              "intermediates": {
+                "equity_value": "165935736280.00",
+                "yield_rate": "0.050",
+                "forward_fcfe": "8296786814"
+              }
+            },
+            "high": {
+              "price_per_share": "112.94",
+              "upside_pct": "-0.7757",
+              "premium_discount_pct": "3.4590",
+              "intermediates": {
+                "equity_value": "184373040311.11",
+                "yield_rate": "0.045",
+                "forward_fcfe": "8296786814"
+              }
+            },
+            "dcf_scenarios": null,
+            "sensitivity_matrix": null,
+            "available": true,
+            "unavailable_reason": null,
+            "warnings": [],
+            "data_quality": "MEDIUM"
+          },
+          "dcf": {
+            "formula": "EV = Σ FCFF_t/(1+WACC)^t + TV/(1+WACC)^5; Equity = EV − Net Debt; Price = Equity/Shares",
+            "formula_description": "Five-year FCFF DCF",
+            "inputs": {},
+            "assumptions": {},
+            "input_metrics": {},
+            "assumption_metrics": {},
+            "calculation_steps": [],
+            "low": null,
+            "base": null,
+            "high": null,
+            "dcf_scenarios": null,
+            "sensitivity_matrix": null,
+            "available": false,
+            "unavailable_reason": "No FCFF data available. FCFE cannot be substituted for FCFF in DCF.",
+            "warnings": [
+              "Only FCFE data was provided; FCFE cannot substitute FCFF in the DCF."
+            ],
+            "data_quality": "LOW"
+          }
+        },
+        "composite": {
+          "current_price": "503.60",
+          "low": "174.92",
+          "base": "200.01",
+          "high": "225.84",
+          "fair_value_low": "174.92",
+          "fair_value_base": "200.01",
+          "fair_value_high": "225.84",
+          "weights_used": {
+            "forward_pe": "0.3571",
+            "ev_ebitda": "0.2857",
+            "fcf_yield": "0.3572"
+          },
+          "selected_weights": {
+            "forward_pe": "0.25",
+            "ev_ebitda": "0.20",
+            "fcf_yield": "0.25",
+            "dcf": "0.30"
+          },
+          "effective_weights": {
+            "forward_pe": "0.3571",
+            "ev_ebitda": "0.2857",
+            "fcf_yield": "0.3572"
+          },
+          "cashflow_group_weight": "0.3572",
+          "cashflow_group_max_weight": "0.40",
+          "cashflow_sensitivity": null,
+          "cashflow_group_policy_message": null,
+          "available_models": [
+            "forward_pe",
+            "ev_ebitda",
+            "fcf_yield"
+          ],
+          "classification": "significantly_overvalued",
+          "margin_of_safety": "-1.5179",
+          "upside_downside": "-0.6028",
+          "premium_discount_pct": "1.5179",
+          "formula": "Weighted average of complete model scenario fair values",
+          "calculation_steps": [
+            "Complete models used: forward_pe, ev_ebitda, fcf_yield",
+            "Selected weights = {'forward_pe': Decimal('0.25'), 'ev_ebitda': Decimal('0.20'), 'fcf_yield': Decimal('0.25'), 'dcf': Decimal('0.30')}",
+            "Effective weights = {'forward_pe': Decimal('0.3571'), 'ev_ebitda': Decimal('0.2857'), 'fcf_yield': Decimal('0.3572')}",
+            "Cash flow group weight = 0.3572 (cap = 0.40)",
+            "Composite low = weighted low values = 174.92",
+            "Composite base = weighted base values = 200.01",
+            "Composite high = weighted high values = 225.84",
+            "MOS = (fair value base - current price) / fair value base = -1.5179",
+            "Upside = (fair value base - current price) / current price = -0.6028"
+          ],
+          "warnings": [],
+          "data_quality": "MEDIUM",
+          "available": true,
+          "unavailable_reason": null
+        },
+        "is_demo": false,
+        "data_quality": "MEDIUM",
+        "warnings": [
+          "Financial inputs are stale (oldest age 73 days); quote, statements and estimates should be refreshed.",
+          "Only FCFE data was provided; FCFE cannot substitute FCFF in the DCF."
+        ],
+        "assumptions_used": {
+          "pe_target": {
+            "low": "18",
+            "base": "20",
+            "high": "22"
+          },
+          "pe_source": "configured_fallback",
+          "pe_source_label": "Configured fallback: 18x/20x/22x (low/base/high)",
+          "ev_ebitda_multiple": {
+            "low": "18",
+            "base": "22",
+            "high": "26"
+          },
+          "ev_ebitda_source": "configured_fallback",
+          "ev_ebitda_source_label": "Configured fallback: 18x/22x/26x (low/base/high)",
+          "fcf_yield": {
+            "low": "0.055",
+            "base": "0.050",
+            "high": "0.045"
+          },
+          "fcf_yield_source": "configured_fallback",
+          "fcf_yield_source_label": "Configured fallback: 5.5%/5.0%/4.5% (low=high yield=conservative)",
+          "dcf_wacc": {
+            "low": "0.12",
+            "base": "0.10",
+            "high": "0.08"
+          },
+          "dcf_terminal_growth": {
+            "low": "0.03",
+            "base": "0.03",
+            "high": "0.04"
+          },
+          "dcf_fcf_growth": null,
+          "dcf_wacc_source": "configured_fallback",
+          "dcf_wacc_source_label": "Configured fallback: 12%/10%/8% (bear/base/bull)",
+          "dcf_terminal_growth_source": "configured_fallback",
+          "dcf_terminal_growth_source_label": "Configured fallback terminal growth",
+          "weight_pe": "0.25",
+          "weight_ev_ebitda": "0.20",
+          "weight_fcf_yield": "0.25",
+          "weight_dcf": "0.30",
+          "cashflow_group_max_weight": "0.40",
+          "growth_floor": "-0.20",
+          "growth_cap": "0.40",
+          "forecast_horizon": "ntm",
+          "driver_ebitda_margin": null,
+          "driver_capex": null,
+          "driver_capex_ratio": null,
+          "driver_nwc_change": null,
+          "driver_nwc_ratio": null,
+          "driver_net_borrowing": null,
+          "driver_da": null,
+          "driver_da_ratio": null,
+          "driver_tax_rate": null
+        },
+        "provider": null,
+        "provider_label": null,
+        "shares_basis": "ALL_CLASS_RECONCILED",
+        "shares_reconciliation": {
+          "implied_shares": 1632475042,
+          "single_class_shares": 1632475042,
+          "quarterly_bs_shares": 1632000000,
+          "annual_bs_shares": 1630000000,
+          "cap_price_cross_check": 1632475082,
+          "split_detected": false,
+          "split_factor": null,
+          "selected_source": "info.impliedSharesOutstanding",
+          "is_multi_class": false,
+          "conflict_detected": false,
+          "variance_with_cap_price": 2.4502671692300213e-08,
+          "notes": "Point-in-time common shares across all classes reconciled with market consensus."
+        },
+        "statement_basis": "TTM",
+        "annual_fallback": false,
+        "forecast_fiscal_year_end": "2026-12-27",
+        "ntm_weights": {
+          "current_fy": "0.2959",
+          "next_fy": "0.7041"
+        },
+        "forecast_horizon_effective": "ntm",
+        "growth_cap_effective": "0.40",
+        "growth_floor_effective": "-0.20",
+        "financial_bridge": {
+          "period": "ntm",
+          "forecast_start_date": "2026-09-10",
+          "forecast_end_date": "2027-09-10",
+          "as_of": "2026-09-10",
+          "currency": "USD",
+          "revenue": "76844985421",
+          "ebitda_margin": "0.2304",
+          "ebitda": "17705084641",
+          "da": "5631516060",
+          "ebit": "12073568581",
+          "tax_rate": "0.1455461293743372216330858961",
+          "nopat": "10316307406",
+          "capex": "3119938035",
+          "nwc_change": "4405493898",
+          "fcff": "8422391533",
+          "bridge_fcff": "8422391533",
+          "bridge_fcfe": "8296786814",
+          "identity_holds": true,
+          "identity_checks": {
+            "ebitda": true,
+            "ebit": true,
+            "nopat": true,
+            "fcff": true,
+            "fcfe": true
+          },
+          "ebitda_identity_holds": true,
+          "ebit_identity_holds": true,
+          "nopat_identity_holds": true,
+          "fcff_identity_holds": true,
+          "fcfe_identity_holds": true,
+          "reconciliation_difference": null,
+          "fcfe_reconciliation_difference": null,
+          "reconciliation_note": null,
+          "interest": "147000000.0",
+          "after_tax_interest": "125604719",
+          "net_borrowing": "0.0",
+          "fcfe": "8296786814",
+          "dcf_forecasts": [],
+          "restrictions_note": "Financial bridge isolates operating business cash flows from non-operating items. Operating EBITDA is defined as Operating Income + D&A to isolate core operations from non-operating investment gains/losses (e.g. securities sales). Excludes stock-based compensation (SBC), operating lease capitalizations, and non-operating investment gains/losses from operating free cash flows.",
+          "drivers_source": {
+            "ebitda_margin": {
+              "type": "derived_historical",
+              "as_of": "2026-09-10",
+              "period": "TTM",
+              "description": "EBITDA margin: 23.04%"
+            },
+            "da": {
+              "type": "derived_historical",
+              "as_of": "2026-06-30",
+              "period": "TTM",
+              "description": "D&A: 5631516060 USD"
+            },
+            "tax_rate": {
+              "type": "derived_historical",
+              "as_of": "2026-06-30",
+              "period": "TTM",
+              "description": "Effective tax rate: 14.55%"
+            },
+            "capex": {
+              "type": "derived_historical",
+              "as_of": "2026-06-30",
+              "period": "TTM",
+              "description": "CapEx: 3119938035 USD"
+            },
+            "nwc_change": {
+              "type": "derived_historical",
+              "as_of": "2026-06-30",
+              "period": "TTM",
+              "description": "ΔNWC investment: 4405493898 USD (cash outflow when positive)"
+            },
+            "net_borrowing": {
+              "type": "derived_historical",
+              "as_of": "2026-06-30",
+              "period": "TTM",
+              "description": "Net debt issuance: 0.0 USD"
+            }
+          }
+        }
+      },
+      "status": "ok",
+      "elapsed_seconds": 7.95,
+      "consistency": {
+        "status": "ok",
+        "reason": "DCF is unavailable; production isolation left no engine FCFF inputs",
+        "checks": [
+          {
+            "name": "unavailable_dcf_has_no_forward_fcff_inputs",
+            "passed": true,
+            "forecast_count": 0,
+            "engine_fcff_input_keys": []
+          }
+        ],
+        "errors": [],
+        "bridge_period": "ntm",
+        "bridge_forecast_range": {
+          "start": "2026-09-10",
+          "end": "2027-09-10"
+        },
+        "dcf_available": false
+      }
+    },
+    {
+      "ticker": "META",
+      "provider_kind": "live",
+      "provider_class": "YFinanceProvider",
+      "is_demo": false,
+      "timeout_seconds": 25.0,
+      "raw_sources": {
+        "quote": {
+          "status": "ok",
+          "provider_method": "get_quote",
+          "payload": {
+            "price": "644.38",
+            "currency": "USD",
+            "exchange": "NMS",
+            "market": "us_market",
+            "timestamp": "2026-09-10T20:00:01",
+            "as_of": "2026-09-10",
+            "source": "Yahoo Finance live quote (META)"
+          }
+        },
+        "profile": {
+          "status": "ok",
+          "provider_method": "get_company_profile",
+          "payload": {
+            "name": "Meta Platforms, Inc.",
+            "ticker": "META",
+            "diluted_shares": "2547506225",
+            "diluted_shares_source": "Yahoo Finance info.impliedSharesOutstanding (META)",
+            "diluted_shares_as_of": "2026-06-30",
+            "diluted_shares_period": "PIT_Q_2026-06-30",
+            "diluted_shares_notes": "All-class common shares (2,547,506,225 shares) reconciled across multiple share classes (primary class: 2,205,128,509)",
+            "diluted_shares_is_estimated": true,
+            "diluted_shares_source_type": "derived",
+            "shares_basis": "ALL_CLASS_RECONCILED",
+            "shares_reconciliation": {
+              "implied_shares": 2547506225,
+              "single_class_shares": 2205128509,
+              "quarterly_bs_shares": 2548377716,
+              "annual_bs_shares": 2529638328,
+              "cap_price_cross_check": 2547506100,
+              "split_detected": false,
+              "split_factor": null,
+              "selected_source": "info.impliedSharesOutstanding",
+              "is_multi_class": true,
+              "conflict_detected": false,
+              "variance_with_cap_price": 4.9067593544349435e-08,
+              "notes": "Point-in-time common shares across all classes reconciled with market consensus."
+            },
+            "currency": "USD",
+            "financial_currency": "USD",
+            "country": "United States",
+            "exchange": "NMS",
+            "market": "us_market",
+            "security_type": "EQUITY",
+            "sector": "Communication Services",
+            "industry": "Internet Content & Information",
+            "is_profitable": true,
+            "as_of": "2026-09-10",
+            "notes": null,
+            "source": "Yahoo Finance profile (META)"
+          }
+        },
+        "balance_sheet": {
+          "status": "ok",
+          "provider_method": "get_balance_sheet",
+          "payload": {
+            "cash": "90260000000.0",
+            "total_debt": "112318000000.0",
+            "net_debt": "22058000000.0",
+            "period": "Q_2026-06-30",
+            "as_of": "2026-06-30",
+            "source": "Yahoo Finance balance sheet (META)"
+          }
+        },
+        "cash_flow": {
+          "status": "ok",
+          "provider_method": "get_cash_flow",
+          "payload": {
+            "cfo": "130301000000.0",
+            "capex": "89325000000.0",
+            "net_borrowing": "51712000000.0",
+            "has_net_borrowing": true,
+            "interest": "2028000000.0",
+            "tax_rate": "0.2219594401599542987717794916",
+            "nwc_change": "7745000000.0",
+            "da": "22729000000.0",
+            "da_period": null,
+            "da_as_of": null,
+            "da_is_fallback": null,
+            "fcfe_ttm": "92688000000.0",
+            "fcfe_ttm_source_type": "derived",
+            "fcfe_definition": "FCFE = CFO - capex + net borrowing",
+            "forward_fcfe_1y": null,
+            "forward_fcfe_1y_source_type": null,
+            "forward_fcfe_1y_period": "0y",
+            "forward_fcfe_1y_notes": null,
+            "forward_fcfe_2y": null,
+            "forward_fcfe_2y_source_type": null,
+            "forward_fcfe_2y_period": "+1y",
+            "forward_fcfe_2y_notes": null,
+            "fcff_ttm": "42553866255.36",
+            "fcff_ttm_source_type": "derived",
+            "fcff_definition": "FCFF = CFO + interest*(1-tax) - capex (unlevered firm cash flow at tax_rate=0.2219594401599542987717794916)",
+            "forward_fcff_1y": null,
+            "forward_fcff_1y_source_type": null,
+            "forward_fcff_1y_period": "0y",
+            "forward_fcff_1y_notes": null,
+            "forward_fcff_2y": null,
+            "forward_fcff_2y_source_type": null,
+            "forward_fcff_2y_period": "+1y",
+            "forward_fcff_2y_notes": null,
+            "period": "TTM",
+            "statement_basis": "TTM",
+            "annual_fallback": false,
+            "as_of": "2026-06-30",
+            "notes": "TTM quote summary",
+            "source": "Yahoo Finance cash flow statement (META)"
+          }
+        },
+        "income_statement": {
+          "status": "ok",
+          "provider_method": "get_income_statement",
+          "payload": {
+            "revenue_ttm": "228247000000.0",
+            "ebitda_ttm": "109656000000.0",
+            "eps_ttm": "26.55",
+            "da": "22729000000.0",
+            "da_period": "TTM",
+            "da_as_of": "2026-06-30",
+            "da_is_fallback": false,
+            "period": "TTM",
+            "statement_basis": "TTM",
+            "annual_fallback": false,
+            "as_of": "2026-06-30",
+            "source": "Yahoo Finance income statement (META)"
+          }
+        },
+        "forward_estimates": {
+          "status": "ok",
+          "provider_method": "get_forward_estimates",
+          "payload": {
+            "forward_revenue_1y": "254193744080",
+            "forward_revenue_1y_source_type": "analyst_estimate",
+            "forward_revenue_1y_period": "0y",
+            "forward_revenue_1y_notes": "Analyst consensus mean revenue for period 0y",
+            "forward_revenue_2y": "305929138890",
+            "forward_revenue_2y_source_type": "analyst_estimate",
+            "forward_revenue_2y_period": "+1y",
+            "forward_revenue_2y_notes": "Analyst consensus mean revenue for period +1y",
+            "forward_eps_1y": "31.43",
+            "forward_eps_1y_source_type": "analyst_estimate",
+            "forward_eps_1y_period": "0y",
+            "forward_eps_1y_notes": "Analyst consensus mean EPS for current fiscal year (0y); basis: share",
+            "forward_eps_1y_source": "Yahoo Finance earnings_estimate (0y) for META",
+            "forward_eps_1y_currency": "USD",
+            "forward_eps_2y": "33.94",
+            "forward_eps_2y_source_type": "analyst_estimate",
+            "forward_eps_2y_period": "+1y",
+            "forward_eps_2y_notes": "Analyst consensus mean EPS for period +1y",
+            "forward_eps_2y_currency": "USD",
+            "forward_eps_basis": "share",
+            "forecast_fiscal_year_end": "2026-12-31",
+            "ntm_weights": {
+              "current_fy": "0.3068",
+              "next_fy": "0.6932"
+            },
+            "forward_ebitda_1y": null,
+            "forward_ebitda_1y_source_type": null,
+            "forward_ebitda_1y_period": null,
+            "forward_ebitda_1y_notes": "Forward EBITDA unavailable: Base statement is not an annual fiscal year statement (period=TTM); no synthetic growth extrapolation applied.",
+            "forward_ebitda_2y": null,
+            "forward_ebitda_2y_source_type": null,
+            "forward_ebitda_2y_period": null,
+            "forward_ebitda_2y_notes": "Forward EBITDA unavailable: Base statement is not an annual fiscal year statement (period=TTM); no synthetic growth extrapolation applied.",
+            "forward_fcfe_1y": null,
+            "forward_fcfe_1y_source_type": null,
+            "forward_fcfe_1y_period": "0y",
+            "forward_fcfe_1y_notes": null,
+            "forward_fcfe_2y": null,
+            "forward_fcfe_2y_source_type": null,
+            "forward_fcfe_2y_period": "+1y",
+            "forward_fcfe_2y_notes": null,
+            "forward_fcff_1y": null,
+            "forward_fcff_1y_source_type": null,
+            "forward_fcff_1y_period": "0y",
+            "forward_fcff_1y_notes": null,
+            "forward_fcff_2y": null,
+            "forward_fcff_2y_source_type": null,
+            "forward_fcff_2y_period": "+1y",
+            "forward_fcff_2y_notes": null,
+            "period_1y": "0y",
+            "period_2y": "+1y",
+            "revenue_growth": "0.2649",
+            "as_of": "2026-09-10",
+            "source": "Yahoo Finance forward estimates (META)"
+          }
+        },
+        "historical_multiples": {
+          "status": "ok",
+          "provider_method": "get_historical_multiples",
+          "payload": {
+            "historical_forward_pe": null,
+            "historical_ev_ebitda": null,
+            "period": "historical",
+            "as_of": "2026-09-10",
+            "source": "Yahoo Finance multiples (META)"
+          }
+        }
+      },
+      "response": {
+        "ticker": "META",
+        "company_name": "Meta Platforms, Inc.",
+        "current_price": "644.38",
+        "currency": "USD",
+        "as_of": "2026-09-10T20:00:01",
+        "price_timestamp": "2026-09-10T20:00:01",
+        "valuations": {
+          "forward_pe": {
+            "formula": "Price = Forward EPS × Target P/E",
+            "formula_description": "Price target derived from forward EPS multiplied by a target P/E. Historical median is used when available; otherwise the configured fallback applies.",
+            "inputs": {
+              "forward_eps": "33.17",
+              "forward_eps_period": "NTM (w0=0.31, w1=0.69)",
+              "forward_eps_source": "NTM day-weighted blend: 30.7% FY1 (31.43) + 69.3% FY2 (33.94)",
+              "forward_eps_source_type": "derived",
+              "forward_eps_as_of": "2026-09-10",
+              "forward_eps_is_estimated": true,
+              "current_price": "644.38"
+            },
+            "assumptions": {
+              "pe_multiple_low": "18",
+              "pe_multiple_base": "20",
+              "pe_multiple_high": "22",
+              "pe_source": "configured_fallback",
+              "pe_source_label": "Configured fallback: 18x/20x/22x (low/base/high)",
+              "multiple_source": "fallback",
+              "forecast_horizon": "ntm"
+            },
+            "input_metrics": {
+              "current_price": {
+                "value": "644.38",
+                "unit": "USD",
+                "period": "2026-09-10",
+                "source": "Yahoo Finance live quote (META)",
+                "source_type": "actual",
+                "as_of": "2026-09-10",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "diluted_shares": {
+                "value": "2547506225",
+                "unit": "shares",
+                "period": "PIT_Q_2026-06-30",
+                "source": "Yahoo Finance info.impliedSharesOutstanding (META)",
+                "source_type": "derived",
+                "as_of": "2026-06-30",
+                "confidence": 0.5,
+                "is_estimated": true,
+                "notes": "All-class common shares (2,547,506,225 shares) reconciled across multiple share classes (primary class: 2,205,128,509)"
+              },
+              "cash": {
+                "value": "90260000000.0",
+                "unit": "USD",
+                "period": "Q_2026-06-30",
+                "source": "Yahoo Finance balance sheet (META)",
+                "source_type": "actual",
+                "as_of": "2026-06-30",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "total_debt": {
+                "value": "112318000000.0",
+                "unit": "USD",
+                "period": "Q_2026-06-30",
+                "source": "Yahoo Finance balance sheet (META)",
+                "source_type": "actual",
+                "as_of": "2026-06-30",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "net_debt": {
+                "value": "22058000000.0",
+                "unit": "USD",
+                "period": "Q_2026-06-30",
+                "source": "Derived from total_debt - cash",
+                "source_type": "derived",
+                "as_of": "2026-06-30",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": "Derived net debt; normalize_snapshot publishes it on the snapshot."
+              },
+              "forward_eps": {
+                "value": "33.17",
+                "unit": "USD",
+                "period": "NTM (w0=0.31, w1=0.69)",
+                "source": "NTM day-weighted blend: 30.7% FY1 (31.43) + 69.3% FY2 (33.94)",
+                "source_type": "derived",
+                "as_of": "2026-09-10",
+                "confidence": 0.5,
+                "is_estimated": true,
+                "notes": "Calculated from 112/365 remaining days in fiscal year"
+              }
+            },
+            "assumption_metrics": {
+              "pe_multiple_low": {
+                "value": "18",
+                "unit": "multiple",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 18x/20x/22x (low/base/high)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "P/E low: multiple_source=fallback"
+              },
+              "pe_multiple_base": {
+                "value": "20",
+                "unit": "multiple",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 18x/20x/22x (low/base/high)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "P/E base: multiple_source=fallback"
+              },
+              "pe_multiple_high": {
+                "value": "22",
+                "unit": "multiple",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 18x/20x/22x (low/base/high)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "P/E high: multiple_source=fallback"
+              }
+            },
+            "calculation_steps": [
+              "Forward EPS = 33.17 [NTM (w0=0.31, w1=0.69); NTM day-weighted blend: 30.7% FY1 (31.43) + 69.3% FY2 (33.94); as_of=2026-09-10; estimated=True]",
+              "P/E multiples (low/base/high) = 18/20/22 [fallback; Configured fallback: 18x/20x/22x (low/base/high)]",
+              "Price (low) = 33.17 × 18 = 597.06",
+              "Price (base) = 33.17 × 20 = 663.40",
+              "Price (high) = 33.17 × 22 = 729.74"
+            ],
+            "low": {
+              "price_per_share": "597.06",
+              "upside_pct": "-0.0734",
+              "premium_discount_pct": "0.0793",
+              "intermediates": {
+                "forward_eps": "33.17",
+                "target_multiple": "18"
+              }
+            },
+            "base": {
+              "price_per_share": "663.40",
+              "upside_pct": "0.0295",
+              "premium_discount_pct": "-0.0287",
+              "intermediates": {
+                "forward_eps": "33.17",
+                "target_multiple": "20"
+              }
+            },
+            "high": {
+              "price_per_share": "729.74",
+              "upside_pct": "0.1325",
+              "premium_discount_pct": "-0.1170",
+              "intermediates": {
+                "forward_eps": "33.17",
+                "target_multiple": "22"
+              }
+            },
+            "dcf_scenarios": null,
+            "sensitivity_matrix": null,
+            "available": true,
+            "unavailable_reason": null,
+            "warnings": [],
+            "data_quality": "MEDIUM"
+          },
+          "ev_ebitda": {
+            "formula": "EV = Forward EBITDA × Multiple; Price = (EV - Net Debt) / Shares",
+            "formula_description": "EV = forward EBITDA × multiple; equity value = EV − net debt; price per share = equity value / diluted shares.",
+            "inputs": {
+              "forward_ebitda": "139343248174",
+              "forward_ebitda_period": "NTM (w0=0.31, w1=0.69)",
+              "forward_ebitda_source": "Financial driver bridge: Revenue (290056719762) × EBITDA Margin (48.04%)",
+              "forward_ebitda_source_type": "derived",
+              "forward_ebitda_as_of": "2026-09-10",
+              "current_price": "644.38",
+              "diluted_shares": "2547506225",
+              "cash": "90260000000.0",
+              "total_debt": "112318000000.0",
+              "net_debt": "22058000000.0",
+              "market_cap": "1641562061265.50"
+            },
+            "assumptions": {
+              "multiple_low": "18",
+              "multiple_base": "22",
+              "multiple_high": "26",
+              "source": "configured_fallback",
+              "source_label": "Configured fallback: 18x/22x/26x (low/base/high)",
+              "multiple_source": "fallback"
+            },
+            "input_metrics": {
+              "current_price": {
+                "value": "644.38",
+                "unit": "USD",
+                "period": "2026-09-10",
+                "source": "Yahoo Finance live quote (META)",
+                "source_type": "actual",
+                "as_of": "2026-09-10",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "diluted_shares": {
+                "value": "2547506225",
+                "unit": "shares",
+                "period": "PIT_Q_2026-06-30",
+                "source": "Yahoo Finance info.impliedSharesOutstanding (META)",
+                "source_type": "derived",
+                "as_of": "2026-06-30",
+                "confidence": 0.5,
+                "is_estimated": true,
+                "notes": "All-class common shares (2,547,506,225 shares) reconciled across multiple share classes (primary class: 2,205,128,509)"
+              },
+              "cash": {
+                "value": "90260000000.0",
+                "unit": "USD",
+                "period": "Q_2026-06-30",
+                "source": "Yahoo Finance balance sheet (META)",
+                "source_type": "actual",
+                "as_of": "2026-06-30",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "total_debt": {
+                "value": "112318000000.0",
+                "unit": "USD",
+                "period": "Q_2026-06-30",
+                "source": "Yahoo Finance balance sheet (META)",
+                "source_type": "actual",
+                "as_of": "2026-06-30",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "net_debt": {
+                "value": "22058000000.0",
+                "unit": "USD",
+                "period": "Q_2026-06-30",
+                "source": "Derived from total_debt - cash",
+                "source_type": "derived",
+                "as_of": "2026-06-30",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": "Derived net debt; normalize_snapshot publishes it on the snapshot."
+              },
+              "forward_ebitda": {
+                "value": "139343248174",
+                "unit": "USD",
+                "period": "NTM (w0=0.31, w1=0.69)",
+                "source": "Financial driver bridge: Revenue (290056719762) × EBITDA Margin (48.04%)",
+                "source_type": "derived",
+                "as_of": "2026-09-10",
+                "confidence": 0.85,
+                "is_estimated": true,
+                "notes": "EBITDA margin source: derived_historical"
+              },
+              "market_cap": {
+                "value": "1641562061265.50",
+                "unit": "USD",
+                "period": "valuation date",
+                "source": "Derived from current quote × diluted shares",
+                "source_type": "derived",
+                "as_of": "2026-09-10",
+                "confidence": 0.5,
+                "is_estimated": true,
+                "notes": "Market capitalization used as an exposed EV/EBITDA intermediate."
+              }
+            },
+            "assumption_metrics": {
+              "multiple_low": {
+                "value": "18",
+                "unit": "multiple",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 18x/22x/26x (low/base/high)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "low; multiple_source=fallback"
+              },
+              "multiple_base": {
+                "value": "22",
+                "unit": "multiple",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 18x/22x/26x (low/base/high)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "base; multiple_source=fallback"
+              },
+              "multiple_high": {
+                "value": "26",
+                "unit": "multiple",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 18x/22x/26x (low/base/high)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "high; multiple_source=fallback"
+              }
+            },
+            "calculation_steps": [
+              "Forward EBITDA = 139343248174 [NTM (w0=0.31, w1=0.69); Financial driver bridge: Revenue (290056719762) × EBITDA Margin (48.04%); as_of=2026-09-10; estimated=True]",
+              "Market cap = 644.38 × 2547506225 = 1641562061265.50",
+              "Net debt = total debt 112318000000.0 - cash 90260000000.0 = 22058000000.0",
+              "Multiples (low/base/high) = 18/22/26 [fallback; Configured fallback: 18x/22x/26x (low/base/high)]",
+              "[low] EV = 139343248174 × 18 = 2508178467132.00",
+              "[low] Equity = 2508178467132.00 - 22058000000.0 = 2486120467132.00",
+              "[low] Price/share = 2486120467132.00 / 2547506225 = 975.90",
+              "[base] EV = 139343248174 × 22 = 3065551459828.00",
+              "[base] Equity = 3065551459828.00 - 22058000000.0 = 3043493459828.00",
+              "[base] Price/share = 3043493459828.00 / 2547506225 = 1194.70",
+              "[high] EV = 139343248174 × 26 = 3622924452524.00",
+              "[high] Equity = 3622924452524.00 - 22058000000.0 = 3600866452524.00",
+              "[high] Price/share = 3600866452524.00 / 2547506225 = 1413.49"
+            ],
+            "low": {
+              "price_per_share": "975.90",
+              "upside_pct": "0.5145",
+              "premium_discount_pct": "-0.3397",
+              "intermediates": {
+                "ev": "2508178467132.00",
+                "equity_value": "2486120467132.00",
+                "net_debt": "22058000000.0",
+                "market_cap": "1641562061265.50",
+                "multiple": "18"
+              }
+            },
+            "base": {
+              "price_per_share": "1194.70",
+              "upside_pct": "0.8540",
+              "premium_discount_pct": "-0.4606",
+              "intermediates": {
+                "ev": "3065551459828.00",
+                "equity_value": "3043493459828.00",
+                "net_debt": "22058000000.0",
+                "market_cap": "1641562061265.50",
+                "multiple": "22"
+              }
+            },
+            "high": {
+              "price_per_share": "1413.49",
+              "upside_pct": "1.1936",
+              "premium_discount_pct": "-0.5441",
+              "intermediates": {
+                "ev": "3622924452524.00",
+                "equity_value": "3600866452524.00",
+                "net_debt": "22058000000.0",
+                "market_cap": "1641562061265.50",
+                "multiple": "26"
+              }
+            },
+            "dcf_scenarios": null,
+            "sensitivity_matrix": null,
+            "available": true,
+            "unavailable_reason": null,
+            "warnings": [],
+            "data_quality": "MEDIUM"
+          },
+          "fcf_yield": {
+            "formula": "Equity Value = Forward FCFE / Yield Rate; Price = Equity / Shares",
+            "formula_description": "FCFE (equity free cash flow) divided by the target yield rate, then divided by shares. FCFF is never substituted or discounted in this model.",
+            "inputs": {
+              "forward_fcfe": "41603181724",
+              "forward_fcfe_period": "NTM (w0=0.31, w1=0.69)",
+              "forward_fcfe_source": "Financial driver bridge: FCFF (-8530952021) - Interest*(1-T) (1577866255) + NetBorrowing (51712000000.0)",
+              "forward_fcfe_source_type": "derived",
+              "forward_fcfe_as_of": "2026-09-10",
+              "forward_fcfe_is_estimated": true,
+              "fcf_type": "FCFE (equity FCF, NOT FCFF)",
+              "current_price": "644.38",
+              "diluted_shares": "2547506225"
+            },
+            "assumptions": {
+              "yield_low": "0.055",
+              "yield_base": "0.050",
+              "yield_high": "0.045",
+              "source": "configured_fallback",
+              "source_label": "Configured fallback: 5.5%/5.0%/4.5% (low=high yield=conservative)",
+              "yield_source": "fallback"
+            },
+            "input_metrics": {
+              "current_price": {
+                "value": "644.38",
+                "unit": "USD",
+                "period": "2026-09-10",
+                "source": "Yahoo Finance live quote (META)",
+                "source_type": "actual",
+                "as_of": "2026-09-10",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "diluted_shares": {
+                "value": "2547506225",
+                "unit": "shares",
+                "period": "PIT_Q_2026-06-30",
+                "source": "Yahoo Finance info.impliedSharesOutstanding (META)",
+                "source_type": "derived",
+                "as_of": "2026-06-30",
+                "confidence": 0.5,
+                "is_estimated": true,
+                "notes": "All-class common shares (2,547,506,225 shares) reconciled across multiple share classes (primary class: 2,205,128,509)"
+              },
+              "cash": {
+                "value": "90260000000.0",
+                "unit": "USD",
+                "period": "Q_2026-06-30",
+                "source": "Yahoo Finance balance sheet (META)",
+                "source_type": "actual",
+                "as_of": "2026-06-30",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "total_debt": {
+                "value": "112318000000.0",
+                "unit": "USD",
+                "period": "Q_2026-06-30",
+                "source": "Yahoo Finance balance sheet (META)",
+                "source_type": "actual",
+                "as_of": "2026-06-30",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "net_debt": {
+                "value": "22058000000.0",
+                "unit": "USD",
+                "period": "Q_2026-06-30",
+                "source": "Derived from total_debt - cash",
+                "source_type": "derived",
+                "as_of": "2026-06-30",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": "Derived net debt; normalize_snapshot publishes it on the snapshot."
+              },
+              "forward_fcfe": {
+                "value": "41603181724",
+                "unit": "USD",
+                "period": "NTM (w0=0.31, w1=0.69)",
+                "source": "Financial driver bridge: FCFF (-8530952021) - Interest*(1-T) (1577866255) + NetBorrowing (51712000000.0)",
+                "source_type": "derived",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "FCFE derived from FCFF with debt cash flow adjustment."
+              }
+            },
+            "assumption_metrics": {
+              "yield_low": {
+                "value": "0.055",
+                "unit": "yield",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 5.5%/5.0%/4.5% (low=high yield=conservative)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "low; low scenario is the high-yield conservative case"
+              },
+              "yield_base": {
+                "value": "0.050",
+                "unit": "yield",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 5.5%/5.0%/4.5% (low=high yield=conservative)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "base; low scenario is the high-yield conservative case"
+              },
+              "yield_high": {
+                "value": "0.045",
+                "unit": "yield",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 5.5%/5.0%/4.5% (low=high yield=conservative)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "high; low scenario is the high-yield conservative case"
+              }
+            },
+            "calculation_steps": [
+              "IMPORTANT: Uses FCFE (equity FCF), NOT FCFF (firm FCF used by DCF)",
+              "Forward FCFE = 41603181724 [NTM (w0=0.31, w1=0.69); Financial driver bridge: FCFF (-8530952021) - Interest*(1-T) (1577866255) + NetBorrowing (51712000000.0); as_of=2026-09-10; estimated=True]",
+              "Yield rates (low/base/high) = 0.055/0.050/0.045 [Configured fallback: 5.5%/5.0%/4.5% (low=high yield=conservative)]",
+              "Low valuation uses the highest yield; high valuation uses the lowest yield.",
+              "[low (high yield = conservative)] Equity value = 41603181724 / 0.055 = 756421485890.91",
+              "[low (high yield = conservative)] Price/share = 756421485890.91 / 2547506225 = 296.93",
+              "[base] Equity value = 41603181724 / 0.050 = 832063634480.00",
+              "[base] Price/share = 832063634480.00 / 2547506225 = 326.62",
+              "[high (low yield = optimistic)] Equity value = 41603181724 / 0.045 = 924515149422.22",
+              "[high (low yield = optimistic)] Price/share = 924515149422.22 / 2547506225 = 362.91"
+            ],
+            "low": {
+              "price_per_share": "296.93",
+              "upside_pct": "-0.5392",
+              "premium_discount_pct": "1.1701",
+              "intermediates": {
+                "equity_value": "756421485890.91",
+                "yield_rate": "0.055",
+                "forward_fcfe": "41603181724"
+              }
+            },
+            "base": {
+              "price_per_share": "326.62",
+              "upside_pct": "-0.4931",
+              "premium_discount_pct": "0.9729",
+              "intermediates": {
+                "equity_value": "832063634480.00",
+                "yield_rate": "0.050",
+                "forward_fcfe": "41603181724"
+              }
+            },
+            "high": {
+              "price_per_share": "362.91",
+              "upside_pct": "-0.4368",
+              "premium_discount_pct": "0.7756",
+              "intermediates": {
+                "equity_value": "924515149422.22",
+                "yield_rate": "0.045",
+                "forward_fcfe": "41603181724"
+              }
+            },
+            "dcf_scenarios": null,
+            "sensitivity_matrix": null,
+            "available": true,
+            "unavailable_reason": null,
+            "warnings": [],
+            "data_quality": "MEDIUM"
+          },
+          "dcf": {
+            "formula": "EV = Σ FCFF_t/(1+WACC)^t + TV/(1+WACC)^5; Equity = EV − Net Debt; Price = Equity/Shares",
+            "formula_description": "Five-year FCFF DCF",
+            "inputs": {},
+            "assumptions": {},
+            "input_metrics": {},
+            "assumption_metrics": {},
+            "calculation_steps": [],
+            "low": null,
+            "base": null,
+            "high": null,
+            "dcf_scenarios": null,
+            "sensitivity_matrix": null,
+            "available": false,
+            "unavailable_reason": "No FCFF data available. FCFE cannot be substituted for FCFF in DCF.",
+            "warnings": [
+              "Only FCFE data was provided; FCFE cannot substitute FCFF in the DCF."
+            ],
+            "data_quality": "LOW"
+          }
+        },
+        "composite": {
+          "current_price": "644.38",
+          "low": "598.09",
+          "base": "694.89",
+          "high": "794.06",
+          "fair_value_low": "598.09",
+          "fair_value_base": "694.89",
+          "fair_value_high": "794.06",
+          "weights_used": {
+            "forward_pe": "0.3571",
+            "ev_ebitda": "0.2857",
+            "fcf_yield": "0.3572"
+          },
+          "selected_weights": {
+            "forward_pe": "0.25",
+            "ev_ebitda": "0.20",
+            "fcf_yield": "0.25",
+            "dcf": "0.30"
+          },
+          "effective_weights": {
+            "forward_pe": "0.3571",
+            "ev_ebitda": "0.2857",
+            "fcf_yield": "0.3572"
+          },
+          "cashflow_group_weight": "0.3572",
+          "cashflow_group_max_weight": "0.40",
+          "cashflow_sensitivity": null,
+          "cashflow_group_policy_message": null,
+          "available_models": [
+            "forward_pe",
+            "ev_ebitda",
+            "fcf_yield"
+          ],
+          "classification": "slightly_undervalued",
+          "margin_of_safety": "0.0727",
+          "upside_downside": "0.0784",
+          "premium_discount_pct": "-0.0727",
+          "formula": "Weighted average of complete model scenario fair values",
+          "calculation_steps": [
+            "Complete models used: forward_pe, ev_ebitda, fcf_yield",
+            "Selected weights = {'forward_pe': Decimal('0.25'), 'ev_ebitda': Decimal('0.20'), 'fcf_yield': Decimal('0.25'), 'dcf': Decimal('0.30')}",
+            "Effective weights = {'forward_pe': Decimal('0.3571'), 'ev_ebitda': Decimal('0.2857'), 'fcf_yield': Decimal('0.3572')}",
+            "Cash flow group weight = 0.3572 (cap = 0.40)",
+            "Composite low = weighted low values = 598.09",
+            "Composite base = weighted base values = 694.89",
+            "Composite high = weighted high values = 794.06",
+            "MOS = (fair value base - current price) / fair value base = 0.0727",
+            "Upside = (fair value base - current price) / current price = 0.0784"
+          ],
+          "warnings": [],
+          "data_quality": "MEDIUM",
+          "available": true,
+          "unavailable_reason": null
+        },
+        "is_demo": false,
+        "data_quality": "MEDIUM",
+        "warnings": [
+          "Financial inputs are stale (oldest age 73 days); quote, statements and estimates should be refreshed.",
+          "Only FCFE data was provided; FCFE cannot substitute FCFF in the DCF."
+        ],
+        "assumptions_used": {
+          "pe_target": {
+            "low": "18",
+            "base": "20",
+            "high": "22"
+          },
+          "pe_source": "configured_fallback",
+          "pe_source_label": "Configured fallback: 18x/20x/22x (low/base/high)",
+          "ev_ebitda_multiple": {
+            "low": "18",
+            "base": "22",
+            "high": "26"
+          },
+          "ev_ebitda_source": "configured_fallback",
+          "ev_ebitda_source_label": "Configured fallback: 18x/22x/26x (low/base/high)",
+          "fcf_yield": {
+            "low": "0.055",
+            "base": "0.050",
+            "high": "0.045"
+          },
+          "fcf_yield_source": "configured_fallback",
+          "fcf_yield_source_label": "Configured fallback: 5.5%/5.0%/4.5% (low=high yield=conservative)",
+          "dcf_wacc": {
+            "low": "0.12",
+            "base": "0.10",
+            "high": "0.08"
+          },
+          "dcf_terminal_growth": {
+            "low": "0.03",
+            "base": "0.03",
+            "high": "0.04"
+          },
+          "dcf_fcf_growth": null,
+          "dcf_wacc_source": "configured_fallback",
+          "dcf_wacc_source_label": "Configured fallback: 12%/10%/8% (bear/base/bull)",
+          "dcf_terminal_growth_source": "configured_fallback",
+          "dcf_terminal_growth_source_label": "Configured fallback terminal growth",
+          "weight_pe": "0.25",
+          "weight_ev_ebitda": "0.20",
+          "weight_fcf_yield": "0.25",
+          "weight_dcf": "0.30",
+          "cashflow_group_max_weight": "0.40",
+          "growth_floor": "-0.20",
+          "growth_cap": "0.40",
+          "forecast_horizon": "ntm",
+          "driver_ebitda_margin": null,
+          "driver_capex": null,
+          "driver_capex_ratio": null,
+          "driver_nwc_change": null,
+          "driver_nwc_ratio": null,
+          "driver_net_borrowing": null,
+          "driver_da": null,
+          "driver_da_ratio": null,
+          "driver_tax_rate": null
+        },
+        "provider": null,
+        "provider_label": null,
+        "shares_basis": "ALL_CLASS_RECONCILED",
+        "shares_reconciliation": {
+          "implied_shares": 2547506225,
+          "single_class_shares": 2205128509,
+          "quarterly_bs_shares": 2548377716,
+          "annual_bs_shares": 2529638328,
+          "cap_price_cross_check": 2547506100,
+          "split_detected": false,
+          "split_factor": null,
+          "selected_source": "info.impliedSharesOutstanding",
+          "is_multi_class": true,
+          "conflict_detected": false,
+          "variance_with_cap_price": 4.9067593544349435e-08,
+          "notes": "Point-in-time common shares across all classes reconciled with market consensus."
+        },
+        "statement_basis": "TTM",
+        "annual_fallback": false,
+        "forecast_fiscal_year_end": "2026-12-31",
+        "ntm_weights": {
+          "current_fy": "0.3068",
+          "next_fy": "0.6932"
+        },
+        "forecast_horizon_effective": "ntm",
+        "growth_cap_effective": "0.40",
+        "growth_floor_effective": "-0.20",
+        "financial_bridge": {
+          "period": "ntm",
+          "forecast_start_date": "2026-09-10",
+          "forecast_end_date": "2027-09-10",
+          "as_of": "2026-09-10",
+          "currency": "USD",
+          "revenue": "290056719762",
+          "ebitda_margin": "0.4804",
+          "ebitda": "139343248174",
+          "da": "28884056235",
+          "ebit": "110459191939",
+          "tax_rate": "0.2219594401599542987717794916",
+          "nopat": "85941731536",
+          "capex": "113514379128",
+          "nwc_change": "9842360664",
+          "fcff": "-8530952021",
+          "bridge_fcff": "-8530952021",
+          "bridge_fcfe": "41603181724",
+          "identity_holds": true,
+          "identity_checks": {
+            "ebitda": true,
+            "ebit": true,
+            "nopat": true,
+            "fcff": true,
+            "fcfe": true
+          },
+          "ebitda_identity_holds": true,
+          "ebit_identity_holds": true,
+          "nopat_identity_holds": true,
+          "fcff_identity_holds": true,
+          "fcfe_identity_holds": true,
+          "reconciliation_difference": null,
+          "fcfe_reconciliation_difference": null,
+          "reconciliation_note": null,
+          "interest": "2028000000.0",
+          "after_tax_interest": "1577866255",
+          "net_borrowing": "51712000000.0",
+          "fcfe": "41603181724",
+          "dcf_forecasts": [],
+          "restrictions_note": "Financial bridge isolates operating business cash flows from non-operating items. Operating EBITDA is defined as Operating Income + D&A to isolate core operations from non-operating investment gains/losses (e.g. securities sales). Excludes stock-based compensation (SBC), operating lease capitalizations, and non-operating investment gains/losses from operating free cash flows.",
+          "drivers_source": {
+            "ebitda_margin": {
+              "type": "derived_historical",
+              "as_of": "2026-09-10",
+              "period": "TTM",
+              "description": "EBITDA margin: 48.04%"
+            },
+            "da": {
+              "type": "derived_historical",
+              "as_of": "2026-06-30",
+              "period": "TTM",
+              "description": "D&A: 28884056235 USD"
+            },
+            "tax_rate": {
+              "type": "derived_historical",
+              "as_of": "2026-06-30",
+              "period": "TTM",
+              "description": "Effective tax rate: 22.20%"
+            },
+            "capex": {
+              "type": "derived_historical",
+              "as_of": "2026-06-30",
+              "period": "TTM",
+              "description": "CapEx: 113514379128 USD"
+            },
+            "nwc_change": {
+              "type": "derived_historical",
+              "as_of": "2026-06-30",
+              "period": "TTM",
+              "description": "ΔNWC investment: 9842360664 USD (cash outflow when positive)"
+            },
+            "net_borrowing": {
+              "type": "derived_historical",
+              "as_of": "2026-06-30",
+              "period": "TTM",
+              "description": "Net debt issuance: 51712000000.0 USD"
+            }
+          }
+        }
+      },
+      "status": "ok",
+      "elapsed_seconds": 7.44,
+      "consistency": {
+        "status": "ok",
+        "reason": "DCF is unavailable; production isolation left no engine FCFF inputs",
+        "checks": [
+          {
+            "name": "unavailable_dcf_has_no_forward_fcff_inputs",
+            "passed": true,
+            "forecast_count": 0,
+            "engine_fcff_input_keys": []
+          }
+        ],
+        "errors": [],
+        "bridge_period": "ntm",
+        "bridge_forecast_range": {
+          "start": "2026-09-10",
+          "end": "2027-09-10"
+        },
+        "dcf_available": false
+      }
+    },
+    {
+      "ticker": "GOOG",
+      "provider_kind": "live",
+      "provider_class": "YFinanceProvider",
+      "is_demo": false,
+      "timeout_seconds": 25.0,
+      "raw_sources": {
+        "quote": {
+          "status": "ok",
+          "provider_method": "get_quote",
+          "payload": {
+            "price": "330.39",
+            "currency": "USD",
+            "exchange": "NMS",
+            "market": "us_market",
+            "timestamp": "2026-09-10T20:00:01",
+            "as_of": "2026-09-10",
+            "source": "Yahoo Finance live quote (GOOG)"
+          }
+        },
+        "profile": {
+          "status": "ok",
+          "provider_method": "get_company_profile",
+          "payload": {
+            "name": "Alphabet Inc.",
+            "ticker": "GOOG",
+            "diluted_shares": "12229934831",
+            "diluted_shares_source": "Yahoo Finance info.impliedSharesOutstanding (GOOG)",
+            "diluted_shares_as_of": "2026-06-30",
+            "diluted_shares_period": "PIT_Q_2026-06-30",
+            "diluted_shares_notes": "All-class common shares (12,229,934,831 shares) reconciled across multiple share classes (primary class: 5,527,000,000)",
+            "diluted_shares_is_estimated": true,
+            "diluted_shares_source_type": "derived",
+            "shares_basis": "ALL_CLASS_RECONCILED",
+            "shares_reconciliation": {
+              "implied_shares": 12229934831,
+              "single_class_shares": 5527000000,
+              "quarterly_bs_shares": 12229934831,
+              "annual_bs_shares": 12088000000,
+              "cap_price_cross_check": 12229936005,
+              "split_detected": false,
+              "split_factor": null,
+              "selected_source": "info.impliedSharesOutstanding",
+              "is_multi_class": true,
+              "conflict_detected": false,
+              "variance_with_cap_price": 9.599397022330707e-08,
+              "notes": "Point-in-time common shares across all classes reconciled with market consensus."
+            },
+            "currency": "USD",
+            "financial_currency": "USD",
+            "country": "United States",
+            "exchange": "NMS",
+            "market": "us_market",
+            "security_type": "EQUITY",
+            "sector": "Communication Services",
+            "industry": "Internet Content & Information",
+            "is_profitable": true,
+            "as_of": "2026-09-10",
+            "notes": null,
+            "source": "Yahoo Finance profile (GOOG)"
+          }
+        },
+        "balance_sheet": {
+          "status": "ok",
+          "provider_method": "get_balance_sheet",
+          "payload": {
+            "cash": "242474000000.0",
+            "total_debt": "112756000000.0",
+            "net_debt": "-129718000000.0",
+            "period": "Q_2026-06-30",
+            "as_of": "2026-06-30",
+            "source": "Yahoo Finance balance sheet (GOOG)"
+          }
+        },
+        "cash_flow": {
+          "status": "ok",
+          "provider_method": "get_cash_flow",
+          "payload": {
+            "cfo": "185675000000.0",
+            "capex": "132402000000.0",
+            "net_borrowing": "70129000000.0",
+            "has_net_borrowing": true,
+            "interest": "2252000000.0",
+            "tax_rate": "0.1839950011528090112908453599",
+            "nwc_change": "4612000000.0",
+            "da": "25237000000.0",
+            "da_period": null,
+            "da_as_of": null,
+            "da_is_fallback": null,
+            "fcfe_ttm": "123402000000.0",
+            "fcfe_ttm_source_type": "derived",
+            "fcfe_definition": "FCFE = CFO - capex + net borrowing",
+            "forward_fcfe_1y": null,
+            "forward_fcfe_1y_source_type": null,
+            "forward_fcfe_1y_period": "0y",
+            "forward_fcfe_1y_notes": null,
+            "forward_fcfe_2y": null,
+            "forward_fcfe_2y_source_type": null,
+            "forward_fcfe_2y_period": "+1y",
+            "forward_fcfe_2y_notes": null,
+            "fcff_ttm": "55110643257.40",
+            "fcff_ttm_source_type": "derived",
+            "fcff_definition": "FCFF = CFO + interest*(1-tax) - capex (unlevered firm cash flow at tax_rate=0.1839950011528090112908453599)",
+            "forward_fcff_1y": null,
+            "forward_fcff_1y_source_type": null,
+            "forward_fcff_1y_period": "0y",
+            "forward_fcff_1y_notes": null,
+            "forward_fcff_2y": null,
+            "forward_fcff_2y_source_type": null,
+            "forward_fcff_2y_period": "+1y",
+            "forward_fcff_2y_notes": null,
+            "period": "TTM",
+            "statement_basis": "TTM",
+            "annual_fallback": false,
+            "as_of": "2026-06-30",
+            "notes": "TTM quote summary",
+            "source": "Yahoo Finance cash flow statement (GOOG)"
+          }
+        },
+        "income_statement": {
+          "status": "ok",
+          "provider_method": "get_income_statement",
+          "payload": {
+            "revenue_ttm": "445867000000.0",
+            "ebitda_ttm": "172865000000.0",
+            "eps_ttm": "19.92",
+            "da": "25237000000.0",
+            "da_period": "TTM",
+            "da_as_of": "2026-06-30",
+            "da_is_fallback": false,
+            "period": "TTM",
+            "statement_basis": "TTM",
+            "annual_fallback": false,
+            "as_of": "2026-06-30",
+            "source": "Yahoo Finance income statement (GOOG)"
+          }
+        },
+        "forward_estimates": {
+          "status": "ok",
+          "provider_method": "get_forward_estimates",
+          "payload": {
+            "forward_revenue_1y": "498401688800",
+            "forward_revenue_1y_source_type": "analyst_estimate",
+            "forward_revenue_1y_period": "0y",
+            "forward_revenue_1y_notes": "Analyst consensus mean revenue for period 0y",
+            "forward_revenue_2y": "613374401270",
+            "forward_revenue_2y_source_type": "analyst_estimate",
+            "forward_revenue_2y_period": "+1y",
+            "forward_revenue_2y_notes": "Analyst consensus mean revenue for period +1y",
+            "forward_eps_1y": "20.60",
+            "forward_eps_1y_source_type": "analyst_estimate",
+            "forward_eps_1y_period": "0y",
+            "forward_eps_1y_notes": "Analyst consensus mean EPS for current fiscal year (0y); basis: share",
+            "forward_eps_1y_source": "Yahoo Finance earnings_estimate (0y) for GOOG",
+            "forward_eps_1y_currency": "USD",
+            "forward_eps_2y": "14.87",
+            "forward_eps_2y_source_type": "analyst_estimate",
+            "forward_eps_2y_period": "+1y",
+            "forward_eps_2y_notes": "Analyst consensus mean EPS for period +1y",
+            "forward_eps_2y_currency": "USD",
+            "forward_eps_basis": "share",
+            "forecast_fiscal_year_end": "2026-12-31",
+            "ntm_weights": {
+              "current_fy": "0.3068",
+              "next_fy": "0.6932"
+            },
+            "forward_ebitda_1y": null,
+            "forward_ebitda_1y_source_type": null,
+            "forward_ebitda_1y_period": null,
+            "forward_ebitda_1y_notes": "Forward EBITDA unavailable: Base statement is not an annual fiscal year statement (period=TTM); no synthetic growth extrapolation applied.",
+            "forward_ebitda_2y": null,
+            "forward_ebitda_2y_source_type": null,
+            "forward_ebitda_2y_period": null,
+            "forward_ebitda_2y_notes": "Forward EBITDA unavailable: Base statement is not an annual fiscal year statement (period=TTM); no synthetic growth extrapolation applied.",
+            "forward_fcfe_1y": null,
+            "forward_fcfe_1y_source_type": null,
+            "forward_fcfe_1y_period": "0y",
+            "forward_fcfe_1y_notes": null,
+            "forward_fcfe_2y": null,
+            "forward_fcfe_2y_source_type": null,
+            "forward_fcfe_2y_period": "+1y",
+            "forward_fcfe_2y_notes": null,
+            "forward_fcff_1y": null,
+            "forward_fcff_1y_source_type": null,
+            "forward_fcff_1y_period": "0y",
+            "forward_fcff_1y_notes": null,
+            "forward_fcff_2y": null,
+            "forward_fcff_2y_source_type": null,
+            "forward_fcff_2y_period": "+1y",
+            "forward_fcff_2y_notes": null,
+            "period_1y": "0y",
+            "period_2y": "+1y",
+            "revenue_growth": "0.23719999",
+            "as_of": "2026-09-10",
+            "source": "Yahoo Finance forward estimates (GOOG)"
+          }
+        },
+        "historical_multiples": {
+          "status": "ok",
+          "provider_method": "get_historical_multiples",
+          "payload": {
+            "historical_forward_pe": null,
+            "historical_ev_ebitda": null,
+            "period": "historical",
+            "as_of": "2026-09-10",
+            "source": "Yahoo Finance multiples (GOOG)"
+          }
+        }
+      },
+      "response": {
+        "ticker": "GOOG",
+        "company_name": "Alphabet Inc.",
+        "current_price": "330.39",
+        "currency": "USD",
+        "as_of": "2026-09-10T20:00:01",
+        "price_timestamp": "2026-09-10T20:00:01",
+        "valuations": {
+          "forward_pe": {
+            "formula": "Price = Forward EPS × Target P/E",
+            "formula_description": "Price target derived from forward EPS multiplied by a target P/E. Historical median is used when available; otherwise the configured fallback applies.",
+            "inputs": {
+              "forward_eps": "16.63",
+              "forward_eps_period": "NTM (w0=0.31, w1=0.69)",
+              "forward_eps_source": "NTM day-weighted blend: 30.7% FY1 (20.60) + 69.3% FY2 (14.87)",
+              "forward_eps_source_type": "derived",
+              "forward_eps_as_of": "2026-09-10",
+              "forward_eps_is_estimated": true,
+              "current_price": "330.39"
+            },
+            "assumptions": {
+              "pe_multiple_low": "18",
+              "pe_multiple_base": "20",
+              "pe_multiple_high": "22",
+              "pe_source": "configured_fallback",
+              "pe_source_label": "Configured fallback: 18x/20x/22x (low/base/high)",
+              "multiple_source": "fallback",
+              "forecast_horizon": "ntm"
+            },
+            "input_metrics": {
+              "current_price": {
+                "value": "330.39",
+                "unit": "USD",
+                "period": "2026-09-10",
+                "source": "Yahoo Finance live quote (GOOG)",
+                "source_type": "actual",
+                "as_of": "2026-09-10",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "diluted_shares": {
+                "value": "12229934831",
+                "unit": "shares",
+                "period": "PIT_Q_2026-06-30",
+                "source": "Yahoo Finance info.impliedSharesOutstanding (GOOG)",
+                "source_type": "derived",
+                "as_of": "2026-06-30",
+                "confidence": 0.5,
+                "is_estimated": true,
+                "notes": "All-class common shares (12,229,934,831 shares) reconciled across multiple share classes (primary class: 5,527,000,000)"
+              },
+              "cash": {
+                "value": "242474000000.0",
+                "unit": "USD",
+                "period": "Q_2026-06-30",
+                "source": "Yahoo Finance balance sheet (GOOG)",
+                "source_type": "actual",
+                "as_of": "2026-06-30",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "total_debt": {
+                "value": "112756000000.0",
+                "unit": "USD",
+                "period": "Q_2026-06-30",
+                "source": "Yahoo Finance balance sheet (GOOG)",
+                "source_type": "actual",
+                "as_of": "2026-06-30",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "net_debt": {
+                "value": "-129718000000.0",
+                "unit": "USD",
+                "period": "Q_2026-06-30",
+                "source": "Derived from total_debt - cash",
+                "source_type": "derived",
+                "as_of": "2026-06-30",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": "Derived net debt; normalize_snapshot publishes it on the snapshot."
+              },
+              "forward_eps": {
+                "value": "16.63",
+                "unit": "USD",
+                "period": "NTM (w0=0.31, w1=0.69)",
+                "source": "NTM day-weighted blend: 30.7% FY1 (20.60) + 69.3% FY2 (14.87)",
+                "source_type": "derived",
+                "as_of": "2026-09-10",
+                "confidence": 0.5,
+                "is_estimated": true,
+                "notes": "Calculated from 112/365 remaining days in fiscal year"
+              }
+            },
+            "assumption_metrics": {
+              "pe_multiple_low": {
+                "value": "18",
+                "unit": "multiple",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 18x/20x/22x (low/base/high)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "P/E low: multiple_source=fallback"
+              },
+              "pe_multiple_base": {
+                "value": "20",
+                "unit": "multiple",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 18x/20x/22x (low/base/high)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "P/E base: multiple_source=fallback"
+              },
+              "pe_multiple_high": {
+                "value": "22",
+                "unit": "multiple",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 18x/20x/22x (low/base/high)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "P/E high: multiple_source=fallback"
+              }
+            },
+            "calculation_steps": [
+              "Forward EPS = 16.63 [NTM (w0=0.31, w1=0.69); NTM day-weighted blend: 30.7% FY1 (20.60) + 69.3% FY2 (14.87); as_of=2026-09-10; estimated=True]",
+              "P/E multiples (low/base/high) = 18/20/22 [fallback; Configured fallback: 18x/20x/22x (low/base/high)]",
+              "Price (low) = 16.63 × 18 = 299.34",
+              "Price (base) = 16.63 × 20 = 332.60",
+              "Price (high) = 16.63 × 22 = 365.86"
+            ],
+            "low": {
+              "price_per_share": "299.34",
+              "upside_pct": "-0.0940",
+              "premium_discount_pct": "0.1037",
+              "intermediates": {
+                "forward_eps": "16.63",
+                "target_multiple": "18"
+              }
+            },
+            "base": {
+              "price_per_share": "332.60",
+              "upside_pct": "0.0067",
+              "premium_discount_pct": "-0.0066",
+              "intermediates": {
+                "forward_eps": "16.63",
+                "target_multiple": "20"
+              }
+            },
+            "high": {
+              "price_per_share": "365.86",
+              "upside_pct": "0.1074",
+              "premium_discount_pct": "-0.0969",
+              "intermediates": {
+                "forward_eps": "16.63",
+                "target_multiple": "22"
+              }
+            },
+            "dcf_scenarios": null,
+            "sensitivity_matrix": null,
+            "available": true,
+            "unavailable_reason": null,
+            "warnings": [],
+            "data_quality": "MEDIUM"
+          },
+          "ev_ebitda": {
+            "formula": "EV = Forward EBITDA × Multiple; Price = (EV - Net Debt) / Shares",
+            "formula_description": "EV = forward EBITDA × multiple; equity value = EV − net debt; price per share = equity value / diluted shares.",
+            "inputs": {
+              "forward_ebitda": "224129669725",
+              "forward_ebitda_period": "NTM (w0=0.31, w1=0.69)",
+              "forward_ebitda_source": "Financial driver bridge: Revenue (578100773084) × EBITDA Margin (38.77%)",
+              "forward_ebitda_source_type": "derived",
+              "forward_ebitda_as_of": "2026-09-10",
+              "current_price": "330.39",
+              "diluted_shares": "12229934831",
+              "cash": "242474000000.0",
+              "total_debt": "112756000000.0",
+              "net_debt": "-129718000000.0",
+              "market_cap": "4040648168814.09"
+            },
+            "assumptions": {
+              "multiple_low": "18",
+              "multiple_base": "22",
+              "multiple_high": "26",
+              "source": "configured_fallback",
+              "source_label": "Configured fallback: 18x/22x/26x (low/base/high)",
+              "multiple_source": "fallback"
+            },
+            "input_metrics": {
+              "current_price": {
+                "value": "330.39",
+                "unit": "USD",
+                "period": "2026-09-10",
+                "source": "Yahoo Finance live quote (GOOG)",
+                "source_type": "actual",
+                "as_of": "2026-09-10",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "diluted_shares": {
+                "value": "12229934831",
+                "unit": "shares",
+                "period": "PIT_Q_2026-06-30",
+                "source": "Yahoo Finance info.impliedSharesOutstanding (GOOG)",
+                "source_type": "derived",
+                "as_of": "2026-06-30",
+                "confidence": 0.5,
+                "is_estimated": true,
+                "notes": "All-class common shares (12,229,934,831 shares) reconciled across multiple share classes (primary class: 5,527,000,000)"
+              },
+              "cash": {
+                "value": "242474000000.0",
+                "unit": "USD",
+                "period": "Q_2026-06-30",
+                "source": "Yahoo Finance balance sheet (GOOG)",
+                "source_type": "actual",
+                "as_of": "2026-06-30",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "total_debt": {
+                "value": "112756000000.0",
+                "unit": "USD",
+                "period": "Q_2026-06-30",
+                "source": "Yahoo Finance balance sheet (GOOG)",
+                "source_type": "actual",
+                "as_of": "2026-06-30",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "net_debt": {
+                "value": "-129718000000.0",
+                "unit": "USD",
+                "period": "Q_2026-06-30",
+                "source": "Derived from total_debt - cash",
+                "source_type": "derived",
+                "as_of": "2026-06-30",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": "Derived net debt; normalize_snapshot publishes it on the snapshot."
+              },
+              "forward_ebitda": {
+                "value": "224129669725",
+                "unit": "USD",
+                "period": "NTM (w0=0.31, w1=0.69)",
+                "source": "Financial driver bridge: Revenue (578100773084) × EBITDA Margin (38.77%)",
+                "source_type": "derived",
+                "as_of": "2026-09-10",
+                "confidence": 0.85,
+                "is_estimated": true,
+                "notes": "EBITDA margin source: derived_historical"
+              },
+              "market_cap": {
+                "value": "4040648168814.09",
+                "unit": "USD",
+                "period": "valuation date",
+                "source": "Derived from current quote × diluted shares",
+                "source_type": "derived",
+                "as_of": "2026-09-10",
+                "confidence": 0.5,
+                "is_estimated": true,
+                "notes": "Market capitalization used as an exposed EV/EBITDA intermediate."
+              }
+            },
+            "assumption_metrics": {
+              "multiple_low": {
+                "value": "18",
+                "unit": "multiple",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 18x/22x/26x (low/base/high)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "low; multiple_source=fallback"
+              },
+              "multiple_base": {
+                "value": "22",
+                "unit": "multiple",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 18x/22x/26x (low/base/high)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "base; multiple_source=fallback"
+              },
+              "multiple_high": {
+                "value": "26",
+                "unit": "multiple",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 18x/22x/26x (low/base/high)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "high; multiple_source=fallback"
+              }
+            },
+            "calculation_steps": [
+              "Forward EBITDA = 224129669725 [NTM (w0=0.31, w1=0.69); Financial driver bridge: Revenue (578100773084) × EBITDA Margin (38.77%); as_of=2026-09-10; estimated=True]",
+              "Market cap = 330.39 × 12229934831 = 4040648168814.09",
+              "Net debt = total debt 112756000000.0 - cash 242474000000.0 = -129718000000.0",
+              "Multiples (low/base/high) = 18/22/26 [fallback; Configured fallback: 18x/22x/26x (low/base/high)]",
+              "[low] EV = 224129669725 × 18 = 4034334055050.00",
+              "[low] Equity = 4034334055050.00 - -129718000000.0 = 4164052055050.00",
+              "[low] Price/share = 4164052055050.00 / 12229934831 = 340.48",
+              "[base] EV = 224129669725 × 22 = 4930852733950.00",
+              "[base] Equity = 4930852733950.00 - -129718000000.0 = 5060570733950.00",
+              "[base] Price/share = 5060570733950.00 / 12229934831 = 413.79",
+              "[high] EV = 224129669725 × 26 = 5827371412850.00",
+              "[high] Equity = 5827371412850.00 - -129718000000.0 = 5957089412850.00",
+              "[high] Price/share = 5957089412850.00 / 12229934831 = 487.09"
+            ],
+            "low": {
+              "price_per_share": "340.48",
+              "upside_pct": "0.0305",
+              "premium_discount_pct": "-0.0296",
+              "intermediates": {
+                "ev": "4034334055050.00",
+                "equity_value": "4164052055050.00",
+                "net_debt": "-129718000000.0",
+                "market_cap": "4040648168814.09",
+                "multiple": "18"
+              }
+            },
+            "base": {
+              "price_per_share": "413.79",
+              "upside_pct": "0.2524",
+              "premium_discount_pct": "-0.2016",
+              "intermediates": {
+                "ev": "4930852733950.00",
+                "equity_value": "5060570733950.00",
+                "net_debt": "-129718000000.0",
+                "market_cap": "4040648168814.09",
+                "multiple": "22"
+              }
+            },
+            "high": {
+              "price_per_share": "487.09",
+              "upside_pct": "0.4743",
+              "premium_discount_pct": "-0.3217",
+              "intermediates": {
+                "ev": "5827371412850.00",
+                "equity_value": "5957089412850.00",
+                "net_debt": "-129718000000.0",
+                "market_cap": "4040648168814.09",
+                "multiple": "26"
+              }
+            },
+            "dcf_scenarios": null,
+            "sensitivity_matrix": null,
+            "available": true,
+            "unavailable_reason": null,
+            "warnings": [],
+            "data_quality": "MEDIUM"
+          },
+          "fcf_yield": {
+            "formula": "Equity Value = Forward FCFE / Yield Rate; Price = Equity / Shares",
+            "formula_description": "FCFE (equity free cash flow) divided by the target yield rate, then divided by shares. FCFF is never substituted or discounted in this model.",
+            "inputs": {
+              "forward_fcfe": "79553755174",
+              "forward_fcfe_period": "NTM (w0=0.31, w1=0.69)",
+              "forward_fcfe_source": "Financial driver bridge: FCFF (11262398431) - Interest*(1-T) (1837643257) + NetBorrowing (70129000000.0)",
+              "forward_fcfe_source_type": "derived",
+              "forward_fcfe_as_of": "2026-09-10",
+              "forward_fcfe_is_estimated": true,
+              "fcf_type": "FCFE (equity FCF, NOT FCFF)",
+              "current_price": "330.39",
+              "diluted_shares": "12229934831"
+            },
+            "assumptions": {
+              "yield_low": "0.055",
+              "yield_base": "0.050",
+              "yield_high": "0.045",
+              "source": "configured_fallback",
+              "source_label": "Configured fallback: 5.5%/5.0%/4.5% (low=high yield=conservative)",
+              "yield_source": "fallback"
+            },
+            "input_metrics": {
+              "current_price": {
+                "value": "330.39",
+                "unit": "USD",
+                "period": "2026-09-10",
+                "source": "Yahoo Finance live quote (GOOG)",
+                "source_type": "actual",
+                "as_of": "2026-09-10",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "diluted_shares": {
+                "value": "12229934831",
+                "unit": "shares",
+                "period": "PIT_Q_2026-06-30",
+                "source": "Yahoo Finance info.impliedSharesOutstanding (GOOG)",
+                "source_type": "derived",
+                "as_of": "2026-06-30",
+                "confidence": 0.5,
+                "is_estimated": true,
+                "notes": "All-class common shares (12,229,934,831 shares) reconciled across multiple share classes (primary class: 5,527,000,000)"
+              },
+              "cash": {
+                "value": "242474000000.0",
+                "unit": "USD",
+                "period": "Q_2026-06-30",
+                "source": "Yahoo Finance balance sheet (GOOG)",
+                "source_type": "actual",
+                "as_of": "2026-06-30",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "total_debt": {
+                "value": "112756000000.0",
+                "unit": "USD",
+                "period": "Q_2026-06-30",
+                "source": "Yahoo Finance balance sheet (GOOG)",
+                "source_type": "actual",
+                "as_of": "2026-06-30",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "net_debt": {
+                "value": "-129718000000.0",
+                "unit": "USD",
+                "period": "Q_2026-06-30",
+                "source": "Derived from total_debt - cash",
+                "source_type": "derived",
+                "as_of": "2026-06-30",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": "Derived net debt; normalize_snapshot publishes it on the snapshot."
+              },
+              "forward_fcfe": {
+                "value": "79553755174",
+                "unit": "USD",
+                "period": "NTM (w0=0.31, w1=0.69)",
+                "source": "Financial driver bridge: FCFF (11262398431) - Interest*(1-T) (1837643257) + NetBorrowing (70129000000.0)",
+                "source_type": "derived",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "FCFE derived from FCFF with debt cash flow adjustment."
+              }
+            },
+            "assumption_metrics": {
+              "yield_low": {
+                "value": "0.055",
+                "unit": "yield",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 5.5%/5.0%/4.5% (low=high yield=conservative)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "low; low scenario is the high-yield conservative case"
+              },
+              "yield_base": {
+                "value": "0.050",
+                "unit": "yield",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 5.5%/5.0%/4.5% (low=high yield=conservative)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "base; low scenario is the high-yield conservative case"
+              },
+              "yield_high": {
+                "value": "0.045",
+                "unit": "yield",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 5.5%/5.0%/4.5% (low=high yield=conservative)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "high; low scenario is the high-yield conservative case"
+              }
+            },
+            "calculation_steps": [
+              "IMPORTANT: Uses FCFE (equity FCF), NOT FCFF (firm FCF used by DCF)",
+              "Forward FCFE = 79553755174 [NTM (w0=0.31, w1=0.69); Financial driver bridge: FCFF (11262398431) - Interest*(1-T) (1837643257) + NetBorrowing (70129000000.0); as_of=2026-09-10; estimated=True]",
+              "Yield rates (low/base/high) = 0.055/0.050/0.045 [Configured fallback: 5.5%/5.0%/4.5% (low=high yield=conservative)]",
+              "Low valuation uses the highest yield; high valuation uses the lowest yield.",
+              "[low (high yield = conservative)] Equity value = 79553755174 / 0.055 = 1446431912254.55",
+              "[low (high yield = conservative)] Price/share = 1446431912254.55 / 12229934831 = 118.27",
+              "[base] Equity value = 79553755174 / 0.050 = 1591075103480.00",
+              "[base] Price/share = 1591075103480.00 / 12229934831 = 130.10",
+              "[high (low yield = optimistic)] Equity value = 79553755174 / 0.045 = 1767861226088.89",
+              "[high (low yield = optimistic)] Price/share = 1767861226088.89 / 12229934831 = 144.55"
+            ],
+            "low": {
+              "price_per_share": "118.27",
+              "upside_pct": "-0.6420",
+              "premium_discount_pct": "1.7935",
+              "intermediates": {
+                "equity_value": "1446431912254.55",
+                "yield_rate": "0.055",
+                "forward_fcfe": "79553755174"
+              }
+            },
+            "base": {
+              "price_per_share": "130.10",
+              "upside_pct": "-0.6062",
+              "premium_discount_pct": "1.5395",
+              "intermediates": {
+                "equity_value": "1591075103480.00",
+                "yield_rate": "0.050",
+                "forward_fcfe": "79553755174"
+              }
+            },
+            "high": {
+              "price_per_share": "144.55",
+              "upside_pct": "-0.5625",
+              "premium_discount_pct": "1.2856",
+              "intermediates": {
+                "equity_value": "1767861226088.89",
+                "yield_rate": "0.045",
+                "forward_fcfe": "79553755174"
+              }
+            },
+            "dcf_scenarios": null,
+            "sensitivity_matrix": null,
+            "available": true,
+            "unavailable_reason": null,
+            "warnings": [],
+            "data_quality": "MEDIUM"
+          },
+          "dcf": {
+            "formula": "EV = Σ FCFF_t/(1+WACC)^t + TV/(1+WACC)^5; Equity = EV − Net Debt; Price = Equity/Shares",
+            "formula_description": "Five-year FCFF DCF",
+            "inputs": {},
+            "assumptions": {},
+            "input_metrics": {},
+            "assumption_metrics": {},
+            "calculation_steps": [],
+            "low": null,
+            "base": null,
+            "high": null,
+            "dcf_scenarios": null,
+            "sensitivity_matrix": null,
+            "available": false,
+            "unavailable_reason": "No FCFF data available. FCFE cannot be substituted for FCFF in DCF.",
+            "warnings": [
+              "Only FCFE data was provided; FCFE cannot substitute FCFF in the DCF."
+            ],
+            "data_quality": "LOW"
+          }
+        },
+        "composite": {
+          "current_price": "330.39",
+          "low": "246.42",
+          "base": "283.46",
+          "high": "321.44",
+          "fair_value_low": "246.42",
+          "fair_value_base": "283.46",
+          "fair_value_high": "321.44",
+          "weights_used": {
+            "forward_pe": "0.3571",
+            "ev_ebitda": "0.2857",
+            "fcf_yield": "0.3572"
+          },
+          "selected_weights": {
+            "forward_pe": "0.25",
+            "ev_ebitda": "0.20",
+            "fcf_yield": "0.25",
+            "dcf": "0.30"
+          },
+          "effective_weights": {
+            "forward_pe": "0.3571",
+            "ev_ebitda": "0.2857",
+            "fcf_yield": "0.3572"
+          },
+          "cashflow_group_weight": "0.3572",
+          "cashflow_group_max_weight": "0.40",
+          "cashflow_sensitivity": null,
+          "cashflow_group_policy_message": null,
+          "available_models": [
+            "forward_pe",
+            "ev_ebitda",
+            "fcf_yield"
+          ],
+          "classification": "overvalued",
+          "margin_of_safety": "-0.1656",
+          "upside_downside": "-0.1420",
+          "premium_discount_pct": "0.1656",
+          "formula": "Weighted average of complete model scenario fair values",
+          "calculation_steps": [
+            "Complete models used: forward_pe, ev_ebitda, fcf_yield",
+            "Selected weights = {'forward_pe': Decimal('0.25'), 'ev_ebitda': Decimal('0.20'), 'fcf_yield': Decimal('0.25'), 'dcf': Decimal('0.30')}",
+            "Effective weights = {'forward_pe': Decimal('0.3571'), 'ev_ebitda': Decimal('0.2857'), 'fcf_yield': Decimal('0.3572')}",
+            "Cash flow group weight = 0.3572 (cap = 0.40)",
+            "Composite low = weighted low values = 246.42",
+            "Composite base = weighted base values = 283.46",
+            "Composite high = weighted high values = 321.44",
+            "MOS = (fair value base - current price) / fair value base = -0.1656",
+            "Upside = (fair value base - current price) / current price = -0.1420"
+          ],
+          "warnings": [],
+          "data_quality": "MEDIUM",
+          "available": true,
+          "unavailable_reason": null
+        },
+        "is_demo": false,
+        "data_quality": "MEDIUM",
+        "warnings": [
+          "Financial inputs are stale (oldest age 73 days); quote, statements and estimates should be refreshed.",
+          "Only FCFE data was provided; FCFE cannot substitute FCFF in the DCF."
+        ],
+        "assumptions_used": {
+          "pe_target": {
+            "low": "18",
+            "base": "20",
+            "high": "22"
+          },
+          "pe_source": "configured_fallback",
+          "pe_source_label": "Configured fallback: 18x/20x/22x (low/base/high)",
+          "ev_ebitda_multiple": {
+            "low": "18",
+            "base": "22",
+            "high": "26"
+          },
+          "ev_ebitda_source": "configured_fallback",
+          "ev_ebitda_source_label": "Configured fallback: 18x/22x/26x (low/base/high)",
+          "fcf_yield": {
+            "low": "0.055",
+            "base": "0.050",
+            "high": "0.045"
+          },
+          "fcf_yield_source": "configured_fallback",
+          "fcf_yield_source_label": "Configured fallback: 5.5%/5.0%/4.5% (low=high yield=conservative)",
+          "dcf_wacc": {
+            "low": "0.12",
+            "base": "0.10",
+            "high": "0.08"
+          },
+          "dcf_terminal_growth": {
+            "low": "0.03",
+            "base": "0.03",
+            "high": "0.04"
+          },
+          "dcf_fcf_growth": null,
+          "dcf_wacc_source": "configured_fallback",
+          "dcf_wacc_source_label": "Configured fallback: 12%/10%/8% (bear/base/bull)",
+          "dcf_terminal_growth_source": "configured_fallback",
+          "dcf_terminal_growth_source_label": "Configured fallback terminal growth",
+          "weight_pe": "0.25",
+          "weight_ev_ebitda": "0.20",
+          "weight_fcf_yield": "0.25",
+          "weight_dcf": "0.30",
+          "cashflow_group_max_weight": "0.40",
+          "growth_floor": "-0.20",
+          "growth_cap": "0.40",
+          "forecast_horizon": "ntm",
+          "driver_ebitda_margin": null,
+          "driver_capex": null,
+          "driver_capex_ratio": null,
+          "driver_nwc_change": null,
+          "driver_nwc_ratio": null,
+          "driver_net_borrowing": null,
+          "driver_da": null,
+          "driver_da_ratio": null,
+          "driver_tax_rate": null
+        },
+        "provider": null,
+        "provider_label": null,
+        "shares_basis": "ALL_CLASS_RECONCILED",
+        "shares_reconciliation": {
+          "implied_shares": 12229934831,
+          "single_class_shares": 5527000000,
+          "quarterly_bs_shares": 12229934831,
+          "annual_bs_shares": 12088000000,
+          "cap_price_cross_check": 12229936005,
+          "split_detected": false,
+          "split_factor": null,
+          "selected_source": "info.impliedSharesOutstanding",
+          "is_multi_class": true,
+          "conflict_detected": false,
+          "variance_with_cap_price": 9.599397022330707e-08,
+          "notes": "Point-in-time common shares across all classes reconciled with market consensus."
+        },
+        "statement_basis": "TTM",
+        "annual_fallback": false,
+        "forecast_fiscal_year_end": "2026-12-31",
+        "ntm_weights": {
+          "current_fy": "0.3068",
+          "next_fy": "0.6932"
+        },
+        "forecast_horizon_effective": "ntm",
+        "growth_cap_effective": "0.40",
+        "growth_floor_effective": "-0.20",
+        "financial_bridge": {
+          "period": "ntm",
+          "forecast_start_date": "2026-09-10",
+          "forecast_end_date": "2027-09-10",
+          "as_of": "2026-09-10",
+          "currency": "USD",
+          "revenue": "578100773084",
+          "ebitda_margin": "0.3877",
+          "ebitda": "224129669725",
+          "da": "32721706720",
+          "ebit": "191407963005",
+          "tax_rate": "0.1839950011528090112908453599",
+          "nopat": "156189854631",
+          "capex": "171669351080",
+          "nwc_change": "5979811840",
+          "fcff": "11262398431",
+          "bridge_fcff": "11262398431",
+          "bridge_fcfe": "79553755174",
+          "identity_holds": true,
+          "identity_checks": {
+            "ebitda": true,
+            "ebit": true,
+            "nopat": true,
+            "fcff": true,
+            "fcfe": true
+          },
+          "ebitda_identity_holds": true,
+          "ebit_identity_holds": true,
+          "nopat_identity_holds": true,
+          "fcff_identity_holds": true,
+          "fcfe_identity_holds": true,
+          "reconciliation_difference": null,
+          "fcfe_reconciliation_difference": null,
+          "reconciliation_note": null,
+          "interest": "2252000000.0",
+          "after_tax_interest": "1837643257",
+          "net_borrowing": "70129000000.0",
+          "fcfe": "79553755174",
+          "dcf_forecasts": [],
+          "restrictions_note": "Financial bridge isolates operating business cash flows from non-operating items. Operating EBITDA is defined as Operating Income + D&A to isolate core operations from non-operating investment gains/losses (e.g. securities sales). Excludes stock-based compensation (SBC), operating lease capitalizations, and non-operating investment gains/losses from operating free cash flows.",
+          "drivers_source": {
+            "ebitda_margin": {
+              "type": "derived_historical",
+              "as_of": "2026-09-10",
+              "period": "TTM",
+              "description": "EBITDA margin: 38.77%"
+            },
+            "da": {
+              "type": "derived_historical",
+              "as_of": "2026-06-30",
+              "period": "TTM",
+              "description": "D&A: 32721706720 USD"
+            },
+            "tax_rate": {
+              "type": "derived_historical",
+              "as_of": "2026-06-30",
+              "period": "TTM",
+              "description": "Effective tax rate: 18.40%"
+            },
+            "capex": {
+              "type": "derived_historical",
+              "as_of": "2026-06-30",
+              "period": "TTM",
+              "description": "CapEx: 171669351080 USD"
+            },
+            "nwc_change": {
+              "type": "derived_historical",
+              "as_of": "2026-06-30",
+              "period": "TTM",
+              "description": "ΔNWC investment: 5979811840 USD (cash outflow when positive)"
+            },
+            "net_borrowing": {
+              "type": "derived_historical",
+              "as_of": "2026-06-30",
+              "period": "TTM",
+              "description": "Net debt issuance: 70129000000.0 USD"
+            }
+          }
+        }
+      },
+      "status": "ok",
+      "elapsed_seconds": 7.39,
+      "consistency": {
+        "status": "ok",
+        "reason": "DCF is unavailable; production isolation left no engine FCFF inputs",
+        "checks": [
+          {
+            "name": "unavailable_dcf_has_no_forward_fcff_inputs",
+            "passed": true,
+            "forecast_count": 0,
+            "engine_fcff_input_keys": []
+          }
+        ],
+        "errors": [],
+        "bridge_period": "ntm",
+        "bridge_forecast_range": {
+          "start": "2026-09-10",
+          "end": "2027-09-10"
+        },
+        "dcf_available": false
+      }
+    },
+    {
+      "ticker": "NVDA",
+      "provider_kind": "live",
+      "provider_class": "YFinanceProvider",
+      "is_demo": false,
+      "timeout_seconds": 25.0,
+      "raw_sources": {
+        "quote": {
+          "status": "ok",
+          "provider_method": "get_quote",
+          "payload": {
+            "price": "218.36",
+            "currency": "USD",
+            "exchange": "NMS",
+            "market": "us_market",
+            "timestamp": "2026-09-10T20:00:00",
+            "as_of": "2026-09-10",
+            "source": "Yahoo Finance live quote (NVDA)"
+          }
+        },
+        "profile": {
+          "status": "ok",
+          "provider_method": "get_company_profile",
+          "payload": {
+            "name": "NVIDIA Corporation",
+            "ticker": "NVDA",
+            "diluted_shares": "24147000000",
+            "diluted_shares_source": "Yahoo Finance info.impliedSharesOutstanding (NVDA)",
+            "diluted_shares_as_of": "2026-07-31",
+            "diluted_shares_period": "PIT_Q_2026-07-31",
+            "diluted_shares_notes": "Common shares outstanding (24,147,000,000 shares) verified",
+            "diluted_shares_is_estimated": true,
+            "diluted_shares_source_type": "derived",
+            "shares_basis": "ALL_CLASS_RECONCILED",
+            "shares_reconciliation": {
+              "implied_shares": 24147000000,
+              "single_class_shares": 24147000000,
+              "quarterly_bs_shares": 24147000000,
+              "annual_bs_shares": 24304000000,
+              "cap_price_cross_check": 24146999111,
+              "split_detected": false,
+              "split_factor": null,
+              "selected_source": "info.impliedSharesOutstanding",
+              "is_multi_class": false,
+              "conflict_detected": false,
+              "variance_with_cap_price": 3.6816167639872446e-08,
+              "notes": "Point-in-time common shares across all classes reconciled with market consensus."
+            },
+            "currency": "USD",
+            "financial_currency": "USD",
+            "country": "United States",
+            "exchange": "NMS",
+            "market": "us_market",
+            "security_type": "EQUITY",
+            "sector": "Technology",
+            "industry": "Semiconductors",
+            "is_profitable": true,
+            "as_of": "2026-09-10",
+            "notes": null,
+            "source": "Yahoo Finance profile (NVDA)"
+          }
+        },
+        "balance_sheet": {
+          "status": "ok",
+          "provider_method": "get_balance_sheet",
+          "payload": {
+            "cash": "62469000000.0",
+            "total_debt": "38351000000.0",
+            "net_debt": "-24118000000.0",
+            "period": "Q_2026-07-31",
+            "as_of": "2026-07-31",
+            "source": "Yahoo Finance balance sheet (NVDA)"
+          }
+        },
+        "cash_flow": {
+          "status": "ok",
+          "provider_method": "get_cash_flow",
+          "payload": {
+            "cfo": "134360000000.0",
+            "capex": "7354000000.0",
+            "net_borrowing": null,
+            "has_net_borrowing": false,
+            "interest": "463000000.0",
+            "tax_rate": "0.1604612089978410752837941361",
+            "nwc_change": "40745000000.0",
+            "da": "3687000000.0",
+            "da_period": null,
+            "da_as_of": null,
+            "da_is_fallback": null,
+            "fcfe_ttm": "127006000000.0",
+            "fcfe_ttm_source_type": "derived",
+            "fcfe_definition": "FCFE = CFO - capex (approximation: net borrowing component not reported)",
+            "forward_fcfe_1y": null,
+            "forward_fcfe_1y_source_type": null,
+            "forward_fcfe_1y_period": "0y",
+            "forward_fcfe_1y_notes": null,
+            "forward_fcfe_2y": null,
+            "forward_fcfe_2y_source_type": null,
+            "forward_fcfe_2y_period": "+1y",
+            "forward_fcfe_2y_notes": null,
+            "fcff_ttm": "127394706460.23",
+            "fcff_ttm_source_type": "derived",
+            "fcff_definition": "FCFF = CFO + interest*(1-tax) - capex (unlevered firm cash flow at tax_rate=0.1604612089978410752837941361)",
+            "forward_fcff_1y": null,
+            "forward_fcff_1y_source_type": null,
+            "forward_fcff_1y_period": "0y",
+            "forward_fcff_1y_notes": null,
+            "forward_fcff_2y": null,
+            "forward_fcff_2y_source_type": null,
+            "forward_fcff_2y_period": "+1y",
+            "forward_fcff_2y_notes": null,
+            "period": "TTM",
+            "statement_basis": "TTM",
+            "annual_fallback": false,
+            "as_of": "2026-07-31",
+            "notes": "TTM quote summary",
+            "source": "Yahoo Finance cash flow statement (NVDA)"
+          }
+        },
+        "income_statement": {
+          "status": "ok",
+          "provider_method": "get_income_statement",
+          "payload": {
+            "revenue_ttm": "302969000000.0",
+            "ebitda_ttm": "201266000000.0",
+            "eps_ttm": "7.73",
+            "da": "3687000000.0",
+            "da_period": "TTM",
+            "da_as_of": "2026-07-31",
+            "da_is_fallback": false,
+            "period": "TTM",
+            "statement_basis": "TTM",
+            "annual_fallback": false,
+            "as_of": "2026-07-31",
+            "source": "Yahoo Finance income statement (NVDA)"
+          }
+        },
+        "forward_estimates": {
+          "status": "ok",
+          "provider_method": "get_forward_estimates",
+          "payload": {
+            "forward_revenue_1y": "411292753830",
+            "forward_revenue_1y_source_type": "analyst_estimate",
+            "forward_revenue_1y_period": "0y",
+            "forward_revenue_1y_notes": "Analyst consensus mean revenue for period 0y",
+            "forward_revenue_2y": "677919776510",
+            "forward_revenue_2y_source_type": "analyst_estimate",
+            "forward_revenue_2y_period": "+1y",
+            "forward_revenue_2y_notes": "Analyst consensus mean revenue for period +1y",
+            "forward_eps_1y": "9.30",
+            "forward_eps_1y_source_type": "analyst_estimate",
+            "forward_eps_1y_period": "0y",
+            "forward_eps_1y_notes": "Analyst consensus mean EPS for current fiscal year (0y); basis: share",
+            "forward_eps_1y_source": "Yahoo Finance earnings_estimate (0y) for NVDA",
+            "forward_eps_1y_currency": "USD",
+            "forward_eps_2y": "15.57",
+            "forward_eps_2y_source_type": "analyst_estimate",
+            "forward_eps_2y_period": "+1y",
+            "forward_eps_2y_notes": "Analyst consensus mean EPS for period +1y",
+            "forward_eps_2y_currency": "USD",
+            "forward_eps_basis": "share",
+            "forecast_fiscal_year_end": "2027-01-25",
+            "ntm_weights": {
+              "current_fy": "0.3753",
+              "next_fy": "0.6247"
+            },
+            "forward_ebitda_1y": null,
+            "forward_ebitda_1y_source_type": null,
+            "forward_ebitda_1y_period": null,
+            "forward_ebitda_1y_notes": "Forward EBITDA unavailable: Base statement is not an annual fiscal year statement (period=TTM); no synthetic growth extrapolation applied.",
+            "forward_ebitda_2y": null,
+            "forward_ebitda_2y_source_type": null,
+            "forward_ebitda_2y_period": null,
+            "forward_ebitda_2y_notes": "Forward EBITDA unavailable: Base statement is not an annual fiscal year statement (period=TTM); no synthetic growth extrapolation applied.",
+            "forward_fcfe_1y": null,
+            "forward_fcfe_1y_source_type": null,
+            "forward_fcfe_1y_period": "0y",
+            "forward_fcfe_1y_notes": null,
+            "forward_fcfe_2y": null,
+            "forward_fcfe_2y_source_type": null,
+            "forward_fcfe_2y_period": "+1y",
+            "forward_fcfe_2y_notes": null,
+            "forward_fcff_1y": null,
+            "forward_fcff_1y_source_type": null,
+            "forward_fcff_1y_period": "0y",
+            "forward_fcff_1y_notes": null,
+            "forward_fcff_2y": null,
+            "forward_fcff_2y_source_type": null,
+            "forward_fcff_2y_period": "+1y",
+            "forward_fcff_2y_notes": null,
+            "period_1y": "0y",
+            "period_2y": "+1y",
+            "revenue_growth": "0.90470004",
+            "as_of": "2026-09-10",
+            "source": "Yahoo Finance forward estimates (NVDA)"
+          }
+        },
+        "historical_multiples": {
+          "status": "ok",
+          "provider_method": "get_historical_multiples",
+          "payload": {
+            "historical_forward_pe": null,
+            "historical_ev_ebitda": null,
+            "period": "historical",
+            "as_of": "2026-09-10",
+            "source": "Yahoo Finance multiples (NVDA)"
+          }
+        }
+      },
+      "response": {
+        "ticker": "NVDA",
+        "company_name": "NVIDIA Corporation",
+        "current_price": "218.36",
+        "currency": "USD",
+        "as_of": "2026-09-10T20:00:00",
+        "price_timestamp": "2026-09-10T20:00:00",
+        "valuations": {
+          "forward_pe": {
+            "formula": "Price = Forward EPS × Target P/E",
+            "formula_description": "Price target derived from forward EPS multiplied by a target P/E. Historical median is used when available; otherwise the configured fallback applies.",
+            "inputs": {
+              "forward_eps": "13.22",
+              "forward_eps_period": "NTM (w0=0.38, w1=0.62)",
+              "forward_eps_source": "NTM day-weighted blend: 37.5% FY1 (9.30) + 62.5% FY2 (15.57)",
+              "forward_eps_source_type": "derived",
+              "forward_eps_as_of": "2026-09-10",
+              "forward_eps_is_estimated": true,
+              "current_price": "218.36"
+            },
+            "assumptions": {
+              "pe_multiple_low": "18",
+              "pe_multiple_base": "20",
+              "pe_multiple_high": "22",
+              "pe_source": "configured_fallback",
+              "pe_source_label": "Configured fallback: 18x/20x/22x (low/base/high)",
+              "multiple_source": "fallback",
+              "forecast_horizon": "ntm"
+            },
+            "input_metrics": {
+              "current_price": {
+                "value": "218.36",
+                "unit": "USD",
+                "period": "2026-09-10",
+                "source": "Yahoo Finance live quote (NVDA)",
+                "source_type": "actual",
+                "as_of": "2026-09-10",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "diluted_shares": {
+                "value": "24147000000",
+                "unit": "shares",
+                "period": "PIT_Q_2026-07-31",
+                "source": "Yahoo Finance info.impliedSharesOutstanding (NVDA)",
+                "source_type": "derived",
+                "as_of": "2026-07-31",
+                "confidence": 0.5,
+                "is_estimated": true,
+                "notes": "Common shares outstanding (24,147,000,000 shares) verified"
+              },
+              "cash": {
+                "value": "62469000000.0",
+                "unit": "USD",
+                "period": "Q_2026-07-31",
+                "source": "Yahoo Finance balance sheet (NVDA)",
+                "source_type": "actual",
+                "as_of": "2026-07-31",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "total_debt": {
+                "value": "38351000000.0",
+                "unit": "USD",
+                "period": "Q_2026-07-31",
+                "source": "Yahoo Finance balance sheet (NVDA)",
+                "source_type": "actual",
+                "as_of": "2026-07-31",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "net_debt": {
+                "value": "-24118000000.0",
+                "unit": "USD",
+                "period": "Q_2026-07-31",
+                "source": "Derived from total_debt - cash",
+                "source_type": "derived",
+                "as_of": "2026-07-31",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": "Derived net debt; normalize_snapshot publishes it on the snapshot."
+              },
+              "forward_eps": {
+                "value": "13.22",
+                "unit": "USD",
+                "period": "NTM (w0=0.38, w1=0.62)",
+                "source": "NTM day-weighted blend: 37.5% FY1 (9.30) + 62.5% FY2 (15.57)",
+                "source_type": "derived",
+                "as_of": "2026-09-10",
+                "confidence": 0.5,
+                "is_estimated": true,
+                "notes": "Calculated from 137/365 remaining days in fiscal year"
+              }
+            },
+            "assumption_metrics": {
+              "pe_multiple_low": {
+                "value": "18",
+                "unit": "multiple",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 18x/20x/22x (low/base/high)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "P/E low: multiple_source=fallback"
+              },
+              "pe_multiple_base": {
+                "value": "20",
+                "unit": "multiple",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 18x/20x/22x (low/base/high)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "P/E base: multiple_source=fallback"
+              },
+              "pe_multiple_high": {
+                "value": "22",
+                "unit": "multiple",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 18x/20x/22x (low/base/high)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "P/E high: multiple_source=fallback"
+              }
+            },
+            "calculation_steps": [
+              "Forward EPS = 13.22 [NTM (w0=0.38, w1=0.62); NTM day-weighted blend: 37.5% FY1 (9.30) + 62.5% FY2 (15.57); as_of=2026-09-10; estimated=True]",
+              "P/E multiples (low/base/high) = 18/20/22 [fallback; Configured fallback: 18x/20x/22x (low/base/high)]",
+              "Price (low) = 13.22 × 18 = 237.96",
+              "Price (base) = 13.22 × 20 = 264.40",
+              "Price (high) = 13.22 × 22 = 290.84"
+            ],
+            "low": {
+              "price_per_share": "237.96",
+              "upside_pct": "0.0898",
+              "premium_discount_pct": "-0.0824",
+              "intermediates": {
+                "forward_eps": "13.22",
+                "target_multiple": "18"
+              }
+            },
+            "base": {
+              "price_per_share": "264.40",
+              "upside_pct": "0.2108",
+              "premium_discount_pct": "-0.1741",
+              "intermediates": {
+                "forward_eps": "13.22",
+                "target_multiple": "20"
+              }
+            },
+            "high": {
+              "price_per_share": "290.84",
+              "upside_pct": "0.3319",
+              "premium_discount_pct": "-0.2492",
+              "intermediates": {
+                "forward_eps": "13.22",
+                "target_multiple": "22"
+              }
+            },
+            "dcf_scenarios": null,
+            "sensitivity_matrix": null,
+            "available": true,
+            "unavailable_reason": null,
+            "warnings": [],
+            "data_quality": "MEDIUM"
+          },
+          "ev_ebitda": {
+            "formula": "EV = Forward EBITDA × Multiple; Price = (EV - Net Debt) / Shares",
+            "formula_description": "EV = forward EBITDA × multiple; equity value = EV − net debt; price per share = equity value / diluted shares.",
+            "inputs": {
+              "forward_ebitda": "383868847249",
+              "forward_ebitda_period": "NTM (w0=0.38, w1=0.62)",
+              "forward_ebitda_source": "Financial driver bridge: Revenue (577854654898) × EBITDA Margin (66.43%)",
+              "forward_ebitda_source_type": "derived",
+              "forward_ebitda_as_of": "2026-09-10",
+              "current_price": "218.36",
+              "diluted_shares": "24147000000",
+              "cash": "62469000000.0",
+              "total_debt": "38351000000.0",
+              "net_debt": "-24118000000.0",
+              "market_cap": "5272738920000.00"
+            },
+            "assumptions": {
+              "multiple_low": "18",
+              "multiple_base": "22",
+              "multiple_high": "26",
+              "source": "configured_fallback",
+              "source_label": "Configured fallback: 18x/22x/26x (low/base/high)",
+              "multiple_source": "fallback"
+            },
+            "input_metrics": {
+              "current_price": {
+                "value": "218.36",
+                "unit": "USD",
+                "period": "2026-09-10",
+                "source": "Yahoo Finance live quote (NVDA)",
+                "source_type": "actual",
+                "as_of": "2026-09-10",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "diluted_shares": {
+                "value": "24147000000",
+                "unit": "shares",
+                "period": "PIT_Q_2026-07-31",
+                "source": "Yahoo Finance info.impliedSharesOutstanding (NVDA)",
+                "source_type": "derived",
+                "as_of": "2026-07-31",
+                "confidence": 0.5,
+                "is_estimated": true,
+                "notes": "Common shares outstanding (24,147,000,000 shares) verified"
+              },
+              "cash": {
+                "value": "62469000000.0",
+                "unit": "USD",
+                "period": "Q_2026-07-31",
+                "source": "Yahoo Finance balance sheet (NVDA)",
+                "source_type": "actual",
+                "as_of": "2026-07-31",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "total_debt": {
+                "value": "38351000000.0",
+                "unit": "USD",
+                "period": "Q_2026-07-31",
+                "source": "Yahoo Finance balance sheet (NVDA)",
+                "source_type": "actual",
+                "as_of": "2026-07-31",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "net_debt": {
+                "value": "-24118000000.0",
+                "unit": "USD",
+                "period": "Q_2026-07-31",
+                "source": "Derived from total_debt - cash",
+                "source_type": "derived",
+                "as_of": "2026-07-31",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": "Derived net debt; normalize_snapshot publishes it on the snapshot."
+              },
+              "forward_ebitda": {
+                "value": "383868847249",
+                "unit": "USD",
+                "period": "NTM (w0=0.38, w1=0.62)",
+                "source": "Financial driver bridge: Revenue (577854654898) × EBITDA Margin (66.43%)",
+                "source_type": "derived",
+                "as_of": "2026-09-10",
+                "confidence": 0.85,
+                "is_estimated": true,
+                "notes": "EBITDA margin source: derived_historical"
+              },
+              "market_cap": {
+                "value": "5272738920000.00",
+                "unit": "USD",
+                "period": "valuation date",
+                "source": "Derived from current quote × diluted shares",
+                "source_type": "derived",
+                "as_of": "2026-09-10",
+                "confidence": 0.5,
+                "is_estimated": true,
+                "notes": "Market capitalization used as an exposed EV/EBITDA intermediate."
+              }
+            },
+            "assumption_metrics": {
+              "multiple_low": {
+                "value": "18",
+                "unit": "multiple",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 18x/22x/26x (low/base/high)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "low; multiple_source=fallback"
+              },
+              "multiple_base": {
+                "value": "22",
+                "unit": "multiple",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 18x/22x/26x (low/base/high)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "base; multiple_source=fallback"
+              },
+              "multiple_high": {
+                "value": "26",
+                "unit": "multiple",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 18x/22x/26x (low/base/high)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-09-10",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "high; multiple_source=fallback"
+              }
+            },
+            "calculation_steps": [
+              "Forward EBITDA = 383868847249 [NTM (w0=0.38, w1=0.62); Financial driver bridge: Revenue (577854654898) × EBITDA Margin (66.43%); as_of=2026-09-10; estimated=True]",
+              "Market cap = 218.36 × 24147000000 = 5272738920000.00",
+              "Net debt = total debt 38351000000.0 - cash 62469000000.0 = -24118000000.0",
+              "Multiples (low/base/high) = 18/22/26 [fallback; Configured fallback: 18x/22x/26x (low/base/high)]",
+              "[low] EV = 383868847249 × 18 = 6909639250482.00",
+              "[low] Equity = 6909639250482.00 - -24118000000.0 = 6933757250482.00",
+              "[low] Price/share = 6933757250482.00 / 24147000000 = 287.15",
+              "[base] EV = 383868847249 × 22 = 8445114639478.00",
+              "[base] Equity = 8445114639478.00 - -24118000000.0 = 8469232639478.00",
+              "[base] Price/share = 8469232639478.00 / 24147000000 = 350.74",
+              "[high] EV = 383868847249 × 26 = 9980590028474.00",
+              "[high] Equity = 9980590028474.00 - -24118000000.0 = 10004708028474.00",
+              "[high] Price/share = 10004708028474.00 / 24147000000 = 414.33"
+            ],
+            "low": {
+              "price_per_share": "287.15",
+              "upside_pct": "0.3150",
+              "premium_discount_pct": "-0.2396",
+              "intermediates": {
+                "ev": "6909639250482.00",
+                "equity_value": "6933757250482.00",
+                "net_debt": "-24118000000.0",
+                "market_cap": "5272738920000.00",
+                "multiple": "18"
+              }
+            },
+            "base": {
+              "price_per_share": "350.74",
+              "upside_pct": "0.6062",
+              "premium_discount_pct": "-0.3774",
+              "intermediates": {
+                "ev": "8445114639478.00",
+                "equity_value": "8469232639478.00",
+                "net_debt": "-24118000000.0",
+                "market_cap": "5272738920000.00",
+                "multiple": "22"
+              }
+            },
+            "high": {
+              "price_per_share": "414.33",
+              "upside_pct": "0.8975",
+              "premium_discount_pct": "-0.4730",
+              "intermediates": {
+                "ev": "9980590028474.00",
+                "equity_value": "10004708028474.00",
+                "net_debt": "-24118000000.0",
+                "market_cap": "5272738920000.00",
+                "multiple": "26"
+              }
+            },
+            "dcf_scenarios": null,
+            "sensitivity_matrix": null,
+            "available": true,
+            "unavailable_reason": null,
+            "warnings": [],
+            "data_quality": "MEDIUM"
+          },
+          "fcf_yield": {
+            "formula": "Equity Value = Forward FCFE / Yield Rate; Price = Equity / Shares",
+            "formula_description": "FCFE (equity free cash flow) divided by the target yield rate, then divided by shares. FCFF is never substituted or discounted in this model.",
+            "inputs": {
+              "forward_fcfe": "127006000000.0",
+              "forward_fcfe_period": "TTM",
+              "forward_fcfe_source": "Yahoo Finance cash flow statement (NVDA)",
+              "forward_fcfe_source_type": "derived",
+              "forward_fcfe_as_of": "2026-07-31",
+              "forward_fcfe_is_estimated": false,
+              "fcf_type": "FCFE (equity FCF, NOT FCFF)",
+              "current_price": "218.36",
+              "diluted_shares": "24147000000"
+            },
+            "assumptions": {
+              "yield_low": "0.055",
+              "yield_base": "0.050",
+              "yield_high": "0.045",
+              "source": "configured_fallback",
+              "source_label": "Configured fallback: 5.5%/5.0%/4.5% (low=high yield=conservative)",
+              "yield_source": "fallback"
+            },
+            "input_metrics": {
+              "current_price": {
+                "value": "218.36",
+                "unit": "USD",
+                "period": "2026-09-10",
+                "source": "Yahoo Finance live quote (NVDA)",
+                "source_type": "actual",
+                "as_of": "2026-09-10",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "diluted_shares": {
+                "value": "24147000000",
+                "unit": "shares",
+                "period": "PIT_Q_2026-07-31",
+                "source": "Yahoo Finance info.impliedSharesOutstanding (NVDA)",
+                "source_type": "derived",
+                "as_of": "2026-07-31",
+                "confidence": 0.5,
+                "is_estimated": true,
+                "notes": "Common shares outstanding (24,147,000,000 shares) verified"
+              },
+              "cash": {
+                "value": "62469000000.0",
+                "unit": "USD",
+                "period": "Q_2026-07-31",
+                "source": "Yahoo Finance balance sheet (NVDA)",
+                "source_type": "actual",
+                "as_of": "2026-07-31",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "total_debt": {
+                "value": "38351000000.0",
+                "unit": "USD",
+                "period": "Q_2026-07-31",
+                "source": "Yahoo Finance balance sheet (NVDA)",
+                "source_type": "actual",
+                "as_of": "2026-07-31",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": null
+              },
+              "net_debt": {
+                "value": "-24118000000.0",
+                "unit": "USD",
+                "period": "Q_2026-07-31",
+                "source": "Derived from total_debt - cash",
+                "source_type": "derived",
+                "as_of": "2026-07-31",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": "Derived net debt; normalize_snapshot publishes it on the snapshot."
+              },
+              "forward_fcfe": {
+                "value": "127006000000.0",
+                "unit": "USD",
+                "period": "TTM",
+                "source": "Yahoo Finance cash flow statement (NVDA)",
+                "source_type": "derived",
+                "as_of": "2026-07-31",
+                "confidence": 1.0,
+                "is_estimated": false,
+                "notes": "TTM quote summary"
+              }
+            },
+            "assumption_metrics": {
+              "yield_low": {
+                "value": "0.055",
+                "unit": "yield",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 5.5%/5.0%/4.5% (low=high yield=conservative)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-07-31",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "low; low scenario is the high-yield conservative case"
+              },
+              "yield_base": {
+                "value": "0.050",
+                "unit": "yield",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 5.5%/5.0%/4.5% (low=high yield=conservative)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-07-31",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "base; low scenario is the high-yield conservative case"
+              },
+              "yield_high": {
+                "value": "0.045",
+                "unit": "yield",
+                "period": "valuation assumption",
+                "source": "Configured fallback: 5.5%/5.0%/4.5% (low=high yield=conservative)",
+                "source_type": "configured_fallback",
+                "as_of": "2026-07-31",
+                "confidence": 0.8,
+                "is_estimated": true,
+                "notes": "high; low scenario is the high-yield conservative case"
+              }
+            },
+            "calculation_steps": [
+              "IMPORTANT: Uses FCFE (equity FCF), NOT FCFF (firm FCF used by DCF)",
+              "Forward FCFE = 127006000000.0 [TTM; Yahoo Finance cash flow statement (NVDA); as_of=2026-07-31; estimated=False]",
+              "Yield rates (low/base/high) = 0.055/0.050/0.045 [Configured fallback: 5.5%/5.0%/4.5% (low=high yield=conservative)]",
+              "Low valuation uses the highest yield; high valuation uses the lowest yield.",
+              "[low (high yield = conservative)] Equity value = 127006000000.0 / 0.055 = 2309200000000.00",
+              "[low (high yield = conservative)] Price/share = 2309200000000.00 / 24147000000 = 95.63",
+              "[base] Equity value = 127006000000.0 / 0.050 = 2540120000000.00",
+              "[base] Price/share = 2540120000000.00 / 24147000000 = 105.19",
+              "[high (low yield = optimistic)] Equity value = 127006000000.0 / 0.045 = 2822355555555.56",
+              "[high (low yield = optimistic)] Price/share = 2822355555555.56 / 24147000000 = 116.88"
+            ],
+            "low": {
+              "price_per_share": "95.63",
+              "upside_pct": "-0.5621",
+              "premium_discount_pct": "1.2834",
+              "intermediates": {
+                "equity_value": "2309200000000.00",
+                "yield_rate": "0.055",
+                "forward_fcfe": "127006000000.0"
+              }
+            },
+            "base": {
+              "price_per_share": "105.19",
+              "upside_pct": "-0.5183",
+              "premium_discount_pct": "1.0759",
+              "intermediates": {
+                "equity_value": "2540120000000.00",
+                "yield_rate": "0.050",
+                "forward_fcfe": "127006000000.0"
+              }
+            },
+            "high": {
+              "price_per_share": "116.88",
+              "upside_pct": "-0.4647",
+              "premium_discount_pct": "0.8682",
+              "intermediates": {
+                "equity_value": "2822355555555.56",
+                "yield_rate": "0.045",
+                "forward_fcfe": "127006000000.0"
+              }
+            },
+            "dcf_scenarios": null,
+            "sensitivity_matrix": null,
+            "available": true,
+            "unavailable_reason": null,
+            "warnings": [
+              "Using TTM FCFE as a forward proxy because no forward FCFE estimate is available"
+            ],
+            "data_quality": "HIGH"
+          },
+          "dcf": {
+            "formula": "EV = Σ FCFF_t/(1+WACC)^t + TV/(1+WACC)^5; Equity = EV − Net Debt; Price = Equity/Shares",
+            "formula_description": "Five-year FCFF DCF",
+            "inputs": {},
+            "assumptions": {},
+            "input_metrics": {},
+            "assumption_metrics": {},
+            "calculation_steps": [],
+            "low": null,
+            "base": null,
+            "high": null,
+            "dcf_scenarios": null,
+            "sensitivity_matrix": null,
+            "available": false,
+            "unavailable_reason": "No FCFF data available. FCFE cannot be substituted for FCFF in DCF.",
+            "warnings": [
+              "Only FCFE data was provided; FCFE cannot substitute FCFF in the DCF."
+            ],
+            "data_quality": "LOW"
+          }
+        },
+        "composite": {
+          "current_price": "218.36",
+          "low": "201.17",
+          "base": "232.20",
+          "high": "263.98",
+          "fair_value_low": "201.17",
+          "fair_value_base": "232.20",
+          "fair_value_high": "263.98",
+          "weights_used": {
+            "forward_pe": "0.3571",
+            "ev_ebitda": "0.2857",
+            "fcf_yield": "0.3572"
+          },
+          "selected_weights": {
+            "forward_pe": "0.25",
+            "ev_ebitda": "0.20",
+            "fcf_yield": "0.25",
+            "dcf": "0.30"
+          },
+          "effective_weights": {
+            "forward_pe": "0.3571",
+            "ev_ebitda": "0.2857",
+            "fcf_yield": "0.3572"
+          },
+          "cashflow_group_weight": "0.3572",
+          "cashflow_group_max_weight": "0.40",
+          "cashflow_sensitivity": null,
+          "cashflow_group_policy_message": null,
+          "available_models": [
+            "forward_pe",
+            "ev_ebitda",
+            "fcf_yield"
+          ],
+          "classification": "slightly_undervalued",
+          "margin_of_safety": "0.0596",
+          "upside_downside": "0.0634",
+          "premium_discount_pct": "-0.0596",
+          "formula": "Weighted average of complete model scenario fair values",
+          "calculation_steps": [
+            "Complete models used: forward_pe, ev_ebitda, fcf_yield",
+            "Selected weights = {'forward_pe': Decimal('0.25'), 'ev_ebitda': Decimal('0.20'), 'fcf_yield': Decimal('0.25'), 'dcf': Decimal('0.30')}",
+            "Effective weights = {'forward_pe': Decimal('0.3571'), 'ev_ebitda': Decimal('0.2857'), 'fcf_yield': Decimal('0.3572')}",
+            "Cash flow group weight = 0.3572 (cap = 0.40)",
+            "Composite low = weighted low values = 201.17",
+            "Composite base = weighted base values = 232.20",
+            "Composite high = weighted high values = 263.98",
+            "MOS = (fair value base - current price) / fair value base = 0.0596",
+            "Upside = (fair value base - current price) / current price = 0.0634"
+          ],
+          "warnings": [],
+          "data_quality": "MEDIUM",
+          "available": true,
+          "unavailable_reason": null
+        },
+        "is_demo": false,
+        "data_quality": "MEDIUM",
+        "warnings": [
+          "Financial inputs are stale (oldest age 42 days); quote, statements and estimates should be refreshed.",
+          "Using TTM FCFE as a forward proxy because no forward FCFE estimate is available",
+          "Only FCFE data was provided; FCFE cannot substitute FCFF in the DCF."
+        ],
+        "assumptions_used": {
+          "pe_target": {
+            "low": "18",
+            "base": "20",
+            "high": "22"
+          },
+          "pe_source": "configured_fallback",
+          "pe_source_label": "Configured fallback: 18x/20x/22x (low/base/high)",
+          "ev_ebitda_multiple": {
+            "low": "18",
+            "base": "22",
+            "high": "26"
+          },
+          "ev_ebitda_source": "configured_fallback",
+          "ev_ebitda_source_label": "Configured fallback: 18x/22x/26x (low/base/high)",
+          "fcf_yield": {
+            "low": "0.055",
+            "base": "0.050",
+            "high": "0.045"
+          },
+          "fcf_yield_source": "configured_fallback",
+          "fcf_yield_source_label": "Configured fallback: 5.5%/5.0%/4.5% (low=high yield=conservative)",
+          "dcf_wacc": {
+            "low": "0.12",
+            "base": "0.10",
+            "high": "0.08"
+          },
+          "dcf_terminal_growth": {
+            "low": "0.03",
+            "base": "0.03",
+            "high": "0.04"
+          },
+          "dcf_fcf_growth": null,
+          "dcf_wacc_source": "configured_fallback",
+          "dcf_wacc_source_label": "Configured fallback: 12%/10%/8% (bear/base/bull)",
+          "dcf_terminal_growth_source": "configured_fallback",
+          "dcf_terminal_growth_source_label": "Configured fallback terminal growth",
+          "weight_pe": "0.25",
+          "weight_ev_ebitda": "0.20",
+          "weight_fcf_yield": "0.25",
+          "weight_dcf": "0.30",
+          "cashflow_group_max_weight": "0.40",
+          "growth_floor": "-0.20",
+          "growth_cap": "0.40",
+          "forecast_horizon": "ntm",
+          "driver_ebitda_margin": null,
+          "driver_capex": null,
+          "driver_capex_ratio": null,
+          "driver_nwc_change": null,
+          "driver_nwc_ratio": null,
+          "driver_net_borrowing": null,
+          "driver_da": null,
+          "driver_da_ratio": null,
+          "driver_tax_rate": null
+        },
+        "provider": null,
+        "provider_label": null,
+        "shares_basis": "ALL_CLASS_RECONCILED",
+        "shares_reconciliation": {
+          "implied_shares": 24147000000,
+          "single_class_shares": 24147000000,
+          "quarterly_bs_shares": 24147000000,
+          "annual_bs_shares": 24304000000,
+          "cap_price_cross_check": 24146999111,
+          "split_detected": false,
+          "split_factor": null,
+          "selected_source": "info.impliedSharesOutstanding",
+          "is_multi_class": false,
+          "conflict_detected": false,
+          "variance_with_cap_price": 3.6816167639872446e-08,
+          "notes": "Point-in-time common shares across all classes reconciled with market consensus."
+        },
+        "statement_basis": "TTM",
+        "annual_fallback": false,
+        "forecast_fiscal_year_end": "2027-01-25",
+        "ntm_weights": {
+          "current_fy": "0.3753",
+          "next_fy": "0.6247"
+        },
+        "forecast_horizon_effective": "ntm",
+        "growth_cap_effective": "0.40",
+        "growth_floor_effective": "-0.20",
+        "financial_bridge": {
+          "period": "ntm",
+          "forecast_start_date": "2026-09-10",
+          "forecast_end_date": "2027-09-10",
+          "as_of": "2026-09-10",
+          "currency": "USD",
+          "revenue": "577854654898",
+          "ebitda_margin": "0.6643",
+          "ebitda": "383868847249",
+          "da": "7032237993",
+          "ebit": "376836609256",
+          "tax_rate": "0.1604612089978410752837941361",
+          "nopat": "316368951340",
+          "capex": "14026329863",
+          "nwc_change": "77713191494",
+          "fcff": "231661667976",
+          "bridge_fcff": "231661667976",
+          "bridge_fcfe": null,
+          "identity_holds": null,
+          "identity_checks": {
+            "ebitda": true,
+            "ebit": true,
+            "nopat": true,
+            "fcff": true,
+            "fcfe": null
+          },
+          "ebitda_identity_holds": true,
+          "ebit_identity_holds": true,
+          "nopat_identity_holds": true,
+          "fcff_identity_holds": true,
+          "fcfe_identity_holds": null,
+          "reconciliation_difference": null,
+          "fcfe_reconciliation_difference": null,
+          "reconciliation_note": "Accounting identities cannot be fully verified because one or more driver inputs are unavailable.",
+          "interest": "463000000.0",
+          "after_tax_interest": "388706460",
+          "net_borrowing": null,
+          "fcfe": null,
+          "dcf_forecasts": [],
+          "restrictions_note": "Financial bridge isolates operating business cash flows from non-operating items. Operating EBITDA is defined as Operating Income + D&A to isolate core operations from non-operating investment gains/losses (e.g. securities sales). Excludes stock-based compensation (SBC), operating lease capitalizations, and non-operating investment gains/losses from operating free cash flows.",
+          "drivers_source": {
+            "ebitda_margin": {
+              "type": "derived_historical",
+              "as_of": "2026-09-10",
+              "period": "TTM",
+              "description": "EBITDA margin: 66.43%"
+            },
+            "da": {
+              "type": "derived_historical",
+              "as_of": "2026-07-31",
+              "period": "TTM",
+              "description": "D&A: 7032237993 USD"
+            },
+            "tax_rate": {
+              "type": "derived_historical",
+              "as_of": "2026-07-31",
+              "period": "TTM",
+              "description": "Effective tax rate: 16.05%"
+            },
+            "capex": {
+              "type": "derived_historical",
+              "as_of": "2026-07-31",
+              "period": "TTM",
+              "description": "CapEx: 14026329863 USD"
+            },
+            "nwc_change": {
+              "type": "derived_historical",
+              "as_of": "2026-07-31",
+              "period": "TTM",
+              "description": "ΔNWC investment: 77713191494 USD (cash outflow when positive)"
+            },
+            "net_borrowing": {
+              "type": "derived_historical",
+              "as_of": "2026-09-10",
+              "period": "TTM",
+              "description": "N/A"
+            }
+          }
+        }
+      },
+      "status": "ok",
+      "elapsed_seconds": 6.94,
+      "consistency": {
+        "status": "ok",
+        "reason": "DCF is unavailable; production isolation left no engine FCFF inputs",
+        "checks": [
+          {
+            "name": "unavailable_dcf_has_no_forward_fcff_inputs",
+            "passed": true,
+            "forecast_count": 0,
+            "engine_fcff_input_keys": []
+          }
+        ],
+        "errors": [],
+        "bridge_period": "ntm",
+        "bridge_forecast_range": {
+          "start": "2026-09-10",
+          "end": "2027-09-10"
+        },
+        "dcf_available": false
+      }
+    }
+  ],
+  "overall_status": "ok"
+}

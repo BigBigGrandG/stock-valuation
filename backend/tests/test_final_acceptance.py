@@ -507,13 +507,19 @@ def test_june_fiscal_year_end_alignment():
         )
 
         est = provider.get_forward_estimates("MSFTCO")
-        assert est["forward_ebitda_1y"] == Decimal("114000.00")
-        assert "FY2025E" in est["forward_ebitda_1y_notes"]
-        assert "FY2024" in est["forward_ebitda_1y_notes"]
+        # No independent analyst EBITDA consensus exists in this fixture;
+        # fiscal-date alignment is not permission to synthesize EBITDA from
+        # a revenue-growth rate in the provider layer.
+        assert est["forward_ebitda_1y"] is None
+        assert est["forward_ebitda_1y_source_type"] is None
+        assert "independent analyst" in est["forward_ebitda_1y_notes"]
 
         cf = provider.get_cash_flow("MSFTCO")
-        assert cf["forward_fcfe_1y"] == Decimal("68400.00")
-        assert "FY2025E" in cf["forward_fcfe_1y_notes"]
+        # Issue 01 R2 contract: provider does not synthesize forward cash flow via (1 + g).
+        # Forward cash flows are derived in projections layer via financial driver bridge or direct analyst estimates.
+        assert cf["forward_fcfe_1y"] is None
+        assert cf["cfo"] == Decimal("80000.0")
+        assert cf["capex"] == Decimal("20000.0")
 
 
 def test_january_floating_fiscal_year_end_alignment():
@@ -550,8 +556,9 @@ def test_january_floating_fiscal_year_end_alignment():
         )
 
         est = provider.get_forward_estimates("NVDACO")
-        assert est["forward_ebitda_1y"] == Decimal("62500.00")
-        assert "FY2026E" in est["forward_ebitda_1y_notes"]
+        assert est["forward_ebitda_1y"] is None
+        assert est["forward_ebitda_1y_source_type"] is None
+        assert "independent analyst" in est["forward_ebitda_1y_notes"]
 
 
 def test_same_year_date_mismatch_disables_forward_forecasts():
@@ -671,11 +678,11 @@ def test_summary_forward_eps_label_isolation():
         assert est["forward_eps_1y"] == Decimal("5.50")
         assert est["forward_eps_1y_period"] == "forward_1y"
 
-        # Revenue-derived EBITDA has its OWN independent period (0y), NOT forward_1y!
-        assert est["forward_ebitda_1y"] == Decimal("1150.00")
-        assert est["forward_ebitda_1y_period"] == "0y"
-        assert "FY2025E" in est["forward_ebitda_1y_notes"]
-        assert est["forward_ebitda_1y_period"] != est["forward_eps_1y_period"]
+        # EBITDA remains unavailable rather than inheriting the EPS fallback
+        # label or a synthetic revenue-growth projection.
+        assert est["forward_ebitda_1y"] is None
+        assert est["forward_ebitda_1y_period"] is None
+        assert "independent analyst" in est["forward_ebitda_1y_notes"]
 
 
 # ======================================================================

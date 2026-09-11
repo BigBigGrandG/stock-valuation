@@ -67,10 +67,10 @@ def _metric(val, unit="USD", period="FY2024", source="test", source_type=SourceT
 
 
 # ----------------------------------------------------------------------
-# 1. Missing cash/debt: disable EV/EBITDA & DCF, preserve Forward P/E & FCF yield
+# 1. Missing cash/debt: disable EV/EBITDA & DCF, preserve Forward P/E
 # ----------------------------------------------------------------------
 def test_missing_cash_or_debt_disables_ev_and_dcf_preserves_pe_and_fcf():
-    """Missing cash or debt leaves EV/EBITDA and DCF unavailable, preserving PE and FCF yield."""
+    """Missing cash or debt leaves EV/EBITDA and DCF unavailable; PE remains independent."""
     snapshot = CompanyFinancialSnapshot(
         ticker="NOCASH",
         company_name="No Cash Corp",
@@ -95,9 +95,10 @@ def test_missing_cash_or_debt_disables_ev_and_dcf_preserves_pe_and_fcf():
     assert results["forward_pe"].available is True
     assert results["forward_pe"].base.price_per_share > Decimal("0")
 
-    # FCF Yield does not need cash or debt:
-    assert results["fcf_yield"].available is True
-    assert results["fcf_yield"].base.price_per_share > Decimal("0")
+    # Non-consensus FCFE is intentionally isolated from the missing bridge
+    # drivers; a raw derived value must not bypass the fail-closed path.
+    assert results["fcf_yield"].available is False
+    assert "forward fcfe" in results["fcf_yield"].unavailable_reason.lower()
 
     # EV/EBITDA requires net debt:
     assert results["ev_ebitda"].available is False
@@ -107,7 +108,7 @@ def test_missing_cash_or_debt_disables_ev_and_dcf_preserves_pe_and_fcf():
     assert results["dcf"].available is False
     assert "cash and total debt are required" in results["dcf"].unavailable_reason.lower()
 
-    # Composite runs using the available models (PE and FCF yield):
+    # Composite runs using the one independent available model (PE):
     comp = run_composite(
         snapshot.current_price.value,
         results["forward_pe"],
@@ -117,7 +118,7 @@ def test_missing_cash_or_debt_disables_ev_and_dcf_preserves_pe_and_fcf():
         DEFAULT_ASSUMPTIONS,
     )
     assert comp.available is True
-    assert sorted(comp.available_models) == ["fcf_yield", "forward_pe"]
+    assert sorted(comp.available_models) == ["forward_pe"]
 
 
 def test_yfinance_provider_does_not_zero_default_missing_cash_or_debt():
@@ -283,7 +284,7 @@ def test_statement_period_metadata_accurate():
 # 4. Derived EBITDA / FCFE / FCFF carry source_type derived, not analyst_estimate
 # ----------------------------------------------------------------------
 def test_derived_forward_metrics_provenance_and_periods():
-    """Forward EBITDA, FCFE, FCFF must carry source_type derived, formula notes, and 0y/+1y periods."""
+    """Provider leaves forward EBITDA/FCF unavailable when no independent consensus exists."""
     provider = YFinanceProvider()
 
     ee_df = pd.DataFrame(
@@ -328,20 +329,17 @@ def test_derived_forward_metrics_provenance_and_periods():
         assert est["forward_eps_2y_source_type"] == "analyst_estimate"
         assert est["forward_eps_2y_period"] == "+1y"
 
-        # Forward EBITDA is derived:
-        assert est["forward_ebitda_1y_source_type"] == "derived"
-        assert est["forward_ebitda_1y_period"] == "0y"
-        assert "raw_growth" in est["forward_ebitda_1y_notes"]
-        assert "capped_growth" in est["forward_ebitda_1y_notes"]
-        assert "formula=" in est["forward_ebitda_1y_notes"]
+        # Forward EBITDA is not synthesized from EBITDA * (1 + growth).
+        assert est["forward_ebitda_1y"] is None
+        assert est["forward_ebitda_1y_source_type"] is None
+        assert est["forward_ebitda_1y_period"] is None
+        assert "independent analyst" in est["forward_ebitda_1y_notes"]
 
-        # Forward FCFE is derived:
-        assert est["forward_fcfe_1y_source_type"] == "derived"
-        assert est["forward_fcfe_1y_period"] == "0y"
-
-        # Forward FCFF is derived:
-        assert est["forward_fcff_1y_source_type"] == "derived"
-        assert est["forward_fcff_1y_period"] == "0y"
+        # Issue 01 R2 contract: provider does not synthesize forward cash flow via (1 + g).
+        # Provider returns None for forward cash flows when no direct analyst consensus exists;
+        # projections are derived via independent financial driver bridge.
+        assert est["forward_fcfe_1y"] is None
+        assert est["forward_fcff_1y"] is None
 
 
 def test_normalizer_propagates_derived_provenance_to_snapshot():

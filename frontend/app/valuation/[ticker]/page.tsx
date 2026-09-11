@@ -54,6 +54,12 @@ const EMPTY_FORM: OverrideForm = {
   weight_ev_ebitda: "",
   weight_fcf_yield: "",
   weight_dcf: "",
+  driver_ebitda_margin: "",
+  driver_capex: "",
+  driver_nwc_change: "",
+  driver_net_borrowing: "",
+  driver_da: "",
+  driver_tax_rate: "",
 };
 
 const MODEL_KEYS = ["forward_pe", "ev_ebitda", "fcf_yield", "dcf"] as const;
@@ -426,6 +432,179 @@ function ModelCard({
   );
 }
 
+function FinancialBridgeCard({
+  bridge,
+  currency,
+}: {
+  bridge: NonNullable<ValuationResponse["financial_bridge"]>;
+  currency: string;
+}) {
+  const symbol = currency === "USD" ? "$" : `${currency} `;
+  const src = bridge.drivers_source ?? {};
+
+  const getSourceDesc = (key: string, fallback: string): string => {
+    const item = src[key];
+    if (!item) return fallback;
+    if (typeof item === "string") {
+      return item === "user_override" ? "用户覆盖" : fallback;
+    }
+    const typeLabel = item.type === "user_override" ? "用户覆盖" : item.type === "consensus_implied" ? "分析师一致预期倒求" : fallback;
+    const periodLabel = item.period ? ` · ${item.period}` : "";
+    return `${typeLabel}${periodLabel}`;
+  };
+
+  const identityLabel = bridge.identity_holds === true
+    ? "五项恒等式已验证"
+    : bridge.identity_holds === false
+      ? "存在对账差异"
+      : "证据不足，无法完整验证";
+  const identityColor = bridge.identity_holds === true
+    ? "#10b981"
+    : bridge.identity_holds === false
+      ? "#f59e0b"
+      : "#94a3b8";
+  const identityChecks = bridge.identity_checks ?? {};
+  const identityCheckLabels: Record<string, string> = {
+    ebitda: "EBITDA",
+    ebit: "EBIT",
+    nopat: "NOPAT",
+    fcff: "FCFF",
+    fcfe: "FCFE",
+  };
+
+  return (
+    <article className="model-card financial-bridge-card" style={{ marginBottom: "1.5rem" }}>
+      <div className="model-card-header">
+        <div>
+          <div className="model-title-row">
+            <h3>前瞻财务驱动与现金流对账桥接 (Financial Driver Bridge)</h3>
+            <span className="quality-badge quality-high">{bridge.period ? bridge.period.toUpperCase() : "NTM"}</span>
+          </div>
+          <p>
+            基于前瞻收入与细分驱动推导 EBITDA、FCFF 与 FCFE，满足会计恒等式对账，杜绝粗暴历史外推。
+            {bridge.forecast_start_date && bridge.forecast_end_date && (
+              <span style={{ display: "block", marginTop: "0.25rem", fontSize: "0.75rem", opacity: 0.8 }}>
+                预测区间：{bridge.forecast_start_date} 至 {bridge.forecast_end_date} · 数据基准日：{bridge.as_of ?? "—"}
+              </span>
+            )}
+          </p>
+        </div>
+      </div>
+      <div
+        data-testid="financial-bridge-identity"
+        style={{ margin: "0.75rem 0.5rem 0", padding: "0.65rem 0.75rem", border: `1px solid ${identityColor}`, borderRadius: "6px", color: identityColor }}
+      >
+        <strong>对账状态：{identityLabel}</strong>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginTop: "0.35rem", fontSize: "0.75rem" }}>
+          {Object.entries(identityCheckLabels).map(([key, label]) => {
+            const value = identityChecks[key];
+            return <span key={key}>{label}: {value === true ? "通过" : value === false ? "差异" : "未验证"}</span>;
+          })}
+        </div>
+      </div>
+      <div className="provenance-table-wrap">
+        <div className="provenance-list">
+          {bridge.revenue !== undefined && (
+            <div className="provenance-row">
+              <span className="provenance-name">预测营业收入 (Revenue)</span>
+              <strong>{symbol}{Number(bridge.revenue).toLocaleString()}</strong>
+              <small>分析师一致预期 / NTM 权重推导</small>
+            </div>
+          )}
+          {bridge.ebitda_margin !== undefined && (
+            <div className="provenance-row">
+              <span className="provenance-name">EBITDA 利润率 (Margin)</span>
+              <strong>{(Number(bridge.ebitda_margin) * 100).toFixed(2)}%</strong>
+              <small>{getSourceDesc("ebitda_margin", "历史同口径延续")}</small>
+            </div>
+          )}
+          {bridge.ebitda !== undefined && (
+            <div className="provenance-row">
+              <span className="provenance-name">前瞻 EBITDA</span>
+              <strong>{symbol}{Number(bridge.ebitda).toLocaleString()}</strong>
+              <small>Revenue × EBITDA Margin</small>
+            </div>
+          )}
+          {bridge.da !== undefined && (
+            <div className="provenance-row">
+              <span className="provenance-name">折旧与摊销 (D&A)</span>
+              <strong>{symbol}{Number(bridge.da).toLocaleString()}</strong>
+              <small>{getSourceDesc("da", "历史财报比例延续")}</small>
+            </div>
+          )}
+          {bridge.ebit !== undefined && (
+            <div className="provenance-row">
+              <span className="provenance-name">息税前利润 (EBIT)</span>
+              <strong>{symbol}{Number(bridge.ebit).toLocaleString()}</strong>
+              <small>EBITDA − D&A</small>
+            </div>
+          )}
+          {bridge.tax_rate !== undefined && (
+            <div className="provenance-row">
+              <span className="provenance-name">有效税率 (Tax Rate)</span>
+              <strong>{(Number(bridge.tax_rate) * 100).toFixed(1)}%</strong>
+              <small>{getSourceDesc("tax_rate", "法定/历史实际税率")}</small>
+            </div>
+          )}
+          {bridge.nopat !== undefined && (
+            <div className="provenance-row">
+              <span className="provenance-name">税后经营净利润 (NOPAT)</span>
+              <strong>{symbol}{Number(bridge.nopat).toLocaleString()}</strong>
+              <small>EBIT × (1 − Tax Rate)</small>
+            </div>
+          )}
+          {bridge.capex !== undefined && (
+            <div className="provenance-row">
+              <span className="provenance-name">资本开支 (CapEx)</span>
+              <strong>{symbol}{Number(bridge.capex).toLocaleString()}</strong>
+              <small>{getSourceDesc("capex", "历史资本开支延续")}</small>
+            </div>
+          )}
+          {bridge.nwc_change !== undefined && (
+            <div className="provenance-row">
+              <span className="provenance-name">营运资本变动 (ΔNWC)</span>
+              <strong>{symbol}{Number(bridge.nwc_change).toLocaleString()}</strong>
+              <small>{getSourceDesc("nwc_change", "历史营运资本变动")}</small>
+            </div>
+          )}
+          {bridge.fcff !== undefined && (
+            <div className="provenance-row" style={{ backgroundColor: "rgba(99, 102, 241, 0.15)", borderRadius: "4px", padding: "6px" }}>
+              <span className="provenance-name" style={{ fontWeight: 600 }}>企业自由现金流 (FCFF)</span>
+              <strong>{symbol}{Number(bridge.fcff).toLocaleString()}</strong>
+              <small style={{ fontWeight: 500 }}>
+                {bridge.fcff_identity_holds === false && bridge.reconciliation_difference !== undefined
+                  ? `分析师一致预期 (细分驱动推导值: ${bridge.bridge_fcff !== undefined ? `${symbol}${Number(bridge.bridge_fcff).toLocaleString()}` : "不可用"}，对账差额: ${symbol}${Number(bridge.reconciliation_difference).toLocaleString()})`
+                  : "NOPAT + D&A − CapEx − ΔNWC (用于 DCF 模型)"}
+              </small>
+            </div>
+          )}
+          {bridge.fcfe !== undefined && (
+            <div className="provenance-row" style={{ backgroundColor: "rgba(16, 185, 129, 0.15)", borderRadius: "4px", padding: "6px" }}>
+              <span className="provenance-name" style={{ fontWeight: 600 }}>股权自由现金流 (FCFE)</span>
+              <strong>{symbol}{Number(bridge.fcfe).toLocaleString()}</strong>
+              <small style={{ fontWeight: 500 }}>
+                {bridge.fcfe_identity_holds === false && bridge.fcfe_reconciliation_difference !== undefined
+                  ? `FCFF − 税后利息 + 净借款 · 对账差额: ${symbol}${Number(bridge.fcfe_reconciliation_difference).toLocaleString()}`
+                  : "FCFF − 税后利息 + 净借款 (用于 FCF Yield 模型)"}
+              </small>
+            </div>
+          )}
+        </div>
+      </div>
+      {bridge.reconciliation_note && (
+        <div style={{ marginTop: "0.5rem", fontSize: "0.75rem", color: "#f59e0b", padding: "0 0.5rem" }}>
+          ⚠️ {bridge.reconciliation_note}
+        </div>
+      )}
+      {bridge.restrictions_note && (
+        <div style={{ marginTop: "0.5rem", fontSize: "0.75rem", opacity: 0.75, fontStyle: "italic", padding: "0 0.5rem" }}>
+          ℹ {bridge.restrictions_note}
+        </div>
+      )}
+    </article>
+  );
+}
+
 function buildOverrides(form: OverrideForm): { request?: OverrideRequest; error?: string } {
   const fields: Array<[string, string | undefined]> = [
     ["P/E 基准", form.pe_base],
@@ -472,6 +651,25 @@ function buildOverrides(form: OverrideForm): { request?: OverrideRequest; error?
   if (form.forecast_horizon) {
     request.forecast_horizon = form.forecast_horizon;
   }
+
+  const driverEntries: Array<[string, string | undefined, keyof NonNullable<OverrideRequest["drivers"]>]> = [
+    ["EBITDA 利润率", form.driver_ebitda_margin, "ebitda_margin"],
+    ["资本开支", form.driver_capex, "capex"],
+    ["营运资本变动", form.driver_nwc_change, "nwc_change"],
+    ["净借款增加", form.driver_net_borrowing, "net_borrowing"],
+    ["折旧与摊销", form.driver_da, "da"],
+    ["预测税率", form.driver_tax_rate, "tax_rate"],
+  ];
+  const drivers: NonNullable<OverrideRequest["drivers"]> = {};
+  for (const [label, raw, fieldKey] of driverEntries) {
+    if (!raw) continue;
+    const value = raw.trim();
+    if (!value) continue;
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return { error: `${label} 必须是有限数字。` };
+    drivers[fieldKey] = parsed;
+  }
+  if (Object.keys(drivers).length > 0) request.drivers = drivers;
 
   return { request };
 }
@@ -1015,6 +1213,74 @@ export default function ValuationPage() {
                         />
                         <small>现金流组受 40% 上限保护</small>
                       </label>
+
+                      <div className="col-span-full border-t border-slate-800 pt-3 mt-2">
+                        <span className="text-xs font-semibold text-emerald-300 block mb-2">
+                          📊 财务驱动参数覆盖 (Financial Drivers)
+                        </span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                          <label>
+                            <span>EBITDA 利润率 (小数)</span>
+                            <input
+                              value={form.driver_ebitda_margin || ""}
+                              onChange={(e) => updateField("driver_ebitda_margin", e.target.value)}
+                              placeholder="例如 0.45"
+                              inputMode="decimal"
+                            />
+                            <small>影响前瞻 EBITDA 与 NOPAT</small>
+                          </label>
+                          <label>
+                            <span>资本开支 CapEx (金额)</span>
+                            <input
+                              value={form.driver_capex || ""}
+                              onChange={(e) => updateField("driver_capex", e.target.value)}
+                              placeholder="例如 3000000000"
+                              inputMode="decimal"
+                            />
+                            <small>直接扣减 FCFF 与 FCFE</small>
+                          </label>
+                          <label>
+                            <span>营运资本变动 ΔNWC (金额)</span>
+                            <input
+                              value={form.driver_nwc_change || ""}
+                              onChange={(e) => updateField("driver_nwc_change", e.target.value)}
+                              placeholder="例如 500000000"
+                              inputMode="decimal"
+                            />
+                            <small>增加(+)扣减自由现金流</small>
+                          </label>
+                          <label>
+                            <span>折旧与摊销 D&A (金额)</span>
+                            <input
+                              value={form.driver_da || ""}
+                              onChange={(e) => updateField("driver_da", e.target.value)}
+                              placeholder="例如 4000000000"
+                              inputMode="decimal"
+                            />
+                            <small>影响 EBIT 与 FCFF 加回</small>
+                          </label>
+                          <label>
+                            <span>预测有效税率 (小数)</span>
+                            <input
+                              value={form.driver_tax_rate || ""}
+                              onChange={(e) => updateField("driver_tax_rate", e.target.value)}
+                              placeholder="例如 0.21"
+                              inputMode="decimal"
+                            />
+                            <small>计算 NOPAT = EBIT*(1-T)</small>
+                          </label>
+                          <label>
+                            <span>净借款增加额 (金额)</span>
+                            <input
+                              value={form.driver_net_borrowing || ""}
+                              onChange={(e) => updateField("driver_net_borrowing", e.target.value)}
+                              placeholder="例如 1000000000"
+                              inputMode="decimal"
+                            />
+                            <small>仅计入 FCFE，严禁计入 FCFF</small>
+                          </label>
+                        </div>
+                      </div>
                     </div>
                   </details>
                 </div>
@@ -1038,6 +1304,14 @@ export default function ValuationPage() {
                 <div><div className="section-kicker">独立估值模型</div><h2>四套模型结果</h2></div>
                 <p>每套模型都保留公式、输入来源、假设和逐步计算明细。</p>
               </div>
+
+              {data.financial_bridge && (
+                <FinancialBridgeCard
+                  bridge={data.financial_bridge}
+                  currency={data.currency}
+                />
+              )}
+
               <div className="models-stack">
                 {MODEL_KEYS.map((modelKey) => (
                   <ModelCard

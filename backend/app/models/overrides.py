@@ -175,6 +175,41 @@ class WeightOverride(BaseModel):
         return self
 
 
+class FinancialDriversOverride(BaseModel):
+    """Overrides for financial driver bridge (EBITDA margin, CapEx, NWC, debt, D&A, tax)."""
+
+    ebitda_margin: Optional[Decimal] = None
+    capex: Optional[Decimal] = None
+    capex_ratio: Optional[Decimal] = None
+    nwc_change: Optional[Decimal] = None
+    nwc_ratio: Optional[Decimal] = None
+    net_borrowing: Optional[Decimal] = None
+    da: Optional[Decimal] = None
+    da_ratio: Optional[Decimal] = None
+    tax_rate: Optional[Decimal] = None
+
+    model_config = {"extra": "forbid"}
+
+    @field_validator("ebitda_margin", "capex_ratio", "nwc_ratio", "da_ratio", "tax_rate", mode="before")
+    @classmethod
+    def _validate_ratios(cls, value: object, info) -> Decimal | None:
+        if value is None:
+            return None
+        result = _decimal_number(value, f"drivers.{info.field_name}")
+        if info.field_name in ("ebitda_margin", "tax_rate") and not (Decimal("-1.0") <= result <= Decimal("1.0")):
+            raise ValueError(f"{info.field_name} must be between -1.0 and 1.0")
+        if info.field_name in ("capex_ratio", "da_ratio") and not (Decimal("0") <= result <= Decimal("2.0")):
+            raise ValueError(f"{info.field_name} must be between 0 and 2.0")
+        return result
+
+    @field_validator("capex", "nwc_change", "net_borrowing", "da", mode="before")
+    @classmethod
+    def _validate_amounts(cls, value: object, info) -> Decimal | None:
+        if value is None:
+            return None
+        return _decimal_number(value, f"drivers.{info.field_name}")
+
+
 class ValuationOverrideRequest(BaseModel):
     """The public POST contract; all unknown keys are rejected."""
 
@@ -183,6 +218,7 @@ class ValuationOverrideRequest(BaseModel):
     fcf_yield: Optional[FCFYieldOverride] = None
     dcf: Optional[DCFOverride] = None
     weights: Optional[WeightOverride] = None
+    drivers: Optional[FinancialDriversOverride] = None
     forecast_horizon: Optional[Literal["ntm", "current_fy", "next_fy"]] = None
 
     model_config = {"extra": "forbid"}
@@ -243,6 +279,25 @@ class ValuationOverrideRequest(BaseModel):
                 result["weights.weight_dcf"] = self.weights.weight_dcf
             if self.weights.cashflow_group_max_weight is not None:
                 result["weights.cashflow_group_max_weight"] = self.weights.cashflow_group_max_weight
+        if self.drivers is not None:
+            if self.drivers.ebitda_margin is not None:
+                result["drivers.ebitda_margin"] = self.drivers.ebitda_margin
+            if self.drivers.capex is not None:
+                result["drivers.capex"] = self.drivers.capex
+            if self.drivers.capex_ratio is not None:
+                result["drivers.capex_ratio"] = self.drivers.capex_ratio
+            if self.drivers.nwc_change is not None:
+                result["drivers.nwc_change"] = self.drivers.nwc_change
+            if self.drivers.nwc_ratio is not None:
+                result["drivers.nwc_ratio"] = self.drivers.nwc_ratio
+            if self.drivers.net_borrowing is not None:
+                result["drivers.net_borrowing"] = self.drivers.net_borrowing
+            if self.drivers.da is not None:
+                result["drivers.da"] = self.drivers.da
+            if self.drivers.da_ratio is not None:
+                result["drivers.da_ratio"] = self.drivers.da_ratio
+            if self.drivers.tax_rate is not None:
+                result["drivers.tax_rate"] = self.drivers.tax_rate
         if self.forecast_horizon is not None:
             result["forecast_horizon"] = self.forecast_horizon
         return result

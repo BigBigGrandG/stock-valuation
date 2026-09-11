@@ -55,4 +55,55 @@ test.describe("Frontend Contract: Markdown Export Format", () => {
     expect(md).toContain("股本冲突，相关模型不可用 (CONFLICT_DEGRADED)");
     expect(md).not.toContain("全类别普通股穿透");
   });
+
+  test("exported Markdown preserves FCFF/FCFE reconciliation and identity evidence", () => {
+    const bridgeData: ValuationResponse = {
+      ...rawData,
+      financial_bridge: {
+        period: "ntm",
+        forecast_start_date: "2026-09-10",
+        forecast_end_date: "2027-09-10",
+        as_of: "2026-09-10",
+        currency: "USD",
+        revenue: "1000",
+        ebitda: "200",
+        da: "20",
+        ebit: "180",
+        tax_rate: "0.2",
+        nopat: "144",
+        capex: "50",
+        nwc_change: "10",
+        fcff: "900",
+        bridge_fcff: "840",
+        fcfe: "1234",
+        bridge_fcfe: "800",
+        interest: "20",
+        after_tax_interest: "16",
+        net_borrowing: "5",
+        identity_holds: false,
+        identity_checks: { ebitda: true, ebit: true, nopat: true, fcff: false, fcfe: false },
+        fcff_identity_holds: false,
+        fcfe_identity_holds: false,
+        reconciliation_difference: "60",
+        fcfe_reconciliation_difference: "434",
+        dcf_forecasts: [{
+          year: 1,
+          value: "840",
+          period: "FY2027E",
+          as_of: "2026-09-10",
+          source_type: "derived",
+          start_date: "2027-01-01",
+          end_date: "2027-12-31",
+        }],
+      },
+    };
+
+    const md = generateValuationMarkdown(bridgeData);
+    expect(md).toContain("五项会计恒等式状态");
+    expect(md).toContain("FCFF 对账差额");
+    expect(md).toContain("FCFE 对账差额");
+    expect(md).toContain("DCF 显式年度预测证据");
+    expect(md).toContain("2027-01-01");
+    expect(md).toContain("2027-12-31");
+  });
 });

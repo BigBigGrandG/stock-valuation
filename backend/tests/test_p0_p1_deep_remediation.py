@@ -341,7 +341,10 @@ class TestP1ERequestScopedGrowthBounds:
         proj_low = derive_request_projections(snap, assumptions_low)
 
         assert proj_high.forward_ebitda.value > proj_low.forward_ebitda.value
-        assert proj_high.forward_fcff_1y.value > proj_low.forward_fcff_1y.value
+        # A raw non-consensus FCFF value cannot bypass missing bridge drivers;
+        # growth bounds must not turn it into a synthetic DCF input.
+        assert proj_high.forward_fcff_1y is None
+        assert proj_low.forward_fcff_1y is None
 
         # Verify snapshot was NOT mutated
         assert snap.ebitda_growth.value == Decimal("0.60")

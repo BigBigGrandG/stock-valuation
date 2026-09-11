@@ -106,3 +106,72 @@ def test_e2e_valuation_overrides_recalculate_and_reset():
     comp_reset = reset_data["composite"]
     assert "ev_ebitda" in comp_reset["effective_weights"]
     assert "fcf_yield" in comp_reset["effective_weights"]
+
+
+def test_e2e_financial_bridge_and_driver_overrides_lifecycle():
+    """Verify financial bridge data structure, driver override application, and reset."""
+    # 1. Baseline AVGO has financial bridge with accounting identities
+    r = client.get("/api/v1/valuation/AVGO")
+    assert r.status_code == 200
+    data = r.json()
+    bridge = data.get("financial_bridge")
+    assert bridge is not None
+    assert "revenue" in bridge
+    assert "ebitda" in bridge
+    assert "fcff" in bridge
+    assert "restrictions_note" in bridge
+    assert "period" in bridge
+    assert "forecast_start_date" in bridge
+    assert "forecast_end_date" in bridge
+
+    # 2. POST driver overrides
+    payload = {
+        "drivers": {
+            "ebitda_margin": 0.60,
+            "capex": 2500000000,
+            "nwc_change": 400000000,
+            "net_borrowing": 800000000,
+            "da": 3500000000,
+            "tax_rate": 0.20,
+        }
+    }
+    post_res = client.post("/api/v1/valuation/AVGO", json=payload)
+    assert post_res.status_code == 200
+    pdata = post_res.json()
+    pbridge = pdata.get("financial_bridge")
+    assert pbridge is not None
+    assert Decimal(pbridge["ebitda_margin"]) == Decimal("0.60")
+    assert Decimal(pbridge["capex"]) == Decimal("2500000000")
+    assert Decimal(pbridge["nwc_change"]) == Decimal("400000000")
+    assert Decimal(pbridge["net_borrowing"]) == Decimal("800000000")
+    assert Decimal(pbridge["da"]) == Decimal("3500000000")
+    assert Decimal(pbridge["tax_rate"]) == Decimal("0.20")
+
+    # Verify accounting identities with overridden values
+    rev = Decimal(pbridge["revenue"])
+    ebitda = Decimal(pbridge["ebitda"])
+    da = Decimal(pbridge["da"])
+    ebit = Decimal(pbridge["ebit"])
+    tax_rate = Decimal(pbridge["tax_rate"])
+    nopat = Decimal(pbridge["nopat"])
+    capex = Decimal(pbridge["capex"])
+    nwc = Decimal(pbridge["nwc_change"])
+    fcff = Decimal(pbridge["fcff"])
+    fcfe = Decimal(pbridge["fcfe"])
+    at_interest = Decimal(pbridge["after_tax_interest"])
+    net_borrowing = Decimal(pbridge["net_borrowing"])
+
+    assert ebitda == (rev * Decimal("0.60")).quantize(Decimal("1"))
+    assert ebit == ebitda - da
+    assert nopat == (ebit * (Decimal("1") - tax_rate)).quantize(Decimal("1"))
+    assert fcff == nopat + da - capex - nwc
+    assert fcfe == fcff - at_interest + net_borrowing
+
+    # 3. GET /reset clears overrides
+    reset_res = client.get("/api/v1/valuation/AVGO/reset")
+    assert reset_res.status_code == 200
+    rdata = reset_res.json()
+    assert rdata["assumptions_used"]["driver_ebitda_margin"] is None
+    assert rdata["assumptions_used"]["driver_capex"] is None
+    assert rdata["assumptions_used"]["driver_da"] is None
+
