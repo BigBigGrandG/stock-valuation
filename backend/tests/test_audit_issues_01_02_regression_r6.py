@@ -48,6 +48,9 @@ def _snapshot(**updates: Any) -> CompanyFinancialSnapshot:
         "ticker": "R6",
         "company_name": "R6 Test Co",
         "currency": "USD",
+        # Keep the YTD DCF fixture's statement currency explicit; production
+        # ingestion must not infer financialCurrency from the quote currency.
+        "financial_currency": "USD",
         "current_price": _m("100", period="2026-09-10", source_type=SourceType.ACTUAL),
         "price_timestamp": datetime(2026, 9, 10, 12, 0),
         "diluted_shares": _m("1000", unit="shares", source_type=SourceType.ACTUAL),
@@ -63,6 +66,14 @@ def _snapshot(**updates: Any) -> CompanyFinancialSnapshot:
         "interest_ttm": _m("20"),
         "net_borrowing_ttm": _m("5"),
         "fcff_ttm": _m("700", source_type=SourceType.ACTUAL),
+        # This production-path fixture explicitly supplies the aligned FY1
+        # actual needed to replace the unsafe day-ratio stub.
+        "fiscal_ytd_fcff": _m("40", period="FY2026 YTD", source_type=SourceType.ACTUAL),
+        "fiscal_ytd_required": True,
+        "fiscal_ytd_status": "available",
+        "fiscal_ytd_start": date(2026, 1, 1),
+        "fiscal_ytd_end": AS_OF,
+        "fiscal_ytd_fiscal_year_end": NEXT_FY_END,
         "forward_eps_1y": _m("6", period="0y", source_type=SourceType.ANALYST_ESTIMATE),
         "forward_eps_2y": _m("7", period="+1y", source_type=SourceType.ANALYST_ESTIMATE),
         "forward_revenue": _m("1200", period="0y", source_type=SourceType.ANALYST_ESTIMATE),
@@ -111,7 +122,12 @@ def test_explicit_fy_period_parser_accepts_anchored_relative_labels(
 
 def test_anchored_relative_revenue_drivers_reach_dcf_and_reconcile_inputs():
     snapshot = _snapshot()
-    assumptions = ValuationAssumptions()
+    assumptions = ValuationAssumptions(
+        dcf_wacc_source=SourceType.USER_OVERRIDE,
+        dcf_wacc_source_label="Explicit DCF test assumption",
+        dcf_terminal_growth_source=SourceType.USER_OVERRIDE,
+        dcf_terminal_growth_source_label="Explicit DCF test assumption",
+    )
 
     projection = derive_request_projections(snapshot, assumptions)
     assert projection.dcf_fcff_1y is not None

@@ -5,13 +5,14 @@ and historical valuation multiples via yfinance.
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
 import re
 import threading
 import time
 from contextvars import ContextVar
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any, Optional
 
@@ -44,6 +45,8 @@ from app.providers.statement_aggregator import (
 from app.services.multiples import industry_multiple_payload
 
 logger = logging.getLogger(__name__)
+
+_ZERO = Decimal("0")
 
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
@@ -148,19 +151,490 @@ def _extract_forward_net_borrowing(info: dict[str, Any], slot: int) -> tuple[Opt
     if slot not in (1, 2):
         return None, None
     suffix = f"{slot}Y"
-    keys = (
+    ntm_keys = (
+        "forwardNetBorrowingNTM",
+        "forward_net_borrowing_ntm",
+        "forwardBorrowingNTM",
+        "forward_borrowing_ntm",
+        "netBorrowingForecastNTM",
+    )
+    annual_keys = (
         f"forwardNetBorrowing{suffix}",
         f"forward_net_borrowing_{slot}y",
         f"forwardBorrowing{suffix}",
         f"forward_borrowing_{slot}y",
         f"netBorrowingForecast{suffix}",
     )
+    # The canonical snapshot has one 1Y slot for a direct NTM value.  NTM
+    # aliases are therefore accepted only in that slot and retain their
+    # explicit rolling-period identity below.
+    keys = ntm_keys + annual_keys if slot == 1 else annual_keys
     for key in keys:
         if key in info:
             value = _to_decimal(info.get(key))
             if value is not None:
                 return value, key
     return None, None
+
+
+def _forward_borrowing_period(info: dict[str, Any], slot: int, field_key: Optional[str]) -> Optional[str]:
+    """Attach an explicit rolling or fiscal period to a borrowing estimate.
+
+    A slot name such as ``forwardNetBorrowing1Y`` is not evidence that the
+    amount covers the rolling NTM window.  Prefer upstream period metadata;
+    when it is absent, derive a calendar fiscal label from the verified
+    ``nextFiscalYearEnd``.  If neither is available, retain an explicit
+    unverified label so the projection layer fails closed instead of inventing
+    ``FY1E``/``FY2E`` semantics.
+    """
+
+    if field_key is None:
+        return None
+    key_upper = field_key.upper()
+    if "NTM" in key_upper:
+        period_keys = (
+            "forwardNetBorrowingNTMPeriod",
+            "forward_net_borrowing_ntm_period",
+            "forwardBorrowingNTMPeriod",
+            "forward_borrowing_ntm_period",
+            # Some adapters key the amount as NTM but reuse the canonical
+            # 1Y metadata field.  Honor that explicit metadata before the
+            # field-name fallback below.
+            "forwardNetBorrowing1YPeriod",
+            "forward_net_borrowing_1y_period",
+            "forwardBorrowing1YPeriod",
+            "forward_borrowing_1y_period",
+        )
+    else:
+        suffix = f"{slot}Y"
+        period_keys = (
+            f"forwardNetBorrowing{suffix}Period",
+            f"forward_net_borrowing_{slot}y_period",
+            f"forwardBorrowing{suffix}Period",
+            f"forward_borrowing_{slot}y_period",
+        )
+    for key in period_keys:
+        raw_period = info.get(key)
+        if raw_period is not None and str(raw_period).strip():
+            return str(raw_period).strip()
+    if "NTM" in key_upper:
+        return "NTM"
+
+    next_fy_ts = info.get("nextFiscalYearEnd")
+    if isinstance(next_fy_ts, (int, float)) and next_fy_ts > 0:
+        try:
+            next_fy_date = datetime.fromtimestamp(next_fy_ts, tz=timezone.utc).date()
+            return f"FY{next_fy_date.year + slot - 1}E"
+        except (OverflowError, OSError, ValueError):
+            pass
+    return f"forward_{slot}y_unverified"
+
+
+def _provider_date(value: Any) -> Optional[date]:
+    """Coerce a Yahoo date/epoch value without inventing a calendar date."""
+
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    if isinstance(value, (int, float)) and value > 0:
+        try:
+            return datetime.fromtimestamp(value, tz=timezone.utc).date()
+        except (OverflowError, OSError, ValueError):
+            return None
+    try:
+        return date.fromisoformat(str(value)[:10])
+    except (TypeError, ValueError):
+        return None
+
+
+def _provider_column_date(column: Any) -> Optional[date]:
+    """Return a statement column's date while retaining non-date labels."""
+
+    if hasattr(column, "date"):
+        try:
+            return column.date()
+        except Exception:
+            pass
+    return _provider_date(column)
+
+
+def _provider_columns(frame: Any) -> list[Any]:
+    if frame is None or not hasattr(frame, "columns"):
+        return []
+    columns = [column for column in list(frame.columns) if _provider_column_date(column) is not None]
+    return sorted(columns, key=lambda column: _provider_column_date(column) or date.min)
+
+
+def _provider_column_label(column: Any) -> str:
+    return str(getattr(column, "name", None) or column)
+
+
+def _provider_period_basis(columns: list[Any]) -> Optional[str]:
+    """Classify statement columns without treating ambiguous short periods as quarters."""
+
+    if columns is None or len(columns) == 0:
+        return None
+    has_cumulative = False
+    has_short_ambiguous = False
+    has_discrete = False
+    for column in columns:
+        label = _provider_column_label(column).upper()
+        if any(token in label for token in ("YTD", "6M", "9M", "12M")):
+            has_cumulative = True
+        elif "3M" in label:
+            has_short_ambiguous = True
+        elif re.search(r"\bQ[1-4]\b", label) or _provider_column_date(column) is not None:
+            has_discrete = True
+        else:
+            return None
+    if has_cumulative:
+        return "mixed" if has_discrete else "cumulative"
+    if has_short_ambiguous:
+        return "mixed" if has_discrete else None
+    return "discrete" if has_discrete else None
+
+
+def _provider_series_value(series: Any, labels: tuple[str, ...], *, absolute: bool = False) -> Optional[Decimal]:
+    if series is None or not hasattr(series, "index"):
+        return None
+    for label in labels:
+        if label not in series.index:
+            continue
+        value = _to_decimal(series.loc[label])
+        if value is not None:
+            return abs(value) if absolute else value
+    return None
+
+
+def _provider_tax_rate(series: Any) -> Optional[Decimal]:
+    if series is None or not hasattr(series, "index"):
+        return None
+    direct = _provider_series_value(series, ("Tax Rate For Calcs", "Effective Tax Rate"))
+    if direct is not None and Decimal("0") <= direct <= Decimal("1"):
+        return direct
+    tax = _provider_series_value(series, ("Tax Provision",))
+    pretax = _provider_series_value(series, ("Pretax Income",))
+    if tax is not None and pretax is not None and pretax > _ZERO:
+        rate = tax / pretax
+        if Decimal("0") <= rate <= Decimal("1"):
+            return rate
+    return None
+
+
+def _fiscal_ytd_unavailable(
+    reason: str,
+    *,
+    valuation_date: Optional[date] = None,
+    fiscal_year_end: Optional[date] = None,
+    start: Optional[date] = None,
+    end: Optional[date] = None,
+) -> dict[str, Any]:
+    return {
+        "status": "unavailable",
+        "reason": reason,
+        "as_of": valuation_date,
+        "fiscal_year_end": fiscal_year_end,
+        "start": start,
+        "end": end,
+    }
+
+
+def _extract_fiscal_ytd_fcff(
+    info: dict[str, Any],
+    quarterly_cf: Any,
+    quarterly_fin: Any,
+) -> dict[str, Any]:
+    """Extract aligned actual FCFF through the valuation date.
+
+    This intentionally fails closed.  A latest quarter ending before the
+    valuation date leaves an uncovered interval, so it is not treated as YTD
+    actual and cannot be used to justify a day-ratio stub.
+    """
+
+    valuation_date = _provider_date(info.get("regularMarketTime"))
+    if valuation_date is None:
+        return _fiscal_ytd_unavailable(
+            "Missing upstream regularMarketTime; valuation-date YTD alignment is unproven"
+        )
+    raw_financial_currency = info.get("financialCurrency")
+    if not isinstance(raw_financial_currency, str) or not raw_financial_currency.strip():
+        return _fiscal_ytd_unavailable(
+            "Missing explicit financialCurrency; quote currency cannot establish statement currency",
+            valuation_date=valuation_date,
+        )
+    financial_currency = raw_financial_currency.strip().upper()
+    if re.fullmatch(r"[A-Z]{3}", financial_currency) is None:
+        return _fiscal_ytd_unavailable(
+            f"Invalid explicit financialCurrency {raw_financial_currency!r}; statement currency is untrusted",
+            valuation_date=valuation_date,
+        )
+    fiscal_year_end = _provider_date(info.get("nextFiscalYearEnd"))
+    last_fiscal_end = _provider_date(info.get("lastFiscalYearEnd"))
+    if fiscal_year_end is None:
+        return _fiscal_ytd_unavailable(
+            "Missing upstream nextFiscalYearEnd; fiscal-year YTD alignment is unproven",
+            valuation_date=valuation_date,
+        )
+    if last_fiscal_end is None:
+        return _fiscal_ytd_unavailable(
+            "Missing upstream lastFiscalYearEnd; fiscal-year YTD start is unproven",
+            valuation_date=valuation_date,
+            fiscal_year_end=fiscal_year_end,
+        )
+    if last_fiscal_end >= fiscal_year_end:
+        return _fiscal_ytd_unavailable(
+            f"Cannot derive a valid fiscal-year start before {fiscal_year_end}",
+            valuation_date=valuation_date,
+            fiscal_year_end=fiscal_year_end,
+        )
+    previous_fiscal_end = last_fiscal_end
+    fiscal_start = previous_fiscal_end + timedelta(days=1)
+    if valuation_date < fiscal_start or valuation_date > fiscal_year_end:
+        return _fiscal_ytd_unavailable(
+            f"Valuation date {valuation_date} is outside forecast fiscal year "
+            f"{fiscal_start}..{fiscal_year_end}",
+            valuation_date=valuation_date,
+            fiscal_year_end=fiscal_year_end,
+            start=fiscal_start,
+            end=valuation_date,
+        )
+
+    columns = _provider_columns(quarterly_cf)
+    selected = [
+        column
+        for column in columns
+        if fiscal_start <= (_provider_column_date(column) or date.min) <= valuation_date
+    ]
+    if not selected:
+        return _fiscal_ytd_unavailable(
+            "No quarterly cash-flow actual covers the current fiscal-year interval",
+            valuation_date=valuation_date,
+            fiscal_year_end=fiscal_year_end,
+            start=fiscal_start,
+            end=valuation_date,
+        )
+    latest_date = _provider_column_date(selected[-1])
+    if latest_date != valuation_date:
+        relation = "before" if latest_date is not None and latest_date < valuation_date else "after"
+        return _fiscal_ytd_unavailable(
+            f"Latest quarterly actual ends {latest_date}, {relation} valuation date {valuation_date}; "
+            "missing fiscal interval cannot be treated as actual YTD",
+            valuation_date=valuation_date,
+            fiscal_year_end=fiscal_year_end,
+            start=fiscal_start,
+            end=latest_date or valuation_date,
+        )
+    first_date = _provider_column_date(selected[0])
+    first_period_days = (first_date - fiscal_start).days + 1 if first_date is not None else 0
+    if first_date is None or not 60 <= first_period_days <= 125:
+        return _fiscal_ytd_unavailable(
+            f"Incomplete YTD coverage: first quarterly actual {first_date} has {first_period_days} days "
+            f"from fiscal start {fiscal_start}; defensible quarterly coverage requires 60..125 days",
+            valuation_date=valuation_date,
+            fiscal_year_end=fiscal_year_end,
+            start=fiscal_start,
+            end=valuation_date,
+        )
+    for previous_column, current_column in zip(selected, selected[1:]):
+        previous_date = _provider_column_date(previous_column)
+        current_date = _provider_column_date(current_column)
+        if previous_date is None or current_date is None or not 60 <= (current_date - previous_date).days <= 125:
+            return _fiscal_ytd_unavailable(
+                f"Incomplete or mismatched quarterly YTD sequence ending {valuation_date}",
+                valuation_date=valuation_date,
+                fiscal_year_end=fiscal_year_end,
+                start=fiscal_start,
+                end=valuation_date,
+            )
+
+    cashflow_basis = _provider_period_basis(selected)
+    if cashflow_basis in (None, "mixed"):
+        return _fiscal_ytd_unavailable(
+            "Cash-flow quarterly period basis is unknown or mixed; YTD basis is ambiguous",
+            valuation_date=valuation_date,
+            fiscal_year_end=fiscal_year_end,
+            start=fiscal_start,
+            end=valuation_date,
+        )
+
+    financial_columns = _provider_columns(quarterly_fin)
+    aligned_financial_columns: list[Any] = []
+    for column in selected:
+        column_date = _provider_column_date(column)
+        matches = [
+            financial_column
+            for financial_column in financial_columns
+            if _provider_column_date(financial_column) == column_date
+        ]
+        if len(matches) != 1:
+            return _fiscal_ytd_unavailable(
+                f"Missing or ambiguous same-period financial statement at {column}; "
+                "interest and tax basis cannot be aligned",
+                valuation_date=valuation_date,
+                fiscal_year_end=fiscal_year_end,
+                start=fiscal_start,
+                end=valuation_date,
+            )
+        aligned_financial_columns.append(matches[0])
+    financial_basis = _provider_period_basis(aligned_financial_columns)
+    if financial_basis != cashflow_basis:
+        return _fiscal_ytd_unavailable(
+            f"Cash-flow and financial-statement period basis does not match "
+            f"({cashflow_basis} vs {financial_basis or 'unknown'}); actual FCFF is unavailable",
+            valuation_date=valuation_date,
+            fiscal_year_end=fiscal_year_end,
+            start=fiscal_start,
+            end=valuation_date,
+        )
+
+    cfo_values: list[Decimal] = []
+    capex_values: list[Decimal] = []
+    interest_values: list[Decimal] = []
+    tax_rates: list[Optional[Decimal]] = []
+    tax_provision_values: list[Optional[Decimal]] = []
+    pretax_values: list[Optional[Decimal]] = []
+    for column, financial_column in zip(selected, aligned_financial_columns):
+        series = quarterly_cf[column]
+        cfo = _provider_series_value(series, ("Operating Cash Flow", "Cash Flow From Continuing Operating Activities"))
+        capex = _provider_series_value(series, ("Capital Expenditure", "Purchase Of PPE"))
+        if cfo is None or capex is None:
+            return _fiscal_ytd_unavailable(
+                f"Incomplete YTD cash-flow inputs at {column}: CFO and CapEx are both required",
+                valuation_date=valuation_date,
+                fiscal_year_end=fiscal_year_end,
+                start=fiscal_start,
+                end=valuation_date,
+            )
+        cfo_values.append(cfo)
+        capex_values.append(capex)
+
+        fin_series = quarterly_fin[financial_column]
+        interest = _provider_series_value(
+            fin_series,
+            ("Interest Expense", "Interest Expense Non Operating"),
+            absolute=True,
+        )
+        if cashflow_basis == "cumulative":
+            tax_rates.append(None)
+            tax_provision_values.append(_provider_series_value(fin_series, ("Tax Provision",)))
+            pretax_values.append(_provider_series_value(fin_series, ("Pretax Income",)))
+        else:
+            tax_rates.append(_provider_tax_rate(fin_series))
+        if interest is None:
+            return _fiscal_ytd_unavailable(
+                f"Missing same-period interest expense for actual FCFF at {column}",
+                valuation_date=valuation_date,
+                fiscal_year_end=fiscal_year_end,
+                start=fiscal_start,
+                end=valuation_date,
+            )
+        interest_values.append(interest)
+
+    def _deaccumulate(values: list[Decimal]) -> list[Decimal]:
+        return [values[0], *[current - previous for previous, current in zip(values, values[1:])]]
+
+    if cashflow_basis == "cumulative":
+        cfo_values = _deaccumulate(cfo_values)
+        capex_values = _deaccumulate(capex_values)
+        interest_values = _deaccumulate(interest_values)
+
+        if any(value != _ZERO for value in interest_values):
+            if any(value is None for value in tax_provision_values + pretax_values):
+                return _fiscal_ytd_unavailable(
+                    "Cumulative financial statements require Tax Provision and Pretax Income "
+                    "to de-accumulate same-period tax rates",
+                    valuation_date=valuation_date,
+                    fiscal_year_end=fiscal_year_end,
+                    start=fiscal_start,
+                    end=valuation_date,
+                )
+            tax_period_values = _deaccumulate([value for value in tax_provision_values if value is not None])
+            pretax_period_values = _deaccumulate([value for value in pretax_values if value is not None])
+            for index, (tax, pretax) in enumerate(zip(tax_period_values, pretax_period_values)):
+                if pretax <= _ZERO:
+                    return _fiscal_ytd_unavailable(
+                        "Cumulative financial statements have non-positive same-period Pretax Income; "
+                        "tax rate basis is unavailable",
+                        valuation_date=valuation_date,
+                        fiscal_year_end=fiscal_year_end,
+                        start=fiscal_start,
+                        end=valuation_date,
+                    )
+                rate = tax / pretax
+                if not rate.is_finite() or not _ZERO <= rate <= Decimal("1"):
+                    return _fiscal_ytd_unavailable(
+                        "De-accumulated same-period tax rate is outside 0..1; "
+                        "actual FCFF is unavailable",
+                        valuation_date=valuation_date,
+                        fiscal_year_end=fiscal_year_end,
+                        start=fiscal_start,
+                        end=valuation_date,
+                    )
+                tax_rates[index] = rate
+
+    if any(not value.is_finite() for value in cfo_values + capex_values + interest_values):
+        return _fiscal_ytd_unavailable(
+            "Non-finite quarterly input prevents actual FCFF construction",
+            valuation_date=valuation_date,
+            fiscal_year_end=fiscal_year_end,
+            start=fiscal_start,
+            end=valuation_date,
+        )
+    if any(value != _ZERO for value in interest_values) and any(rate is None for rate in tax_rates):
+        return _fiscal_ytd_unavailable(
+            "Missing same-period tax rate prevents after-tax interest calculation for actual FCFF",
+            valuation_date=valuation_date,
+            fiscal_year_end=fiscal_year_end,
+            start=fiscal_start,
+            end=valuation_date,
+        )
+
+    after_tax_interest = sum(
+        interest * (Decimal("1") - (rate if rate is not None else _ZERO))
+        for interest, rate in zip(interest_values, tax_rates)
+    )
+    cfo_total = sum(cfo_values)
+    capex_total = sum(abs(value) for value in capex_values)
+    fcff = cfo_total + after_tax_interest - capex_total
+    if not fcff.is_finite():
+        return _fiscal_ytd_unavailable(
+            "Non-finite actual FCFF result",
+            valuation_date=valuation_date,
+            fiscal_year_end=fiscal_year_end,
+            start=fiscal_start,
+            end=valuation_date,
+        )
+    mode = "cumulative-YTD de-accumulated" if cashflow_basis == "cumulative" else "discrete-quarter summed"
+    return {
+        "status": "available",
+        "value": fcff,
+        "unit": financial_currency,
+        "period": f"FY{fiscal_year_end.year} YTD",
+        "source": "Yahoo Finance quarterly cash-flow statements",
+        "source_type": "actual",
+        "as_of": valuation_date,
+        "confidence": 1.0,
+        "is_estimated": False,
+        "notes": (
+            f"Actual FCFF = CFO ({cfo_total}) + after-tax interest ({after_tax_interest}) "
+            f"- CapEx ({capex_total}); {mode}; coverage={fiscal_start}..{valuation_date}."
+        ),
+        "fiscal_year_end": fiscal_year_end,
+        "prior_fiscal_year_end": previous_fiscal_end,
+        "start": fiscal_start,
+        "end": valuation_date,
+    }
+
+
+def _fiscal_ytd_marker(payload: dict[str, Any]) -> str:
+    serializable = {
+        key: (value.isoformat() if isinstance(value, date) else str(value) if isinstance(value, Decimal) else value)
+        for key, value in payload.items()
+    }
+    return "S5_FISCAL_YTD_V1:" + json.dumps(serializable, sort_keys=True, separators=(",", ":"))
 
 
 def _normalize_query_symbol(ticker: str) -> str:
@@ -671,11 +1145,15 @@ class YFinanceProvider(FinancialDataProvider):
         net_borrowing: Optional[Decimal] = None
         has_net_borrowing = False
 
+        quarterly_cf = bundle.get_quarterly_cashflow(req_budget)
+        annual_cf = bundle.get_cashflow(req_budget)
+        quarterly_fin = bundle.get_quarterly_financials(req_budget)
+        annual_fin = bundle.get_financials(req_budget)
         agg = aggregate_ttm_cashflow(
-            quarterly_cf=bundle.get_quarterly_cashflow(req_budget),
-            annual_cf=bundle.get_cashflow(req_budget),
-            quarterly_fin=bundle.get_quarterly_financials(req_budget),
-            annual_fin=bundle.get_financials(req_budget),
+            quarterly_cf=quarterly_cf,
+            annual_cf=annual_cf,
+            quarterly_fin=quarterly_fin,
+            annual_fin=annual_fin,
             default_as_of=date.today(),
         )
         cfo = agg["cfo"]
@@ -758,21 +1236,39 @@ class YFinanceProvider(FinancialDataProvider):
         forward_fcfe_2y_notes: Optional[str] = None
         forward_fcff_1y_notes: Optional[str] = None
         forward_fcff_2y_notes: Optional[str] = None
-        forward_net_borrowing_1y_period = (
-            str(info.get("forwardNetBorrowing1YPeriod") or info.get("forward_net_borrowing_1y_period") or "FY1E")
-            if forward_net_borrowing_1y is not None else None
+        forward_net_borrowing_1y_period = _forward_borrowing_period(
+            info, 1, forward_net_borrowing_1y_key
         )
-        forward_net_borrowing_2y_period = (
-            str(info.get("forwardNetBorrowing2YPeriod") or info.get("forward_net_borrowing_2y_period") or "FY2E")
-            if forward_net_borrowing_2y is not None else None
+        forward_net_borrowing_2y_period = _forward_borrowing_period(
+            info, 2, forward_net_borrowing_2y_key
         )
-        forward_net_borrowing_warning = None
+        forward_borrowing_warnings: list[str] = []
+        for slot, period in (
+            (1, forward_net_borrowing_1y_period),
+            (2, forward_net_borrowing_2y_period),
+        ):
+            if period is not None and period.endswith("_unverified"):
+                forward_borrowing_warnings.append(
+                    f"Explicit forward net borrowing {slot}Y has no verified fiscal/NTM period metadata; "
+                    "projection layer will keep it unavailable for horizon alignment."
+                )
         if forward_net_borrowing_1y is None and forward_net_borrowing_2y is None:
-            forward_net_borrowing_warning = (
+            forward_borrowing_warnings.append(
                 "Yahoo Finance did not provide explicit forward net borrowing; "
                 f"historical {period_str} net borrowing is retained for display only and is not used as a forward FCFE driver."
             )
+        forward_net_borrowing_warning = " ".join(forward_borrowing_warnings) or None
 
+        fiscal_ytd = _extract_fiscal_ytd_fcff(info, quarterly_cf, quarterly_fin)
+        fiscal_ytd_marker = _fiscal_ytd_marker(fiscal_ytd)
+        # Keep the marker in canonical metric notes so the existing normalizer
+        # can carry it through without changing the service ownership boundary.
+        fcfe_def = f"{fcfe_def}; {fiscal_ytd_marker}"
+        fcff_def = f"{fcff_def}; {fiscal_ytd_marker}"
+        fiscal_ytd_value = fiscal_ytd.get("value") if fiscal_ytd.get("status") == "available" else None
+        fiscal_ytd_source_type = fiscal_ytd.get("source_type") if fiscal_ytd_value is not None else None
+        fiscal_ytd_notes = fiscal_ytd.get("notes") if fiscal_ytd_value is not None else None
+        fiscal_ytd_reason = fiscal_ytd.get("reason") if fiscal_ytd_value is None else None
         period_note = "Annual fiscal year statement" if is_annual_statement else "TTM quote summary"
         return {
             "cfo": cfo,
@@ -812,7 +1308,10 @@ class YFinanceProvider(FinancialDataProvider):
             "forward_net_borrowing_1y_confidence": 0.7 if forward_net_borrowing_1y is not None else None,
             "forward_net_borrowing_1y_is_estimated": True if forward_net_borrowing_1y is not None else None,
             "forward_net_borrowing_1y_notes": (
-                "Explicit provider forward net-borrowing field; not derived from TTM." if forward_net_borrowing_1y is not None else None
+                (
+                    "Explicit provider forward net-borrowing field; "
+                    f"period={forward_net_borrowing_1y_period}; not derived from TTM."
+                ) if forward_net_borrowing_1y is not None else None
             ),
             "forward_net_borrowing_2y": forward_net_borrowing_2y,
             "forward_net_borrowing_2y_period": forward_net_borrowing_2y_period,
@@ -826,12 +1325,32 @@ class YFinanceProvider(FinancialDataProvider):
             "forward_net_borrowing_2y_confidence": 0.7 if forward_net_borrowing_2y is not None else None,
             "forward_net_borrowing_2y_is_estimated": True if forward_net_borrowing_2y is not None else None,
             "forward_net_borrowing_2y_notes": (
-                "Explicit provider forward net-borrowing field; not derived from TTM." if forward_net_borrowing_2y is not None else None
+                (
+                    "Explicit provider forward net-borrowing field; "
+                    f"period={forward_net_borrowing_2y_period}; not derived from TTM."
+                ) if forward_net_borrowing_2y is not None else None
             ),
             "forward_net_borrowing_warning": forward_net_borrowing_warning,
             "fcff_ttm": fcff,
             "fcff_ttm_source_type": "derived" if fcff is not None else None,
             "fcff_definition": fcff_def,
+            "fiscal_ytd_status": fiscal_ytd.get("status"),
+            "fiscal_ytd_unavailable_reason": fiscal_ytd_reason,
+            "fiscal_ytd_fcff": fiscal_ytd_value,
+            "fiscal_ytd_fcff_source_type": fiscal_ytd_source_type,
+            "fiscal_ytd_fcff_period": fiscal_ytd.get("period"),
+            "fiscal_ytd_fcff_source": fiscal_ytd.get("source"),
+            "fiscal_ytd_fcff_as_of": fiscal_ytd.get("as_of"),
+            "fiscal_ytd_fcff_unit": fiscal_ytd.get("unit"),
+            "fiscal_ytd_fcff_currency": fiscal_ytd.get("unit"),
+            "fiscal_ytd_fcff_confidence": fiscal_ytd.get("confidence"),
+            "fiscal_ytd_fcff_is_estimated": fiscal_ytd.get("is_estimated"),
+            "fiscal_ytd_fcff_notes": fiscal_ytd_notes,
+            "fiscal_ytd_start": fiscal_ytd.get("start"),
+            "fiscal_ytd_end": fiscal_ytd.get("end"),
+            "fiscal_ytd_prior_fiscal_year_end": fiscal_ytd.get("prior_fiscal_year_end"),
+            "fiscal_ytd_fiscal_year_end": fiscal_ytd.get("fiscal_year_end"),
+            "cfo_notes": fiscal_ytd_marker,
             "forward_fcff_1y": forward_fcff_1y,
             "forward_fcff_1y_source_type": None,
             "forward_fcff_1y_period": "0y",

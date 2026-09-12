@@ -1,0 +1,193 @@
+=== WORKTREE STATUS ===
+## master...origin/master
+ M .scratch/valuation-ai-audit-20260911/verification/r5/live-validation-r5.json
+ M backend/app/engines/dcf.py
+ M backend/app/engines/ev_ebitda.py
+ M backend/app/engines/fcf_yield.py
+ M backend/app/engines/forward_pe.py
+ M backend/app/models/domain.py
+ M backend/app/providers/yfinance_provider.py
+ M backend/app/services/projections.py
+ M backend/tests/test_acceptance_rejection_fixes.py
+ M backend/tests/test_audit_issues_01_02_regression_r5.py
+ M backend/tests/test_audit_issues_01_02_regression_r6.py
+ M backend/tests/test_audit_issues_03_04_regression.py
+ M backend/tests/test_backend_acceptance_revisions.py
+ M backend/tests/test_dcf.py
+ M backend/tests/test_e2e_valuation_integrity_export.py
+ M backend/tests/test_ev_ebitda.py
+ M backend/tests/test_fatal_three_worker_c.py
+ M backend/tests/test_fcf_yield.py
+ M backend/tests/test_final_acceptance.py
+ M backend/tests/test_forward_fcfe_borrowing_api.py
+ M backend/tests/test_forward_fcfe_borrowing_isolation.py
+ M backend/tests/test_forward_pe.py
+ M backend/tests/test_live_and_mock_provider.py
+ M backend/tests/test_p0_p1_deep_remediation.py
+ M backend/tests/test_p0_p1_integrity.py
+ M backend/tests/test_service_independent_acceptance.py
+?? .scratch/fatal-three/current-severity-reassessment-20260912.md
+?? .scratch/fatal-three/issues/
+?? .scratch/fatal-three/s3-s5-s6-20260912/
+?? .scratch/fatal-three/worker-f1-report-20260912.md
+?? .scratch/fatal-three/worker-s1-report-20260912.md
+?? .scratch/fatal-three/worker-s2-report-20260912.md
+?? backend/app/engines/parameter_governance.py
+?? backend/app/engines/terminal_governance.py
+?? backend/tests/test_s1_ntm_borrowing_period_alignment.py
+?? backend/tests/test_s2_forward_fcff_driver_lineage.py
+?? backend/tests/test_s3_parameter_governance.py
+?? backend/tests/test_s5_fiscal_ytd_dcf.py
+?? backend/tests/test_s6_terminal_governance.py
+=== OWNED PATH DIFF NAME-STATUS ===
+warning: in the working copy of 'backend/app/engines/ev_ebitda.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/app/engines/fcf_yield.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/app/engines/forward_pe.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_acceptance_rejection_fixes.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_audit_issues_01_02_regression_r5.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_audit_issues_01_02_regression_r6.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_audit_issues_03_04_regression.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_backend_acceptance_revisions.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_dcf.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_e2e_valuation_integrity_export.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_ev_ebitda.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_fatal_three_worker_c.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_fcf_yield.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_final_acceptance.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_forward_fcfe_borrowing_isolation.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_forward_pe.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_live_and_mock_provider.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_p0_p1_deep_remediation.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_p0_p1_integrity.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_service_independent_acceptance.py', LF will be replaced by CRLF the next time Git touches it
+M	backend/app/engines/ev_ebitda.py
+M	backend/app/engines/fcf_yield.py
+M	backend/app/engines/forward_pe.py
+M	backend/tests/test_acceptance_rejection_fixes.py
+M	backend/tests/test_audit_issues_01_02_regression_r5.py
+M	backend/tests/test_audit_issues_01_02_regression_r6.py
+M	backend/tests/test_audit_issues_03_04_regression.py
+M	backend/tests/test_backend_acceptance_revisions.py
+M	backend/tests/test_dcf.py
+M	backend/tests/test_e2e_valuation_integrity_export.py
+M	backend/tests/test_ev_ebitda.py
+M	backend/tests/test_fatal_three_worker_c.py
+M	backend/tests/test_fcf_yield.py
+M	backend/tests/test_final_acceptance.py
+M	backend/tests/test_forward_fcfe_borrowing_isolation.py
+M	backend/tests/test_forward_pe.py
+M	backend/tests/test_live_and_mock_provider.py
+M	backend/tests/test_p0_p1_deep_remediation.py
+M	backend/tests/test_p0_p1_integrity.py
+M	backend/tests/test_service_independent_acceptance.py
+=== OWNED PATH DIFF STAT ===
+warning: in the working copy of 'backend/app/engines/ev_ebitda.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/app/engines/fcf_yield.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/app/engines/forward_pe.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_acceptance_rejection_fixes.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_audit_issues_01_02_regression_r5.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_audit_issues_01_02_regression_r6.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_audit_issues_03_04_regression.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_backend_acceptance_revisions.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_dcf.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_e2e_valuation_integrity_export.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_ev_ebitda.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_fatal_three_worker_c.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_fcf_yield.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_final_acceptance.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_forward_fcfe_borrowing_isolation.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_forward_pe.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_live_and_mock_provider.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_p0_p1_deep_remediation.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_p0_p1_integrity.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_service_independent_acceptance.py', LF will be replaced by CRLF the next time Git touches it
+ backend/app/engines/ev_ebitda.py                   | 111 ++++++++++++-
+ backend/app/engines/fcf_yield.py                   | 184 +++++++++++++++++----
+ backend/app/engines/forward_pe.py                  | 113 ++++++++++++-
+ backend/tests/test_acceptance_rejection_fixes.py   |  12 +-
+ .../tests/test_audit_issues_01_02_regression_r5.py |   8 +-
+ .../tests/test_audit_issues_01_02_regression_r6.py |  18 +-
+ .../tests/test_audit_issues_03_04_regression.py    |  18 +-
+ backend/tests/test_backend_acceptance_revisions.py |  46 +++++-
+ backend/tests/test_dcf.py                          |  18 +-
+ .../tests/test_e2e_valuation_integrity_export.py   |  10 +-
+ backend/tests/test_ev_ebitda.py                    |  13 +-
+ backend/tests/test_fatal_three_worker_c.py         |   5 +
+ backend/tests/test_fcf_yield.py                    |  21 ++-
+ backend/tests/test_final_acceptance.py             |   9 +-
+ .../tests/test_forward_fcfe_borrowing_isolation.py |  65 +++++++-
+ backend/tests/test_forward_pe.py                   |  17 +-
+ backend/tests/test_live_and_mock_provider.py       |  10 +-
+ backend/tests/test_p0_p1_deep_remediation.py       |  32 +++-
+ backend/tests/test_p0_p1_integrity.py              |  29 +++-
+ .../tests/test_service_independent_acceptance.py   |  10 +-
+ 20 files changed, 652 insertions(+), 97 deletions(-)
+=== OWNED/EXCLUDED UNTRACKED STATUS ===
+?? .scratch/fatal-three/current-severity-reassessment-20260912.md
+?? .scratch/fatal-three/issues/F1-fcf-yield-ttm-fcfe.md
+?? .scratch/fatal-three/issues/S1-ntm-borrowing-period-mismatch.md
+?? .scratch/fatal-three/issues/S2-forward-fcff-ttm-ratio-extrapolation.md
+?? .scratch/fatal-three/issues/S3-fallback-parameter-governance.md
+?? .scratch/fatal-three/issues/S5-fy1-stub-proration-no-ytd.md
+?? .scratch/fatal-three/issues/S6-terminal-value-fallback-dependence.md
+?? .scratch/fatal-three/s3-s5-s6-20260912/baseline-status.txt
+?? .scratch/fatal-three/s3-s5-s6-20260912/baseline-untracked.txt
+?? .scratch/fatal-three/s3-s5-s6-20260912/baseline.patch
+?? .scratch/fatal-three/s3-s5-s6-20260912/contract.md
+?? .scratch/fatal-three/s3-s5-s6-20260912/coordinator-acceptance-20260912.md
+?? .scratch/fatal-three/s3-s5-s6-20260912/coordinator-full-pytest.exit.txt
+?? .scratch/fatal-three/s3-s5-s6-20260912/coordinator-s5-acceptance.exit.txt
+?? .scratch/fatal-three/s3-s5-s6-20260912/coordinator-state.md
+?? .scratch/fatal-three/s3-s5-s6-20260912/integration-compile.exit.txt
+?? .scratch/fatal-three/s3-s5-s6-20260912/integration-full-pytest.exit.txt
+?? .scratch/fatal-three/s3-s5-s6-20260912/integration-owned-diff-review.exit.txt
+?? .scratch/fatal-three/s3-s5-s6-20260912/integration-owned-diff-review.txt
+?? .scratch/fatal-three/s3-s5-s6-20260912/integration-report.md
+?? .scratch/fatal-three/s3-s5-s6-20260912/integration-targeted-pytest.exit.txt
+?? .scratch/fatal-three/s3-s5-s6-20260912/s3-preexisting-owned/ev_ebitda.py.before
+?? .scratch/fatal-three/s3-s5-s6-20260912/s3-preexisting-owned/fcf_yield.py.before
+?? .scratch/fatal-three/s3-s5-s6-20260912/s3-preexisting-owned/forward_pe.py.before
+?? .scratch/fatal-three/s3-s5-s6-20260912/s3-report.md
+?? .scratch/fatal-three/s3-s5-s6-20260912/s5-evidence.md
+?? .scratch/fatal-three/s3-s5-s6-20260912/s5-report.md
+?? .scratch/fatal-three/s3-s5-s6-20260912/s6-continuation-dcf.exit-code.txt
+?? .scratch/fatal-three/s3-s5-s6-20260912/s6-continuation-dcf.stdout.txt
+?? .scratch/fatal-three/s3-s5-s6-20260912/s6-continuation-owned.exit-code.txt
+?? .scratch/fatal-three/s3-s5-s6-20260912/s6-continuation-owned.stdout.txt
+?? .scratch/fatal-three/s3-s5-s6-20260912/s6-evidence.md
+?? .scratch/fatal-three/s3-s5-s6-20260912/s6-report.md
+?? .scratch/fatal-three/worker-f1-report-20260912.md
+?? .scratch/fatal-three/worker-s1-report-20260912.md
+?? .scratch/fatal-three/worker-s2-report-20260912.md
+?? backend/app/engines/parameter_governance.py
+?? backend/app/engines/terminal_governance.py
+?? backend/tests/test_s3_parameter_governance.py
+?? backend/tests/test_s5_fiscal_ytd_dcf.py
+?? backend/tests/test_s6_terminal_governance.py
+=== DIFF CHECK ===
+warning: in the working copy of 'backend/app/engines/dcf.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/app/engines/ev_ebitda.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/app/engines/fcf_yield.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/app/engines/forward_pe.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/app/models/domain.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/app/providers/yfinance_provider.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/app/services/projections.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_acceptance_rejection_fixes.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_audit_issues_01_02_regression_r5.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_audit_issues_01_02_regression_r6.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_audit_issues_03_04_regression.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_backend_acceptance_revisions.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_dcf.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_e2e_valuation_integrity_export.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_ev_ebitda.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_fatal_three_worker_c.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_fcf_yield.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_final_acceptance.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_forward_fcfe_borrowing_api.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_forward_fcfe_borrowing_isolation.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_forward_pe.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_live_and_mock_provider.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_p0_p1_deep_remediation.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_p0_p1_integrity.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/test_service_independent_acceptance.py', LF will be replaced by CRLF the next time Git touches it
+diff-check-exit=0

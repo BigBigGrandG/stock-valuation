@@ -89,7 +89,11 @@ def test_missing_cash_or_debt_disables_ev_and_dcf_preserves_pe_and_fcf():
         is_profitable=True,
     )
 
-    results = run_all_engines(snapshot, DEFAULT_ASSUMPTIONS)
+    assumptions = ValuationAssumptions(
+        pe_source=SourceType.USER_OVERRIDE,
+        pe_source_label="Explicit P/E test assumption",
+    )
+    results = run_all_engines(snapshot, assumptions)
 
     # Forward P/E does not need cash or debt:
     assert results["forward_pe"].available is True
@@ -516,7 +520,11 @@ def test_bank_applicability_disables_ev_dcf_fcf_preserves_pe():
         is_profitable=True,
     )
 
-    results = run_all_engines(bank_snap, DEFAULT_ASSUMPTIONS)
+    assumptions = ValuationAssumptions(
+        pe_source=SourceType.USER_OVERRIDE,
+        pe_source_label="Explicit P/E test assumption",
+    )
+    results = run_all_engines(bank_snap, assumptions)
 
     assert results["forward_pe"].available is True
     assert results["forward_pe"].base.price_per_share > Decimal("0")

@@ -26,6 +26,18 @@ from app.services import valuation_service as valuation_service_module
 from app.services.valuation_service import FinancialDataService, MemoryTTLCache, Normalizer, ValuationService, apply_overrides, normalize_snapshot, run_all_engines
 
 
+def _explicit_dcf_assumptions(**updates) -> ValuationAssumptions:
+    """Use deliberate test parameters at the standalone DCF seam."""
+    values = {
+        "dcf_wacc_source": SourceType.USER_OVERRIDE,
+        "dcf_wacc_source_label": "Explicit DCF test assumption",
+        "dcf_terminal_growth_source": SourceType.USER_OVERRIDE,
+        "dcf_terminal_growth_source_label": "Explicit DCF test assumption",
+    }
+    values.update(updates)
+    return ValuationAssumptions(**values)
+
+
 def test_api_rejects_string_override_and_unknown_nested_value():
     client = TestClient(app)
     assert client.post("/api/v1/valuation/AVGO", json={"forward_pe": {"base": "20"}}).status_code == 422
@@ -178,7 +190,7 @@ def test_ttm_fcff_is_derived_into_a_new_forecast_period():
         "forward_fcff_1y": None,
         "forward_fcff_2y": None,
     })
-    result = run_dcf(snapshot, ValuationAssumptions())
+    result = run_dcf(snapshot, _explicit_dcf_assumptions())
     assert result.available
     first = result.dcf_scenarios[0]
     assert first.projection_metrics[0]["period"] != "TTM"
@@ -187,7 +199,7 @@ def test_ttm_fcff_is_derived_into_a_new_forecast_period():
 
 def test_dcf_projection_periods_are_contiguous_and_fixture_is_not_consensus():
     snapshot = AVGOFixtureProvider().get_snapshot("AVGO")
-    result = run_dcf(snapshot, ValuationAssumptions())
+    result = run_dcf(snapshot, _explicit_dcf_assumptions())
     assert result.available
     for scenario in result.dcf_scenarios:
         assert scenario.projection_periods == ["FY2025E", "FY2026E", "FY2027E", "FY2028E", "FY2029E"]
@@ -238,7 +250,7 @@ def test_dcf_growth_exposes_raw_and_effective_capped_metrics():
             update={"value": Decimal("110600000000")}
         )
     })
-    result = run_dcf(snapshot, ValuationAssumptions())
+    result = run_dcf(snapshot, _explicit_dcf_assumptions())
     assert result.available
     base = next(scenario for scenario in result.dcf_scenarios if scenario.scenario == "base")
     assert base.growth_metric_raw["value"] == "0.4"
@@ -257,14 +269,32 @@ def test_dcf_prefers_historical_fcff_over_actual_operating_growth():
         source_type=SourceType.ACTUAL,
         as_of=date(2024, 12, 31),
     )
+    actual_ytd = FinancialMetric(
+        value=Decimal("1000000000"),
+        unit="USD",
+        period="FY2025 YTD",
+        source="historical FCFF YTD",
+        source_type=SourceType.ACTUAL,
+        as_of=date(2025, 1, 15),
+        is_estimated=False,
+    )
     snapshot = fixture.model_copy(update={
         "is_demo": False,
         "forward_fcff_2y": None,
         "fcff_ttm": None,
         "revenue_growth": actual("0.40", "historical revenue"),
         "fcff_growth": actual("0.10", "historical FCFF"),
+        "fiscal_ytd_fcff": actual_ytd,
+        "fiscal_ytd_required": True,
+        "fiscal_ytd_status": "available",
+        "fiscal_ytd_start": date(2025, 1, 1),
+        "fiscal_ytd_end": date(2025, 1, 15),
+        "fiscal_ytd_fiscal_year_end": date(2025, 12, 31),
+        # This shared YTD integration fixture must carry reporting currency
+        # explicitly instead of relying on the quote-currency default.
+        "financial_currency": "USD",
     })
-    result = run_dcf(snapshot, ValuationAssumptions())
+    result = run_dcf(snapshot, _explicit_dcf_assumptions())
     assert result.available
     assert "historical FCFF" in result.assumptions["growth_source"]
 
@@ -522,7 +552,13 @@ def test_model_exception_isolation_preserves_other_valuations(monkeypatch):
         raise RuntimeError("synthetic P/E failure")
 
     monkeypatch.setattr(valuation_service_module, "run_forward_pe", fail)
-    results = run_all_engines(snapshot, ValuationAssumptions())
+    results = run_all_engines(
+        snapshot,
+        _explicit_dcf_assumptions(
+            fcf_yield_source=SourceType.USER_OVERRIDE,
+            fcf_yield_source_label="Explicit FCF-yield test assumption",
+        ),
+    )
     assert not results["forward_pe"].available
     assert "synthetic P/E failure" in results["forward_pe"].unavailable_reason
     assert results["ev_ebitda"].available

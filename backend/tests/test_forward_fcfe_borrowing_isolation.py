@@ -112,7 +112,7 @@ def test_case_b_user_forward_override_is_the_only_debt_flow_used():
 def test_case_c_explicit_provider_forward_borrowing_is_used_with_metadata():
     provider_forward = _metric(
         "321",
-        period="FY2026E",
+        period="NTM",
         source_type=SourceType.ANALYST_ESTIMATE,
         notes="Explicit provider forward net borrowing; not derived from TTM.",
     )
@@ -121,7 +121,7 @@ def test_case_c_explicit_provider_forward_borrowing_is_used_with_metadata():
 
     assert projection.forward_net_borrowing is not None
     assert projection.forward_net_borrowing_status == "provider_forward"
-    assert projection.forward_net_borrowing.period == "FY2026E"
+    assert projection.forward_net_borrowing.period == "NTM"
     assert Decimal(bridge["forward_net_borrowing"]) == Decimal("321")
     assert Decimal(bridge["net_borrowing"]) == Decimal("321")
     assert bridge["forward_net_borrowing_source"] == "provider_forward"
@@ -136,7 +136,7 @@ def test_provider_boundary_carries_explicit_forward_borrowing_without_ttm_fallba
             "period": "TTM",
             "as_of": AS_OF,
             "forward_net_borrowing_1y": Decimal("321"),
-            "forward_net_borrowing_1y_period": "FY2026E",
+            "forward_net_borrowing_1y_period": "NTM",
             "forward_net_borrowing_1y_source": "provider replay",
             "forward_net_borrowing_1y_source_type": "provider_forward",
             "forward_net_borrowing_1y_as_of": AS_OF,
@@ -153,7 +153,7 @@ def test_provider_boundary_carries_explicit_forward_borrowing_without_ttm_fallba
     assert Decimal(bridge["historical_net_borrowing"]) == Decimal("500")
 
 
-def test_historical_ttm_fallback_is_not_high_quality_forward_fcfe():
+def test_missing_forward_fcfe_with_historical_ttm_is_unavailable():
     snapshot = _snapshot(
         revenue_estimate_1y=None,
         revenue_estimate_2y=None,
@@ -163,10 +163,61 @@ def test_historical_ttm_fallback_is_not_high_quality_forward_fcfe():
     )
     result = run_fcf_yield(snapshot, ValuationAssumptions())
 
+    assert not result.available
+    assert result.low is None
+    assert result.base is None
+    assert result.high is None
+    assert "No forward FCFE" in (result.unavailable_reason or "")
+    assert any("historical" in warning.lower() and "display" in warning.lower() for warning in result.warnings)
+    assert result.inputs["historical_fcfe_ttm"] == "900"
+    assert result.input_metrics["historical_fcfe_ttm"]["period"] == "TTM"
+    assert "forward_fcfe" not in result.inputs
+
+
+def test_historical_forward_fcfe_field_cannot_reenter_via_ttm_fallback():
+    snapshot = _snapshot(
+        forward_fcf_1y=_metric(
+            "900",
+            period="TTM",
+            notes="TTM FCFE includes historical net borrowing",
+        ),
+        fcf_ttm=_metric("900", notes="Historical FCFE TTM"),
+    )
+    result = run_fcf_yield(snapshot, ValuationAssumptions())
+
+    assert not result.available
+    assert result.low is None
+    assert result.base is None
+    assert result.high is None
+    assert "No forward FCFE" in (result.unavailable_reason or "")
+    assert any("historical" in warning.lower() for warning in result.warnings)
+
+
+def test_explicit_forward_fcfe_override_is_eligible_and_ignores_ttm_history():
+    snapshot = _snapshot(
+        forward_fcf_1y=_metric(
+            "1234",
+            period="FY2026E",
+            source_type=SourceType.USER_OVERRIDE,
+            notes="Explicit forward FCFE bridge override; not historical TTM.",
+        ),
+        fcf_ttm=_metric("900", notes="Historical FCFE TTM includes historical net borrowing"),
+    )
+    result = run_fcf_yield(
+        snapshot,
+        ValuationAssumptions(
+            fcf_yield_source=SourceType.USER_OVERRIDE,
+            fcf_yield_source_label="Explicit FCF-yield test assumption",
+        ),
+    )
+
     assert result.available
-    assert result.data_quality.value == "LOW"
-    assert result.inputs["forward_fcfe_is_historical_proxy"] is True
-    assert any("historical TTM FCFE" in warning for warning in result.warnings)
+    assert result.base is not None
+    assert result.inputs["forward_fcfe"] == "1234"
+    assert result.inputs["forward_fcfe_period"] == "FY2026E"
+    assert result.inputs["forward_fcfe_source_type"] == SourceType.USER_OVERRIDE
+    assert result.base.price_per_share == Decimal("24.68")
+    assert not any("historical TTM FCFE" in warning for warning in result.warnings)
 
 
 def test_statement_aggregator_does_not_populate_forward_borrowing_from_empty_history():

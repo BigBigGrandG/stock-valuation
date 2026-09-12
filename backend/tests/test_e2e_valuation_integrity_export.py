@@ -16,8 +16,14 @@ client = TestClient(app)
 
 
 def test_e2e_avgo_baseline_valuation_provenance_and_export_fields():
-    """Verify AVGO baseline endpoint delivers all provenance fields required for UI badges and Markdown export."""
-    r = client.get("/api/v1/valuation/AVGO")
+    """Verify an explicit-parameter AVGO endpoint delivers the export contract."""
+    # Configured DCF parameters are intentionally unavailable without a
+    # deliberate request override; this integration test exercises the
+    # successful API/export shape with explicit user parameters.
+    r = client.post(
+        "/api/v1/valuation/AVGO",
+        json={"dcf": {"wacc": 0.10, "terminal_growth": 0.03}},
+    )
     assert r.status_code == 200
     data = r.json()
 

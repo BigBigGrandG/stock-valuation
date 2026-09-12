@@ -12,6 +12,7 @@ Two cash-flow concepts are deliberately separate throughout this module:
 """
 from __future__ import annotations
 
+import json
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
@@ -124,6 +125,31 @@ class CompanyFinancialSnapshot(BaseModel):
     forecast_fiscal_year_end: Optional[date] = None
     ntm_weights: Optional[dict[str, Decimal]] = None
 
+    # FY1 DCF stub bridge.  These fields are additive and optional so legacy
+    # fixture/direct snapshots remain wire-compatible.  A live provider may
+    # carry the same payload through a structured marker in ``cfo_ttm.notes``
+    # because the seven-method normalizer intentionally preserves only the
+    # canonical metrics above.
+    fiscal_ytd_fcff: Optional[FinancialMetric] = Field(
+        None,
+        description="Actual FCFF from the current fiscal-year start through the valuation date",
+    )
+    fiscal_ytd_fcff_actual: Optional[FinancialMetric] = Field(
+        None,
+        description="Compatibility alias for fiscal_ytd_fcff",
+    )
+    ytd_fcff_actual: Optional[FinancialMetric] = Field(
+        None,
+        description="Compatibility alias for fiscal_ytd_fcff",
+    )
+    fiscal_ytd_start: Optional[date] = None
+    fiscal_ytd_end: Optional[date] = None
+    fiscal_ytd_prior_fiscal_year_end: Optional[date] = None
+    fiscal_ytd_fiscal_year_end: Optional[date] = None
+    fiscal_ytd_status: Optional[str] = None
+    fiscal_ytd_required: Optional[bool] = None
+    fiscal_ytd_unavailable_reason: Optional[str] = None
+
     revenue_ttm: Optional[FinancialMetric] = None
     ebitda_ttm: Optional[FinancialMetric] = None
     eps_ttm: Optional[FinancialMetric] = None
@@ -210,6 +236,150 @@ class CompanyFinancialSnapshot(BaseModel):
         else:
             self.net_debt = None
             self.net_debt_metric = None
+
+        # ``FinancialDataService`` owns the public seven-method normalization
+        # boundary and cannot pass vendor-specific additive fields directly.
+        # Providers therefore append a JSON object to the canonical CFO metric
+        # notes.  Decode it here so the DCF engine receives typed provenance,
+        # never a bare number or a missing-to-zero substitute.
+        explicit_metrics = [
+            metric
+            for metric in (
+                self.fiscal_ytd_fcff,
+                self.fiscal_ytd_fcff_actual,
+                self.ytd_fcff_actual,
+            )
+            if metric is not None
+        ]
+        ytd_metric = explicit_metrics[0] if explicit_metrics else None
+        marker_payload: Optional[dict[str, Any]] = None
+        if ytd_metric is None:
+            marker_prefix = "S5_FISCAL_YTD_V1:"
+            note_candidates = [
+                self.cfo_ttm.notes if self.cfo_ttm is not None else None,
+                self.fcff_ttm.notes if self.fcff_ttm is not None else None,
+                self.fcf_ttm.notes if self.fcf_ttm is not None else None,
+            ]
+            for note in note_candidates:
+                if not note or marker_prefix not in note:
+                    continue
+                encoded = note.split(marker_prefix, 1)[1].lstrip()
+                try:
+                    decoded, _ = json.JSONDecoder().raw_decode(encoded)
+                except (TypeError, ValueError, json.JSONDecodeError):
+                    marker_payload = {
+                        "status": "unavailable",
+                        "reason": "Malformed provider fiscal YTD provenance marker",
+                    }
+                else:
+                    if isinstance(decoded, dict):
+                        marker_payload = decoded
+                    else:
+                        marker_payload = {
+                            "status": "unavailable",
+                            "reason": "Provider fiscal YTD provenance marker is not an object",
+                        }
+                break
+
+        if marker_payload is not None:
+            status = str(marker_payload.get("status") or "unavailable").strip().lower()
+            self.fiscal_ytd_status = status
+            self.fiscal_ytd_required = True
+            for field_name, payload_name in (
+                ("fiscal_ytd_start", "start"),
+                ("fiscal_ytd_end", "end"),
+                ("fiscal_ytd_prior_fiscal_year_end", "prior_fiscal_year_end"),
+                ("fiscal_ytd_fiscal_year_end", "fiscal_year_end"),
+            ):
+                raw_date = marker_payload.get(payload_name)
+                if raw_date is None or getattr(self, field_name) is not None:
+                    continue
+                try:
+                    setattr(self, field_name, date.fromisoformat(str(raw_date)[:10]))
+                except (TypeError, ValueError):
+                    self.fiscal_ytd_status = "unavailable"
+                    status = "unavailable"
+                    self.fiscal_ytd_unavailable_reason = (
+                        f"Invalid provider fiscal YTD {payload_name} date: {raw_date!r}"
+                    )
+            if status == "available":
+                missing_coverage = [
+                    payload_name
+                    for field_name, payload_name in (
+                        ("fiscal_ytd_start", "start"),
+                        ("fiscal_ytd_end", "end"),
+                        ("fiscal_ytd_fiscal_year_end", "fiscal_year_end"),
+                    )
+                    if getattr(self, field_name, None) is None
+                ]
+                if missing_coverage:
+                    status = "unavailable"
+                    self.fiscal_ytd_status = status
+                    self.fiscal_ytd_unavailable_reason = (
+                        "Provider fiscal YTD marker is missing explicit coverage fields: "
+                        + ", ".join(missing_coverage)
+                    )
+            if status == "available" and ytd_metric is None:
+                try:
+                    required_provenance = (
+                        "value",
+                        "unit",
+                        "period",
+                        "source",
+                        "source_type",
+                        "as_of",
+                        "confidence",
+                        "is_estimated",
+                    )
+                    missing_provenance = [
+                        key
+                        for key in required_provenance
+                        if key not in marker_payload
+                        or marker_payload[key] is None
+                        or (isinstance(marker_payload[key], str) and not marker_payload[key].strip())
+                    ]
+                    if missing_provenance:
+                        raise ValueError(
+                            "missing explicit provenance fields: " + ", ".join(missing_provenance)
+                        )
+                    if not isinstance(marker_payload["is_estimated"], bool):
+                        raise ValueError("is_estimated must be an explicit boolean")
+                    raw_source_type = str(marker_payload["source_type"]).strip().lower()
+                    source_type = {
+                        "actual": SourceType.ACTUAL,
+                        "provider_actual": SourceType.ACTUAL,
+                        "derived": SourceType.DERIVED,
+                        "fixture": SourceType.FIXTURE,
+                    }.get(raw_source_type)
+                    if source_type is None:
+                        raise ValueError(f"unsupported source_type={raw_source_type}")
+                    ytd_metric = FinancialMetric(
+                        value=marker_payload.get("value"),
+                        unit=str(marker_payload["unit"]),
+                        period=str(marker_payload["period"]),
+                        source=str(marker_payload["source"]),
+                        source_type=source_type,
+                        as_of=marker_payload["as_of"],
+                        confidence=marker_payload["confidence"],
+                        is_estimated=marker_payload["is_estimated"],
+                        notes=marker_payload.get("notes"),
+                    )
+                except Exception as exc:
+                    ytd_metric = None
+                    self.fiscal_ytd_status = "unavailable"
+                    self.fiscal_ytd_unavailable_reason = f"Invalid provider fiscal YTD FCFF metric: {exc}"
+            if self.fiscal_ytd_status != "available" or ytd_metric is None:
+                self.fiscal_ytd_unavailable_reason = (
+                    self.fiscal_ytd_unavailable_reason
+                    or str(marker_payload.get("reason") or "Provider fiscal YTD FCFF is unavailable")
+                )
+
+        if ytd_metric is not None:
+            self.fiscal_ytd_fcff = ytd_metric
+            self.fiscal_ytd_fcff_actual = ytd_metric
+            self.ytd_fcff_actual = ytd_metric
+            if self.fiscal_ytd_status is None:
+                self.fiscal_ytd_status = "available"
         return self
 
     def get_net_debt(self) -> Optional[Decimal]:
@@ -416,6 +586,8 @@ class DCFScenario(BaseModel):
     projection_proration_factors: list[Decimal] = Field(default_factory=list)
     period_is_stub: list[bool] = Field(default_factory=list)
     fiscal_year_days: list[int] = Field(default_factory=list)
+    projection_stub_basis: list[str] = Field(default_factory=list)
+    fiscal_ytd_actual: Optional[dict[str, Any]] = None
     discount_times: list[Decimal] = Field(default_factory=list)
     projection_discount_times: list[Decimal] = Field(default_factory=list)
     discount_factors: list[Decimal] = Field(default_factory=list)

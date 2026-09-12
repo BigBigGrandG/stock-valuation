@@ -93,7 +93,7 @@ class _ExplicitForwardBorrowingProvider(FinancialDataProvider):
             "forward_eps_1y": Decimal("6"),
             "forward_eps_2y": Decimal("7"),
             "forward_net_borrowing_1y": Decimal("321"),
-            "forward_net_borrowing_1y_period": "FY2026E",
+            "forward_net_borrowing_1y_period": "NTM",
             "forward_net_borrowing_1y_source": "case-c-provider consensus",
             "forward_net_borrowing_1y_source_type": "provider_forward",
             "forward_net_borrowing_1y_as_of": AS_OF,
@@ -133,7 +133,7 @@ def test_case_c_api_preserves_explicit_forward_borrowing_metadata(monkeypatch):
     bridge = response.json()["financial_bridge"]
     assert Decimal(bridge["forward_net_borrowing"]) == Decimal("321")
     assert bridge["forward_net_borrowing_status"] == "provider_forward"
-    assert bridge["forward_net_borrowing_period"] == "FY2026E"
+    assert bridge["forward_net_borrowing_period"] == "NTM"
     assert bridge["forward_net_borrowing_source"] == "provider_forward"
     assert bridge["forward_net_borrowing_source_type"] == "analyst_estimate"
     assert Decimal(bridge["historical_net_borrowing"]) == Decimal("500")

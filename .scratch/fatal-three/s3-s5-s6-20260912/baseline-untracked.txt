@@ -1,0 +1,14 @@
+.scratch/fatal-three/current-severity-reassessment-20260912.md
+.scratch/fatal-three/issues/F1-fcf-yield-ttm-fcfe.md
+.scratch/fatal-three/issues/S1-ntm-borrowing-period-mismatch.md
+.scratch/fatal-three/issues/S2-forward-fcff-ttm-ratio-extrapolation.md
+.scratch/fatal-three/issues/S3-fallback-parameter-governance.md
+.scratch/fatal-three/issues/S5-fy1-stub-proration-no-ytd.md
+.scratch/fatal-three/issues/S6-terminal-value-fallback-dependence.md
+.scratch/fatal-three/s3-s5-s6-20260912/baseline-status.txt
+.scratch/fatal-three/s3-s5-s6-20260912/baseline.patch
+.scratch/fatal-three/worker-f1-report-20260912.md
+.scratch/fatal-three/worker-s1-report-20260912.md
+.scratch/fatal-three/worker-s2-report-20260912.md
+backend/tests/test_s1_ntm_borrowing_period_alignment.py
+backend/tests/test_s2_forward_fcff_driver_lineage.py

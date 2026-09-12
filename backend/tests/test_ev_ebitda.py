@@ -39,6 +39,7 @@ def _avgo_snapshot(multiple_base="22") -> CompanyFinancialSnapshot:
             source="analyst consensus", source_type=SourceType.ANALYST_ESTIMATE,
             as_of=FIXTURE_DATE, is_estimated=True,
         ),
+        is_demo=True,
     )
 
 
@@ -54,7 +55,9 @@ def test_ev_net_debt_equity_per_share():
     assumptions = ValuationAssumptions(
         ev_ebitda_multiple=ScenarioValues(
             low=Decimal("18"), base=Decimal("22"), high=Decimal("26")
-        )
+        ),
+        ev_ebitda_source=SourceType.USER_OVERRIDE,
+        ev_ebitda_source_label="Test user override",
     )
     result = run_ev_ebitda(snap, assumptions)
 
@@ -82,7 +85,13 @@ def test_ev_net_debt_equity_per_share():
 def test_low_less_than_high():
     """Low price scenario must be less than high price scenario."""
     snap = _avgo_snapshot()
-    result = run_ev_ebitda(snap, ValuationAssumptions())
+    result = run_ev_ebitda(
+        snap,
+        ValuationAssumptions(
+            ev_ebitda_source=SourceType.USER_OVERRIDE,
+            ev_ebitda_source_label="Test user override",
+        ),
+    )
     assert result.low.price_per_share < result.base.price_per_share < result.high.price_per_share
 
 

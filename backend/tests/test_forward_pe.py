@@ -36,6 +36,7 @@ def _make_snapshot(forward_eps: str = "19.21") -> CompanyFinancialSnapshot:
             source="analyst consensus", source_type=SourceType.ANALYST_ESTIMATE,
             as_of=d, is_estimated=True,
         ),
+        is_demo=True,
     )
 
 
@@ -45,7 +46,9 @@ def test_exact_spec_values():
     assumptions = ValuationAssumptions(
         pe_target=ScenarioValues(
             low=Decimal("18"), base=Decimal("20"), high=Decimal("22")
-        )
+        ),
+        pe_source=SourceType.USER_OVERRIDE,
+        pe_source_label="Test user override",
     )
     result = run_forward_pe(snap, assumptions)
 
@@ -64,7 +67,9 @@ def test_upside_calculation():
     """Verify upside and premium/discount calculations."""
     snap = _make_snapshot("19.21")
     assumptions = ValuationAssumptions(
-        pe_target=ScenarioValues(low=Decimal("18"), base=Decimal("20"), high=Decimal("22"))
+        pe_target=ScenarioValues(low=Decimal("18"), base=Decimal("20"), high=Decimal("22")),
+        pe_source=SourceType.USER_OVERRIDE,
+        pe_source_label="Test user override",
     )
     result = run_forward_pe(snap, assumptions)
     current = Decimal("343.83")
@@ -122,7 +127,13 @@ def test_negative_eps_unavailable():
 def test_formula_and_description():
     """Verify formula metadata is populated."""
     snap = _make_snapshot("19.21")
-    result = run_forward_pe(snap, ValuationAssumptions())
+    result = run_forward_pe(
+        snap,
+        ValuationAssumptions(
+            pe_source=SourceType.USER_OVERRIDE,
+            pe_source_label="Test user override",
+        ),
+    )
     assert "Forward EPS" in result.formula
     assert len(result.calculation_steps) >= 3
     assert "forward_eps" in result.inputs

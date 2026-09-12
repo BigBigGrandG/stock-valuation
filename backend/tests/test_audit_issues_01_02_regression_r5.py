@@ -152,7 +152,13 @@ def test_r5_api_isolates_missing_capex_in_production_response(monkeypatch: pytes
         capex_ttm=None,
         fcff_ttm=_m("700", source_type=source_type),
     )
-    service = ValuationService(_SnapshotDataService(snapshot), default_assumptions=ValuationAssumptions())
+    service = ValuationService(
+        _SnapshotDataService(snapshot),
+        default_assumptions=ValuationAssumptions(
+            pe_source=SourceType.USER_OVERRIDE,
+            pe_source_label="Explicit P/E test assumption",
+        ),
+    )
     monkeypatch.setattr(main, "_resolve_valuation_service", lambda provider=None: service)
 
     response = TestClient(main.app).get("/api/v1/valuation/R5")

@@ -99,6 +99,22 @@ def _make_snapshot(
     )
 
 
+def _explicit_model_assumptions() -> ValuationAssumptions:
+    """Keep direct engine math tests explicit about parameter provenance."""
+    return ValuationAssumptions(
+        pe_source=SourceType.USER_OVERRIDE,
+        pe_source_label="Explicit P/E test assumption",
+        ev_ebitda_source=SourceType.USER_OVERRIDE,
+        ev_ebitda_source_label="Explicit EV/EBITDA test assumption",
+        fcf_yield_source=SourceType.USER_OVERRIDE,
+        fcf_yield_source_label="Explicit FCF-yield test assumption",
+        dcf_wacc_source=SourceType.USER_OVERRIDE,
+        dcf_wacc_source_label="Explicit DCF test assumption",
+        dcf_terminal_growth_source=SourceType.USER_OVERRIDE,
+        dcf_terminal_growth_source_label="Explicit DCF test assumption",
+    )
+
+
 # ----------------------------------------------------------------------
 # 1. P0-A: Multi-Class Share Capital Reconciliation
 # ----------------------------------------------------------------------
@@ -115,10 +131,11 @@ def test_share_reconciliation_multi_class():
             "reconciliation_notes": "All-class shares selected",
         },
     )
-    res_pe = run_forward_pe(snap, DEFAULT_ASSUMPTIONS)
-    res_ev = run_ev_ebitda(snap, DEFAULT_ASSUMPTIONS)
-    res_fcf = run_fcf_yield(snap, DEFAULT_ASSUMPTIONS)
-    res_dcf = run_dcf(snap, DEFAULT_ASSUMPTIONS)
+    assumptions = _explicit_model_assumptions()
+    res_pe = run_forward_pe(snap, assumptions)
+    res_ev = run_ev_ebitda(snap, assumptions)
+    res_fcf = run_fcf_yield(snap, assumptions)
+    res_dcf = run_dcf(snap.model_copy(update={"is_demo": True}), assumptions)
 
     assert res_pe.available
     assert res_ev.available
@@ -162,7 +179,7 @@ def test_dcf_calendar_anchored_dates():
     """Verify DCF future projection periods anchor to valuation as_of and never use past FYs."""
     as_of = date(2026, 9, 10)
     snap = _make_snapshot(as_of=as_of)
-    res_dcf = run_dcf(snap, DEFAULT_ASSUMPTIONS)
+    res_dcf = run_dcf(snap.model_copy(update={"is_demo": True}), _explicit_model_assumptions())
 
     assert res_dcf.available
     scenarios = res_dcf.dcf_scenarios
@@ -246,7 +263,7 @@ def test_weight_overrides_rejected_from_public_contract():
 def test_dcf_sensitivity_matrix():
     """Verify 3x3 TV sensitivity matrix around base WACC and terminal growth."""
     snap = _make_snapshot()
-    res_dcf = run_dcf(snap, DEFAULT_ASSUMPTIONS)
+    res_dcf = run_dcf(snap.model_copy(update={"is_demo": True}), _explicit_model_assumptions())
 
     assert res_dcf.available
     matrix = res_dcf.sensitivity_matrix

@@ -48,6 +48,7 @@ from app.models.domain import (
     CompanyFinancialSnapshot,
     FinancialMetric,
     SourceType,
+    ValuationAssumptions,
 )
 from app.providers.base import (
     ProviderError,
@@ -777,7 +778,13 @@ def test_tsm_grounded_per_ads_basis_and_currency_isolation():
     assert snapshot.exchange == "NYQ"
     assert snapshot.market == "us_market"
 
-    results = run_all_engines(snapshot, DEFAULT_ASSUMPTIONS)
+    results = run_all_engines(
+        snapshot,
+        ValuationAssumptions(
+            pe_source=SourceType.USER_OVERRIDE,
+            pe_source_label="Explicit P/E test assumption",
+        ),
+    )
 
     # Forward P/E is valid: $16.93 EPS and $439.00 Price are both in USD per ADS
     assert results["forward_pe"].available is True

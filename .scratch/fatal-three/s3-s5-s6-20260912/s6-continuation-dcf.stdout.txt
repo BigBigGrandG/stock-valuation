@@ -1,0 +1,68 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.13, pytest-9.1.1, pluggy-1.6.0 -- D:\workshop\stock-valuation\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: D:\workshop\stock-valuation
+configfile: pyproject.toml
+plugins: anyio-4.15.1, asyncio-1.4.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 9 items
+
+backend/tests/test_dcf.py::test_wacc_less_than_g_raises PASSED           [ 11%]
+backend/tests/test_dcf.py::test_wacc_equal_g_raises PASSED               [ 22%]
+backend/tests/test_dcf.py::test_dcf_scenario_math PASSED                 [ 33%]
+backend/tests/test_dcf.py::test_dcf_y1_y2_actual_estimates FAILED        [ 44%]
+backend/tests/test_dcf.py::test_dcf_full_avgo FAILED                     [ 55%]
+backend/tests/test_dcf.py::test_dcf_bear_lower_than_bull FAILED          [ 66%]
+backend/tests/test_dcf.py::test_no_fcff_unavailable PASSED               [ 77%]
+backend/tests/test_dcf.py::test_dcf_terminal_growth_exceeds_max_is_unavailable PASSED [ 88%]
+backend/tests/test_dcf.py::test_fcfe_not_proxied_for_fcff PASSED         [100%]
+
+================================== FAILURES ===================================
+_______________________ test_dcf_y1_y2_actual_estimates _______________________
+
+    def test_dcf_y1_y2_actual_estimates():
+        """When Y1 and Y2 FCFF estimates available, years 1 and 2 use actual values."""
+        snap = _avgo_snapshot_fcff("89600000000", "99000000000")
+        assumptions = ValuationAssumptions(
+            dcf_wacc=ScenarioValues(low=Decimal("0.12"), base=Decimal("0.10"), high=Decimal("0.08")),
+            dcf_terminal_growth=ScenarioValues(low=Decimal("0.03"), base=Decimal("0.03"), high=Decimal("0.04")),
+            dcf_fcf_growth=ScenarioValues(low=Decimal("0.05"), base=Decimal("0.08"), high=Decimal("0.12")),
+        )
+        result = run_dcf(snap, assumptions)
+>       assert result.available
+E       AssertionError: assert False
+E        +  where False = ModelValuation(formula='EV = \u03a3 FCFF_t/(1+WACC)^t + TV/(1+WACC)^t_5; t = (fiscal period end \u2212 valuation date)/365; Equity = EV \u2212 Net Debt; Price = Equity/Shares', formula_description='Five-year FCFF DCF. PV_t = FCFF_t/DF_t; DF_t=(1+WACC)^t with t=(fiscal period end\u2212valuation date)/365; TV = FCFF5\xd7(1+g)/(WACC-g); PVTV = TV/DF_t5 at the actual terminal fiscal period end; EV = \u03a3PV + PVTV; equity = EV \u2212 debt + cash; price = equity/shares.', inputs={'fcff_y1': '89600000000.00', 'fcff_y1_full_year': '89600000000', 'fcff_y1_label': 'Forward FCFF FY2025E [analyst estimate]', 'fcff_y2': '99000000000', 'fcff_y2_label': 'Forward FCFF FY2026E [analyst estimate]', 'fiscal_ytd_fcff': None, 'stub_cashflow_basis': 'day_ratio_compatibility', 'fcf_type': 'FCFF (firm/unlevered FCF \u2014 discounted at WACC, NOT FCFE)', 'current_price': '343.83', 'diluted_shares': '4940000000', 'cash': '24000000000', 'total_debt': '59400000000', 'net_debt': '35400000000'}, assumptions={'growth_source': 'user_override dcf.fcf_growth (capped)', 'growth_source_type': 'user_override', 'growth_bear': '0.05', 'growth_base': '0.08', 'growth_bull': '0.12', 'growth_start_bear': '0.05', 'growth_start_base': '0.08', 'growth_start_bu...024334225.34, PVTV=1036874036707.09, equity=1389624334225.34, price=281.30', 'bull: EV=2545134800810.51, PVTV=2124733263655.55, equity=2509734800810.51, price=508.04', 'Terminal governance: DCF target/scenario/sensitivity prices withheld; configured fallback lineage: bear.wacc, bear.terminal_growth, base.wacc, base.terminal_growth, bull.wacc, bull.terminal_growth; terminal assumptions are not sufficiently company-specific for a normal DCF target price'], low=None, base=None, high=None, dcf_scenarios=None, sensitivity_matrix=None, available=False, unavailable_reason='Terminal governance blocked DCF publication: configured fallback lineage: bear.wacc, bear.terminal_growth, base.wacc, base.terminal_growth, bull.wacc, bull.terminal_growth; terminal assumptions are not sufficiently company-specific for a normal DCF target price Public target, scenario, and sensitivity prices are withheld.', warnings=['DCF Terminal Value accounts for 72.8% of Enterprise Value (>70%). Moderate sensitivity to terminal assumptions.', 'Terminal governance blocked DCF target prices: effective WACC and/or terminal growth uses configured fallback or unknown provenance.'], data_quality=<DataQuality.LOW: 'LOW'>).available
+
+backend\tests\test_dcf.py:193: AssertionError
+_____________________________ test_dcf_full_avgo ______________________________
+
+    def test_dcf_full_avgo():
+        """Run full DCF on AVGO fixture; verify all 3 scenarios present."""
+        snap = _avgo_snapshot_fcff("89600000000")
+        assumptions = ValuationAssumptions(
+            dcf_wacc=ScenarioValues(low=Decimal("0.12"), base=Decimal("0.10"), high=Decimal("0.08")),
+            dcf_terminal_growth=ScenarioValues(low=Decimal("0.03"), base=Decimal("0.03"), high=Decimal("0.04")),
+            dcf_fcf_growth=ScenarioValues(low=Decimal("0.05"), base=Decimal("0.08"), high=Decimal("0.12")),
+        )
+        result = run_dcf(snap, assumptions)
+>       assert result.available
+E       AssertionError: assert False
+E        +  where False = ModelValuation(formula='EV = \u03a3 FCFF_t/(1+WACC)^t + TV/(1+WACC)^t_5; t = (fiscal period end \u2212 valuation date)/365; Equity = EV \u2212 Net Debt; Price = Equity/Shares', formula_description='Five-year FCFF DCF. PV_t = FCFF_t/DF_t; DF_t=(1+WACC)^t with t=(fiscal period end\u2212valuation date)/365; TV = FCFF5\xd7(1+g)/(WACC-g); PVTV = TV/DF_t5 at the actual terminal fiscal period end; EV = \u03a3PV + PVTV; equity = EV \u2212 debt + cash; price = equity/shares.', inputs={'fcff_y1': '89600000000.00', 'fcff_y1_full_year': '89600000000', 'fcff_y1_label': 'Forward FCFF FY2025E [analyst estimate]', 'fcff_y2': None, 'fcff_y2_label': None, 'fiscal_ytd_fcff': None, 'stub_cashflow_basis': 'day_ratio_compatibility', 'fcf_type': 'FCFF (firm/unlevered FCF \u2014 discounted at WACC, NOT FCFE)', 'current_price': '343.83', 'diluted_shares': '4940000000', 'cash': '24000000000', 'total_debt': '59400000000', 'net_debt': '35400000000'}, assumptions={'growth_source': 'user_override dcf.fcf_growth (capped)', 'growth_source_type': 'user_override', 'growth_bear': '0.05', 'growth_base': '0.08', 'growth_bull': '0.12', 'growth_start_bear': '0.05', 'growth_start_base': '0.08', 'growth_start_bull': '0.12', 'growth_fade_formula': 'g_t = g_s...733422222.75, PVTV=1013497240243.15, equity=1359333422222.75, price=275.17', 'bull: EV=2578759373253.21, PVTV=2153749822973.49, equity=2543359373253.21, price=514.85', 'Terminal governance: DCF target/scenario/sensitivity prices withheld; configured fallback lineage: bear.wacc, bear.terminal_growth, base.wacc, base.terminal_growth, bull.wacc, bull.terminal_growth; terminal assumptions are not sufficiently company-specific for a normal DCF target price'], low=None, base=None, high=None, dcf_scenarios=None, sensitivity_matrix=None, available=False, unavailable_reason='Terminal governance blocked DCF publication: configured fallback lineage: bear.wacc, bear.terminal_growth, base.wacc, base.terminal_growth, bull.wacc, bull.terminal_growth; terminal assumptions are not sufficiently company-specific for a normal DCF target price Public target, scenario, and sensitivity prices are withheld.', warnings=['DCF Terminal Value accounts for 72.7% of Enterprise Value (>70%). Moderate sensitivity to terminal assumptions.', 'Terminal governance blocked DCF target prices: effective WACC and/or terminal growth uses configured fallback or unknown provenance.'], data_quality=<DataQuality.LOW: 'LOW'>).available
+
+backend\tests\test_dcf.py:209: AssertionError
+________________________ test_dcf_bear_lower_than_bull ________________________
+
+    def test_dcf_bear_lower_than_bull():
+        """Bear scenario produces lower price than bull."""
+        snap = _avgo_snapshot_fcff("89600000000")
+        result = run_dcf(snap, ValuationAssumptions())
+>       assert result.available
+E       AssertionError: assert False
+E        +  where False = ModelValuation(formula='EV = \u03a3 FCFF_t/(1+WACC)^t + TV/(1+WACC)^t_5; t = (fiscal period end \u2212 valuation date)/365; Equity = EV \u2212 Net Debt; Price = Equity/Shares', formula_description='Five-year FCFF DCF. PV_t = FCFF_t/DF_t; DF_t=(1+WACC)^t with t=(fiscal period end\u2212valuation date)/365; TV = FCFF5\xd7(1+g)/(WACC-g); PVTV = TV/DF_t5 at the actual terminal fiscal period end; EV = \u03a3PV + PVTV; equity = EV \u2212 debt + cash; price = equity/shares.', inputs={'fcff_y1': '89600000000.00', 'fcff_y1_full_year': '89600000000', 'fcff_y1_label': 'Forward FCFF FY2025E [analyst estimate]', 'fcff_y2': None, 'fcff_y2_label': None, 'fiscal_ytd_fcff': None, 'stub_cashflow_basis': 'day_ratio_compatibility', 'fcf_type': 'FCFF (firm/unlevered FCF \u2014 discounted at WACC, NOT FCFE)', 'current_price': '343.83', 'diluted_shares': '4940000000', 'cash': '24000000000', 'total_debt': '59400000000', 'net_debt': '35400000000'}, assumptions={'growth_source': 'configured fallback FCFF growth (capped)', 'growth_source_type': 'configured_fallback', 'growth_bear': '0.05', 'growth_base': '0.08', 'growth_bull': '0.12', 'growth_start_bear': '0.05', 'growth_start_base': '0.08', 'growth_start_bull': '0.12', 'growth_fade_formula': '...733422222.75, PVTV=1013497240243.15, equity=1359333422222.75, price=275.17', 'bull: EV=2578759373253.21, PVTV=2153749822973.49, equity=2543359373253.21, price=514.85', 'Terminal governance: DCF target/scenario/sensitivity prices withheld; configured fallback lineage: bear.wacc, bear.terminal_growth, base.wacc, base.terminal_growth, bull.wacc, bull.terminal_growth; terminal assumptions are not sufficiently company-specific for a normal DCF target price'], low=None, base=None, high=None, dcf_scenarios=None, sensitivity_matrix=None, available=False, unavailable_reason='Terminal governance blocked DCF publication: configured fallback lineage: bear.wacc, bear.terminal_growth, base.wacc, base.terminal_growth, bull.wacc, bull.terminal_growth; terminal assumptions are not sufficiently company-specific for a normal DCF target price Public target, scenario, and sensitivity prices are withheld.', warnings=['DCF Terminal Value accounts for 72.7% of Enterprise Value (>70%). Moderate sensitivity to terminal assumptions.', 'Terminal governance blocked DCF target prices: effective WACC and/or terminal growth uses configured fallback or unknown provenance.'], data_quality=<DataQuality.LOW: 'LOW'>).available
+
+backend\tests\test_dcf.py:220: AssertionError
+=========================== short test summary info ===========================
+FAILED backend/tests/test_dcf.py::test_dcf_y1_y2_actual_estimates - Assertion...
+FAILED backend/tests/test_dcf.py::test_dcf_full_avgo - AssertionError: assert...
+FAILED backend/tests/test_dcf.py::test_dcf_bear_lower_than_bull - AssertionEr...
+========================= 3 failed, 6 passed in 0.18s =========================

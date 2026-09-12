@@ -188,6 +188,10 @@ def test_dcf_y1_y2_actual_estimates():
         dcf_wacc=ScenarioValues(low=Decimal("0.12"), base=Decimal("0.10"), high=Decimal("0.08")),
         dcf_terminal_growth=ScenarioValues(low=Decimal("0.03"), base=Decimal("0.03"), high=Decimal("0.04")),
         dcf_fcf_growth=ScenarioValues(low=Decimal("0.05"), base=Decimal("0.08"), high=Decimal("0.12")),
+        dcf_wacc_source=SourceType.USER_OVERRIDE,
+        dcf_wacc_source_label="Explicit DCF test assumption",
+        dcf_terminal_growth_source=SourceType.USER_OVERRIDE,
+        dcf_terminal_growth_source_label="Explicit DCF test assumption",
     )
     result = run_dcf(snap, assumptions)
     assert result.available
@@ -204,6 +208,10 @@ def test_dcf_full_avgo():
         dcf_wacc=ScenarioValues(low=Decimal("0.12"), base=Decimal("0.10"), high=Decimal("0.08")),
         dcf_terminal_growth=ScenarioValues(low=Decimal("0.03"), base=Decimal("0.03"), high=Decimal("0.04")),
         dcf_fcf_growth=ScenarioValues(low=Decimal("0.05"), base=Decimal("0.08"), high=Decimal("0.12")),
+        dcf_wacc_source=SourceType.USER_OVERRIDE,
+        dcf_wacc_source_label="Explicit DCF test assumption",
+        dcf_terminal_growth_source=SourceType.USER_OVERRIDE,
+        dcf_terminal_growth_source_label="Explicit DCF test assumption",
     )
     result = run_dcf(snap, assumptions)
     assert result.available
@@ -216,7 +224,15 @@ def test_dcf_full_avgo():
 def test_dcf_bear_lower_than_bull():
     """Bear scenario produces lower price than bull."""
     snap = _avgo_snapshot_fcff("89600000000")
-    result = run_dcf(snap, ValuationAssumptions())
+    result = run_dcf(
+        snap,
+        ValuationAssumptions(
+            dcf_wacc_source=SourceType.USER_OVERRIDE,
+            dcf_wacc_source_label="Explicit DCF test assumption",
+            dcf_terminal_growth_source=SourceType.USER_OVERRIDE,
+            dcf_terminal_growth_source_label="Explicit DCF test assumption",
+        ),
+    )
     assert result.available
     assert result.low is not None and result.high is not None
     assert result.low.price_per_share < result.high.price_per_share

@@ -206,7 +206,7 @@ def test_financial_institution_models_applicability():
     from app.engines.ev_ebitda import run_ev_ebitda
     from app.engines.forward_pe import run_forward_pe
     from app.engines.composite import run_composite
-    from app.models.domain import CompanyFinancialSnapshot, FinancialMetric
+    from app.models.domain import CompanyFinancialSnapshot, FinancialMetric, ValuationAssumptions
 
     def fm(v, unit="USD"):
         return FinancialMetric(
@@ -245,7 +245,13 @@ def test_financial_institution_models_applicability():
         is_demo=False,
     )
 
-    pe_res = run_forward_pe(bank_snap, DEFAULT_ASSUMPTIONS)
+    pe_res = run_forward_pe(
+        bank_snap,
+        ValuationAssumptions(
+            pe_source=SourceType.USER_OVERRIDE,
+            pe_source_label="Explicit P/E test assumption",
+        ),
+    )
     assert pe_res.available is True
     assert pe_res.base.price_per_share > Decimal("0")
 

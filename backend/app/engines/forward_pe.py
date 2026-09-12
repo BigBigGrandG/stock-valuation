@@ -16,6 +16,7 @@ from app.models.domain import (
     metric_dict,
     net_debt_metric,
 )
+from app.engines.parameter_governance import govern_parameter
 
 TWO_PLACES = Decimal("0.01")
 FOUR_PLACES = Decimal("0.0001")
@@ -36,25 +37,44 @@ def _assumption_metric(
     *,
     name: str,
     source: str,
-    source_type: SourceType,
+    source_type: SourceType | str | None,
     as_of: date,
     is_estimated: bool,
     notes: str,
     period: str = "valuation assumption",
     confidence: float | None = None,
 ) -> dict:
+    raw_source_type = getattr(source_type, "value", source_type)
+    try:
+        metric_source_type = SourceType(raw_source_type)
+    except (TypeError, ValueError):
+        # ``ValuationAssumptions`` normally validates this field, but direct
+        # callers can still carry untrusted provider metadata.  Preserve that
+        # token in the diagnostic metric instead of raising while the policy
+        # gate fails closed.
+        return {
+            "value": str(value),
+            "unit": "multiple",
+            "period": period,
+            "source": source,
+            "source_type": raw_source_type,
+            "as_of": as_of.isoformat(),
+            "confidence": confidence if confidence is not None else 0.0,
+            "is_estimated": is_estimated,
+            "notes": f"{name}: {notes}",
+        }
     return metric_dict(
         FinancialMetric(
             value=value,
             unit="multiple",
             period=period,
             source=source,
-            source_type=source_type,
+            source_type=metric_source_type,
             as_of=as_of,
             confidence=(
                 confidence
                 if confidence is not None
-                else (1.0 if source_type == SourceType.USER_OVERRIDE else 0.8)
+                else (1.0 if metric_source_type == SourceType.USER_OVERRIDE else 0.8)
             ),
             is_estimated=is_estimated,
             notes=f"{name}: {notes}",
@@ -62,12 +82,22 @@ def _assumption_metric(
     ) or {}
 
 
-def _unavailable(reason: str, *, inputs: dict | None = None, warnings: list[str] | None = None) -> ModelValuation:
+def _unavailable(
+    reason: str,
+    *,
+    inputs: dict | None = None,
+    assumptions: dict | None = None,
+    input_metrics: dict[str, dict] | None = None,
+    assumption_metrics: dict[str, dict] | None = None,
+    warnings: list[str] | None = None,
+) -> ModelValuation:
     return ModelValuation(
         formula=FORMULA,
         formula_description="Forward earnings-based price target",
         inputs=inputs or {},
-        assumptions={},
+        assumptions=assumptions or {},
+        input_metrics=input_metrics or {},
+        assumption_metrics=assumption_metrics or {},
         calculation_steps=[],
         available=False,
         unavailable_reason=reason,
@@ -175,10 +205,74 @@ def run_forward_pe(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAss
     elif snapshot.historical_forward_pe is not None:
         warnings.append("Historical P/E is non-positive; using configured fallback")
 
-    if multiple_source == "fallback" and source_type == SourceType.CONFIGURED_FALLBACK:
-        warnings.append(
-            f"P/E used configured fallback because parameter specificity was insufficient [{source_label}]"
+    governance = govern_parameter(
+        assumptions,
+        model_label="P/E",
+        value_field="pe_target",
+        source_field="pe_source",
+        label_field="pe_source_label",
+        layer_field="pe_selection_layer",
+        source_type=source_type,
+        source_label=source_label,
+        selection_layer=selection_layer,
+        multiple_source=multiple_source,
+        snapshot_is_demo=bool(snapshot.is_demo),
+    )
+    if not governance.available:
+        fallback_assumptions = {
+            "pe_multiple_low": str(scenarios.low),
+            "pe_multiple_base": str(scenarios.base),
+            "pe_multiple_high": str(scenarios.high),
+            "pe_source": source_type,
+            "pe_source_label": source_label,
+            "multiple_source": multiple_source,
+            "selection_layer": selection_layer,
+            "selection_as_of": getattr(assumptions, "pe_selection_as_of", None),
+            "selection_sample_size": getattr(assumptions, "pe_selection_sample_size", None),
+            "selection_basis": getattr(assumptions, "pe_selection_basis", None),
+            "governance": "configured_fallback_rejected",
+        }
+        fallback_assumption_metrics = {
+            f"pe_multiple_{label}": _assumption_metric(
+                value,
+                name=f"P/E {label}",
+                source=source_label,
+                source_type=source_type,
+                as_of=eps_metric.as_of,
+                is_estimated=True,
+                notes="configured fallback rejected by parameter governance; no price calculated",
+            )
+            for label, value in (
+                ("low", scenarios.low),
+                ("base", scenarios.base),
+                ("high", scenarios.high),
+            )
+        }
+        forward_inputs = {
+            "forward_eps": str(forward_eps),
+            "forward_eps_period": eps_metric.period,
+            "forward_eps_source": eps_metric.source,
+            "forward_eps_source_type": eps_metric.source_type,
+            "forward_eps_as_of": str(eps_metric.as_of),
+            "forward_eps_is_estimated": eps_metric.is_estimated,
+            "current_price": str(current_price),
+        }
+        return _unavailable(
+            governance.reason or "P/E parameter governance rejected the selected parameter",
+            inputs=forward_inputs,
+            assumptions=fallback_assumptions,
+            input_metrics={
+                "current_price": metric_dict(snapshot.current_price) or {},
+                "forward_eps": metric_dict(eps_metric) or {},
+            },
+            assumption_metrics=fallback_assumption_metrics,
+            warnings=[*warnings, governance.warning] if governance.warning else warnings,
         )
+
+    source_type = governance.source_type
+    source_label = governance.source_label
+    selection_layer = governance.selection_layer
+    multiple_source = governance.multiple_source
 
     if not (scenarios.low <= scenarios.base <= scenarios.high):
         return _unavailable("Effective P/E assumptions must satisfy low <= base <= high")
@@ -269,7 +363,8 @@ def run_forward_pe(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAss
         formula=FORMULA,
         formula_description=(
             "Price target derived from forward EPS multiplied by a target P/E. "
-            "Historical median is used when available; otherwise the configured fallback applies."
+            "Historical median or validated source-backed parameters are used when available. "
+            "Configured fallback parameters are rejected unless replaced by an explicit user scenario."
         ),
         inputs={
             "forward_eps": str(forward_eps),

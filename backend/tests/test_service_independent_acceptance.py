@@ -1252,10 +1252,16 @@ class TestModelExceptionIsolation:
                 d.pop("forward_eps_2y", None)
                 return d
 
+        partial_assumptions = DEFAULT_ASSUMPTIONS.model_copy(update={
+            "ev_ebitda_source": SourceType.USER_OVERRIDE,
+            "ev_ebitda_source_label": "Explicit EV/EBITDA test assumption",
+            "fcf_yield_source": SourceType.USER_OVERRIDE,
+            "fcf_yield_source_label": "Explicit FCF-yield test assumption",
+        })
         svc = FinancialDataService(
-            provider=PartialProvider(), cache=MemoryTTLCache(), default_assumptions=DEFAULT_ASSUMPTIONS,
+            provider=PartialProvider(), cache=MemoryTTLCache(), default_assumptions=partial_assumptions,
         )
-        vs = ValuationService(svc, default_assumptions=DEFAULT_ASSUMPTIONS)
+        vs = ValuationService(svc, default_assumptions=partial_assumptions)
         response = vs.compute("TEST")
         assert response.ticker == "TEST"
         assert "forward_pe" in response.valuations

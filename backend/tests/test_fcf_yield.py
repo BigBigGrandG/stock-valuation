@@ -40,6 +40,7 @@ def _avgo_snapshot_fcfe(forward_fcfe="89600000000") -> CompanyFinancialSnapshot:
             source="analyst estimate", source_type=SourceType.ANALYST_ESTIMATE,
             as_of=FIXTURE_DATE, is_estimated=True,
         ),
+        is_demo=True,
     )
 
 
@@ -54,7 +55,9 @@ def test_high_yield_lower_price():
             low=Decimal("0.055"),  # low scenario = conservative = highest yield
             base=Decimal("0.050"),
             high=Decimal("0.045"),  # high scenario = optimistic = lowest yield
-        )
+        ),
+        fcf_yield_source=SourceType.USER_OVERRIDE,
+        fcf_yield_source_label="Test user override",
     )
     result = run_fcf_yield(snap, assumptions)
     assert result.available
@@ -78,7 +81,9 @@ def test_fcf_yield_math():
     assumptions = ValuationAssumptions(
         fcf_yield=ScenarioValues(
             low=Decimal("0.055"), base=Decimal("0.050"), high=Decimal("0.045")
-        )
+        ),
+        fcf_yield_source=SourceType.USER_OVERRIDE,
+        fcf_yield_source_label="Test user override",
     )
     result = run_fcf_yield(snap, assumptions)
     # base price = 89600000000 / 0.05 / 4940000000
@@ -93,7 +98,9 @@ def test_high_yield_produces_lower_equity():
     assumptions = ValuationAssumptions(
         fcf_yield=ScenarioValues(
             low=Decimal("0.055"), base=Decimal("0.050"), high=Decimal("0.045")
-        )
+        ),
+        fcf_yield_source=SourceType.USER_OVERRIDE,
+        fcf_yield_source_label="Test user override",
     )
     result = run_fcf_yield(snap, assumptions)
     # low scenario uses highest yield -> lowest equity value
@@ -127,6 +134,12 @@ def test_no_fcfe_unavailable():
 def test_fcf_type_documented():
     """FCF type should be clearly documented as FCFE in inputs."""
     snap = _avgo_snapshot_fcfe("89600000000")
-    result = run_fcf_yield(snap, ValuationAssumptions())
+    result = run_fcf_yield(
+        snap,
+        ValuationAssumptions(
+            fcf_yield_source=SourceType.USER_OVERRIDE,
+            fcf_yield_source_label="Test user override",
+        ),
+    )
     assert result.available
     assert "FCFE" in result.inputs.get("fcf_type", "")

@@ -1,0 +1,15 @@
+## master...origin/master
+ M .scratch/valuation-ai-audit-20260911/verification/r5/live-validation-r5.json
+ M backend/app/engines/fcf_yield.py
+ M backend/app/providers/yfinance_provider.py
+ M backend/app/services/projections.py
+ M backend/tests/test_forward_fcfe_borrowing_api.py
+ M backend/tests/test_forward_fcfe_borrowing_isolation.py
+ M backend/tests/test_p0_p1_deep_remediation.py
+?? .scratch/fatal-three/current-severity-reassessment-20260912.md
+?? .scratch/fatal-three/issues/
+?? .scratch/fatal-three/worker-f1-report-20260912.md
+?? .scratch/fatal-three/worker-s1-report-20260912.md
+?? .scratch/fatal-three/worker-s2-report-20260912.md
+?? backend/tests/test_s1_ntm_borrowing_period_alignment.py
+?? backend/tests/test_s2_forward_fcff_driver_lineage.py

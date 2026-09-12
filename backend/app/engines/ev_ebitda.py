@@ -16,6 +16,7 @@ from app.models.domain import (
     metric_dict,
     net_debt_metric,
 )
+from app.engines.parameter_governance import govern_parameter
 
 TWO_PLACES = Decimal("0.01")
 FOUR_PLACES = Decimal("0.0001")
@@ -35,7 +36,7 @@ def _assumption_metric(
     value: Decimal,
     label: str,
     source: str,
-    source_type: SourceType,
+    source_type: SourceType | str | None,
     as_of: date,
     multiple_source: str,
     *,
@@ -43,33 +44,60 @@ def _assumption_metric(
     confidence: float | None = None,
     is_estimated: bool | None = None,
 ) -> dict:
+    raw_source_type = getattr(source_type, "value", source_type)
+    try:
+        metric_source_type = SourceType(raw_source_type)
+    except (TypeError, ValueError):
+        # Preserve untrusted provenance in the unavailable diagnostic instead
+        # of allowing a direct caller's unknown token to raise validation.
+        return {
+            "value": str(value),
+            "unit": "multiple",
+            "period": period,
+            "source": source,
+            "source_type": raw_source_type,
+            "as_of": as_of.isoformat(),
+            "confidence": confidence if confidence is not None else 0.0,
+            "is_estimated": True if is_estimated is None else is_estimated,
+            "notes": f"{label}; multiple_source={multiple_source}",
+        }
     return metric_dict(FinancialMetric(
         value=value,
         unit="multiple",
         period=period,
         source=source,
-        source_type=source_type,
+        source_type=metric_source_type,
         as_of=as_of,
         confidence=(
             confidence
             if confidence is not None
-            else (1.0 if source_type == SourceType.USER_OVERRIDE else 0.8)
+            else (1.0 if metric_source_type == SourceType.USER_OVERRIDE else 0.8)
         ),
         is_estimated=(
             is_estimated
             if is_estimated is not None
-            else source_type != SourceType.USER_OVERRIDE
+            else metric_source_type != SourceType.USER_OVERRIDE
         ),
         notes=f"{label}; multiple_source={multiple_source}",
     )) or {}
 
 
-def _unavailable(reason: str, inputs: dict | None = None, warnings: list[str] | None = None) -> ModelValuation:
+def _unavailable(
+    reason: str,
+    inputs: dict | None = None,
+    warnings: list[str] | None = None,
+    *,
+    assumptions: dict | None = None,
+    input_metrics: dict[str, dict] | None = None,
+    assumption_metrics: dict[str, dict] | None = None,
+) -> ModelValuation:
     return ModelValuation(
         formula=FORMULA,
         formula_description="Enterprise value based on forward EBITDA",
         inputs=inputs or {},
-        assumptions={},
+        assumptions=assumptions or {},
+        input_metrics=input_metrics or {},
+        assumption_metrics=assumption_metrics or {},
         calculation_steps=[],
         available=False,
         unavailable_reason=reason,
@@ -149,10 +177,75 @@ def run_ev_ebitda(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssu
     elif snapshot.historical_ev_ebitda is not None:
         warnings.append("Historical EV/EBITDA is non-positive; using configured fallback")
 
-    if multiple_source == "fallback" and source_type == SourceType.CONFIGURED_FALLBACK:
-        warnings.append(
-            f"EV/EBITDA used configured fallback because parameter specificity was insufficient [{source_label}]"
+    governance = govern_parameter(
+        assumptions,
+        model_label="EV/EBITDA",
+        value_field="ev_ebitda_multiple",
+        source_field="ev_ebitda_source",
+        label_field="ev_ebitda_source_label",
+        layer_field="ev_ebitda_selection_layer",
+        source_type=source_type,
+        source_label=source_label,
+        selection_layer=selection_layer,
+        multiple_source=multiple_source,
+        snapshot_is_demo=bool(snapshot.is_demo),
+    )
+    if not governance.available:
+        fallback_assumptions = {
+            "multiple_low": str(scenarios.low),
+            "multiple_base": str(scenarios.base),
+            "multiple_high": str(scenarios.high),
+            "source": source_type,
+            "source_label": source_label,
+            "multiple_source": multiple_source,
+            "selection_layer": selection_layer,
+            "selection_as_of": getattr(assumptions, "ev_ebitda_selection_as_of", None),
+            "selection_sample_size": getattr(assumptions, "ev_ebitda_selection_sample_size", None),
+            "selection_basis": getattr(assumptions, "ev_ebitda_selection_basis", None),
+            "governance": "configured_fallback_rejected",
+        }
+        fallback_assumption_metrics = {
+            f"multiple_{label}": _assumption_metric(
+                value,
+                label,
+                source_label,
+                source_type,
+                ebitda_metric.as_of,
+                multiple_source,
+                is_estimated=True,
+            )
+            for label, value in (
+                ("low", scenarios.low),
+                ("base", scenarios.base),
+                ("high", scenarios.high),
+            )
+        }
+        forward_inputs = {
+            "forward_ebitda": str(ebitda),
+            "forward_ebitda_period": ebitda_metric.period,
+            "forward_ebitda_source": ebitda_metric.source,
+            "forward_ebitda_source_type": ebitda_metric.source_type,
+            "forward_ebitda_as_of": str(ebitda_metric.as_of),
+            "current_price": str(current_price),
+            "diluted_shares": str(diluted_shares),
+        }
+        return _unavailable(
+            governance.reason or "EV/EBITDA parameter governance rejected the selected parameter",
+            inputs=forward_inputs,
+            assumptions=fallback_assumptions,
+            input_metrics={
+                "current_price": metric_dict(snapshot.current_price) or {},
+                "diluted_shares": metric_dict(snapshot.diluted_shares) or {},
+                "forward_ebitda": metric_dict(ebitda_metric) or {},
+            },
+            assumption_metrics=fallback_assumption_metrics,
+            warnings=[*warnings, governance.warning] if governance.warning else warnings,
         )
+
+    source_type = governance.source_type
+    source_label = governance.source_label
+    selection_layer = governance.selection_layer
+    multiple_source = governance.multiple_source
 
     if not (scenarios.low <= scenarios.base <= scenarios.high):
         return _unavailable("Effective EV/EBITDA assumptions must satisfy low <= base <= high")

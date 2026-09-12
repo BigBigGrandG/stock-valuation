@@ -55,6 +55,7 @@ def _snapshot(*, valuation_date: date = VAL_DATE, fiscal_end: date | None = FY1_
         forward_fcff_1y=metric("100", "FY2026E"),
         forward_fcff_2y=metric("120", "FY2027E"),
         forecast_fiscal_year_end=fiscal_end,
+        is_demo=True,
     )
 
 
@@ -63,6 +64,10 @@ def _assumptions() -> ValuationAssumptions:
         dcf_wacc=ScenarioValues(low=Decimal("0.12"), base=Decimal("0.10"), high=Decimal("0.08")),
         dcf_terminal_growth=ScenarioValues(low=Decimal("0.02"), base=Decimal("0.03"), high=Decimal("0.04")),
         dcf_fcf_growth=ScenarioValues(low=Decimal("0.05"), base=Decimal("0.05"), high=Decimal("0.05")),
+        dcf_wacc_source=SourceType.USER_OVERRIDE,
+        dcf_wacc_source_label="Worker C explicit test assumption",
+        dcf_terminal_growth_source=SourceType.USER_OVERRIDE,
+        dcf_terminal_growth_source_label="Worker C explicit test assumption",
     )
 
 

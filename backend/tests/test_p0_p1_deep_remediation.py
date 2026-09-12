@@ -90,6 +90,18 @@ def _make_sample_snapshot(
     return CompanyFinancialSnapshot(**defaults)
 
 
+def _explicit_dcf_assumptions(**updates: Any) -> ValuationAssumptions:
+    """Use deliberate WACC/terminal-growth provenance at the DCF seam."""
+    values: dict[str, Any] = {
+        "dcf_wacc_source": SourceType.USER_OVERRIDE,
+        "dcf_wacc_source_label": "Explicit DCF test assumption",
+        "dcf_terminal_growth_source": SourceType.USER_OVERRIDE,
+        "dcf_terminal_growth_source_label": "Explicit DCF test assumption",
+    }
+    values.update(updates)
+    return ValuationAssumptions(**values)
+
+
 # ==============================================================================
 # [P0-A] Share Capital Evidence-Based Reconciliation
 # ==============================================================================
@@ -282,8 +294,8 @@ class TestP0CDCFDiscounting:
 
     def test_pure_calculator_center_equivalence(self):
         """DCF 3x3 sensitivity matrix center cell mathematically equals base scenario price."""
-        snap = _make_sample_snapshot()
-        assumptions = ValuationAssumptions()
+        snap = _make_sample_snapshot().model_copy(update={"is_demo": True})
+        assumptions = _explicit_dcf_assumptions()
         dcf_res = run_dcf(snap, assumptions)
         assert dcf_res.available is True
         assert dcf_res.sensitivity_matrix is not None
@@ -378,16 +390,24 @@ class TestP1FModelWeightsAndPolicy:
         assert "growth_floor must be <= growth_cap" in str(exc.value).lower()
 
     def test_cashflow_group_policy_message_visibility(self):
-        """When only cashflow models are available, policy explanation and cashflow sensitivity are surfaced."""
-        # Unprofitable company: PE and EV unavailable
+        """When only cashflow models are available, policy metadata is still surfaced."""
+        # Unprofitable company: PE and EV unavailable.  Supply an explicit
+        # analyst forward FCFE so this policy test does not rely on the
+        # historical fcf_ttm fallback, which is intentionally unavailable.
         snap = _make_sample_snapshot(
             forward_eps_1y=_make_metric("-1.00"),
             forward_eps_2y=_make_metric("-0.50"),
             ebitda_ttm=_make_metric("-1000000000"),
             forward_ebitda_1y=None,
             forward_ebitda_2y=None,
+            forward_fcf_1y=_make_metric("11000000000", period="FY1E").model_copy(
+                update={"source_type": SourceType.ANALYST_ESTIMATE, "is_estimated": True}
+            ),
         )
-        assumptions = ValuationAssumptions()
+        assumptions = _explicit_dcf_assumptions(
+            fcf_yield_source=SourceType.USER_OVERRIDE,
+            fcf_yield_source_label="Explicit FCF-yield test assumption",
+        )
         results = run_all_engines(snap, assumptions)
         composite = run_composite(
             current_price=snap.current_price.value,
@@ -398,6 +418,8 @@ class TestP1FModelWeightsAndPolicy:
             assumptions=assumptions,
         )
 
+        assert results["fcf_yield"].available
+        assert results["fcf_yield"].inputs["forward_fcfe"] == "11000000000"
         assert composite.cashflow_group_policy_message is not None
         assert composite.cashflow_sensitivity is not None
         assert "only cashflow models" in composite.unavailable_reason.lower()

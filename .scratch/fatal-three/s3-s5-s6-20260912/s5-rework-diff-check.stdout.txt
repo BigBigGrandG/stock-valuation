@@ -1,0 +1,3 @@
+warning: in the working copy of 'backend/app/engines/dcf.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/app/models/domain.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/app/providers/yfinance_provider.py', LF will be replaced by CRLF the next time Git touches it

@@ -202,8 +202,8 @@ def test_issue03_production_api_selects_company_and_industry_independently():
     payload = response.json()
     assumptions = payload["assumptions_used"]
     # P/E has 5 valid contemporaneous observations, while EV/EBITDA must
-    # independently fall back because the public row is observed all-firms,
-    # not a forward operating-EBITDA target.
+    # independently reject its configured fallback because the public row is
+    # observed all-firms, not a forward operating-EBITDA target.
     assert assumptions["pe_source"] == "derived"
     assert assumptions["pe_target"]["base"] == "22.0000"
     assert "company historical" in assumptions["pe_source_label"].lower()
@@ -214,7 +214,11 @@ def test_issue03_production_api_selects_company_and_industry_independently():
     # AVGO fixture's NTM EPS is 19.21; the selected company-history median is
     # 22x, so the service path must use 19.21 × 22 = 422.62.
     assert payload["valuations"]["forward_pe"]["base"]["price_per_share"] == "422.62"
-    assert payload["valuations"]["ev_ebitda"]["base"]["intermediates"]["multiple"] == "22"
+    ev = payload["valuations"]["ev_ebitda"]
+    assert ev["available"] is False
+    assert ev["low"] is None and ev["base"] is None and ev["high"] is None
+    assert ev["assumptions"]["governance"] == "configured_fallback_rejected"
+    assert "configured fallback" in ev["unavailable_reason"].lower()
 
 
 def test_issue03_unknown_industry_uses_explicit_risk_disclosed_system_fallback():
@@ -336,6 +340,10 @@ def test_issue04_dcf_growth_fade_reaches_each_scenario_terminal_rate():
         dcf_wacc=ScenarioValues(low=Decimal("0.12"), base=Decimal("0.10"), high=Decimal("0.08")),
         dcf_terminal_growth=ScenarioValues(low=Decimal("0.03"), base=Decimal("0.03"), high=Decimal("0.04")),
         dcf_fcf_growth=ScenarioValues(low=Decimal("0.20"), base=Decimal("0.20"), high=Decimal("0.20")),
+        dcf_wacc_source=SourceType.USER_OVERRIDE,
+        dcf_wacc_source_label="Explicit DCF test assumption",
+        dcf_terminal_growth_source=SourceType.USER_OVERRIDE,
+        dcf_terminal_growth_source_label="Explicit DCF test assumption",
     )
     result = run_dcf(snapshot, assumptions)
     assert result.available
@@ -357,6 +365,10 @@ def test_issue04_sensitivity_recomputes_growth_path_for_changed_terminal_rate():
         dcf_wacc=ScenarioValues(low=Decimal("0.12"), base=Decimal("0.10"), high=Decimal("0.08")),
         dcf_terminal_growth=ScenarioValues(low=Decimal("0.03"), base=Decimal("0.03"), high=Decimal("0.04")),
         dcf_fcf_growth=ScenarioValues(low=Decimal("0.20"), base=Decimal("0.20"), high=Decimal("0.20")),
+        dcf_wacc_source=SourceType.USER_OVERRIDE,
+        dcf_wacc_source_label="Explicit DCF test assumption",
+        dcf_terminal_growth_source=SourceType.USER_OVERRIDE,
+        dcf_terminal_growth_source_label="Explicit DCF test assumption",
     )
     result = run_dcf(snapshot, assumptions)
     matrix = result.sensitivity_matrix

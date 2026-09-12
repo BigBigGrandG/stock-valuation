@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
+from typing import Any
 
 from app.models.domain import (
     CompanyFinancialSnapshot,
@@ -15,14 +16,15 @@ from app.models.domain import (
     metric_dict,
     net_debt_metric,
 )
+from app.engines.parameter_governance import govern_parameter
 
 TWO_PLACES = Decimal("0.01")
 FOUR_PLACES = Decimal("0.0001")
 ZERO = Decimal("0")
 FORMULA = "Equity Value = Forward FCFE / Yield Rate; Price = Equity / Shares"
 FALLBACK_WARNING = (
-    "No compatible company/industry-specific FCFE-yield benchmark is available; "
-    "using the configured system yield fallback because parameter specificity is insufficient."
+    "Configured system FCFE-yield fallback is rejected because no compatible "
+    "company/industry-specific benchmark is available; parameter specificity is insufficient."
 )
 
 
@@ -34,26 +36,59 @@ def _premium(current: Decimal, fair_value: Decimal) -> Decimal:
     return ((current - fair_value) / fair_value).quantize(FOUR_PLACES, ROUND_HALF_UP)
 
 
-def _assumption_metric(value: Decimal, label: str, source: str, source_type: SourceType, as_of: date) -> dict:
+def _assumption_metric(
+    value: Decimal,
+    label: str,
+    source: str,
+    source_type: SourceType | str | None,
+    as_of: date,
+) -> dict:
+    raw_source_type = getattr(source_type, "value", source_type)
+    try:
+        metric_source_type = SourceType(raw_source_type)
+    except (TypeError, ValueError):
+        # Unknown provenance must be returned as a diagnostic, not allowed to
+        # escape as a FinancialMetric validation exception after governance has
+        # already decided that the valuation is unavailable.
+        return {
+            "value": str(value),
+            "unit": "yield",
+            "period": "valuation assumption",
+            "source": source,
+            "source_type": raw_source_type,
+            "as_of": as_of.isoformat(),
+            "confidence": 0.0,
+            "is_estimated": True,
+            "notes": f"{label}; low scenario is the high-yield conservative case",
+        }
     return metric_dict(FinancialMetric(
         value=value,
         unit="yield",
         period="valuation assumption",
         source=source,
-        source_type=source_type,
+        source_type=metric_source_type,
         as_of=as_of,
-        confidence=1.0 if source_type == SourceType.USER_OVERRIDE else 0.8,
-        is_estimated=source_type != SourceType.USER_OVERRIDE,
+        confidence=1.0 if metric_source_type == SourceType.USER_OVERRIDE else 0.8,
+        is_estimated=metric_source_type != SourceType.USER_OVERRIDE,
         notes=f"{label}; low scenario is the high-yield conservative case",
     )) or {}
 
 
-def _unavailable(reason: str, inputs: dict | None = None, warnings: list[str] | None = None) -> ModelValuation:
+def _unavailable(
+    reason: str,
+    inputs: dict | None = None,
+    warnings: list[str] | None = None,
+    input_metrics: dict[str, dict[str, Any]] | None = None,
+    assumptions: dict | None = None,
+    assumption_metrics: dict[str, dict[str, Any]] | None = None,
+) -> ModelValuation:
     return ModelValuation(
         formula=FORMULA,
         formula_description="FCF-yield-based equity valuation using FCFE (not FCFF)",
         inputs=inputs or {},
-        assumptions={},
+        assumptions=assumptions or {},
+        input_metrics=input_metrics or {},
+        assumption_metrics=assumption_metrics or {},
         calculation_steps=[],
         available=False,
         unavailable_reason=reason,
@@ -90,22 +125,46 @@ def run_fcf_yield(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssu
             "FCF yield is not applicable to REITs (requires FFO/AFFO instead of standard cash flow)"
         )
 
-    fcfe_metric = snapshot.forward_fcf_1y or snapshot.forward_fcf_2y
-    historical_proxy = False
-    if fcfe_metric is not None and str(fcfe_metric.period or "").upper().strip() in {"TTM", "LTM", "HISTORICAL"}:
-        warnings.append(
-            f"Forward FCFE field is historical ({fcfe_metric.period}); it is excluded from forward valuation and retained for display only."
-        )
-        fcfe_metric = None
-    if fcfe_metric is None and snapshot.fcf_ttm is not None:
-        fcfe_metric = snapshot.fcf_ttm
-        historical_proxy = True
-        warnings.append(
-            "Using historical TTM FCFE as a temporary proxy because no forward FCFE estimate is available; "
-            "valuation quality is downgraded and historical net borrowing is never promoted to forward borrowing."
-        )
+    # Only a metric in an explicitly forward slot may drive FCF-yield.  A
+    # historical value can be present in either slot when an upstream adapter
+    # carries legacy aliases; skip it rather than allowing it to fall through
+    # to another historical field or to generate a price.
+    fcfe_metric = None
+    for candidate in (snapshot.forward_fcf_1y, snapshot.forward_fcf_2y):
+        if candidate is None:
+            continue
+        period = str(candidate.period or "").upper().strip()
+        if not period or any(
+            marker in period for marker in ("TTM", "LTM", "HISTORICAL", "TRAILING")
+        ):
+            warnings.append(
+                f"Forward FCFE field is historical ({candidate.period}); it is excluded from forward valuation and retained for display only."
+            )
+            continue
+        fcfe_metric = candidate
+        break
     if fcfe_metric is None:
-        return _unavailable("No forward FCFE (equity FCF) estimate available", warnings=warnings)
+        historical_inputs: dict[str, dict[str, Any]] = {}
+        historical_fcf = snapshot.fcf_ttm
+        if historical_fcf is not None:
+            warnings.append(
+                f"Historical FCFE ({historical_fcf.period}) is retained for display only; "
+                "a true forward FCFE estimate or explicit forward bridge is required for valuation."
+            )
+            historical_metric = metric_dict(historical_fcf)
+            if historical_metric is not None:
+                historical_inputs["historical_fcfe_ttm"] = historical_metric
+        return _unavailable(
+            "No forward FCFE (equity FCF) estimate available",
+            inputs={
+                "historical_fcfe_ttm": str(historical_fcf.value)
+                if historical_fcf is not None else None,
+                "historical_fcfe_ttm_period": historical_fcf.period
+                if historical_fcf is not None else None,
+            } if historical_fcf is not None else None,
+            warnings=warnings,
+            input_metrics=historical_inputs,
+        )
     metric_notes = str(fcfe_metric.notes or "")
     if any(
         marker in metric_notes.lower()
@@ -132,8 +191,69 @@ def run_fcf_yield(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssu
         return _unavailable("Effective FCF yields must satisfy low >= base >= high > 0", warnings=warnings)
     source_type = assumptions.fcf_yield_source
     source_label = assumptions.fcf_yield_source_label
-    if source_type == SourceType.CONFIGURED_FALLBACK:
-        warnings.append(FALLBACK_WARNING)
+    governance = govern_parameter(
+        assumptions,
+        model_label="FCF yield",
+        value_field="fcf_yield",
+        source_field="fcf_yield_source",
+        label_field="fcf_yield_source_label",
+        layer_field="fcf_yield_source",
+        source_type=source_type,
+        source_label=source_label,
+        selection_layer="system",
+        multiple_source="fallback",
+        snapshot_is_demo=bool(snapshot.is_demo),
+    )
+    if not governance.available:
+        fallback_assumptions = {
+            "yield_low": str(yields.low),
+            "yield_base": str(yields.base),
+            "yield_high": str(yields.high),
+            "source": source_type,
+            "source_label": source_label,
+            "yield_source": "fallback",
+            "governance": "configured_fallback_rejected",
+        }
+        fallback_assumption_metrics = {
+            f"yield_{label}": _assumption_metric(
+                value,
+                label,
+                source_label,
+                source_type,
+                fcfe_metric.as_of,
+            )
+            for label, value in (
+                ("low", yields.low),
+                ("base", yields.base),
+                ("high", yields.high),
+            )
+        }
+        forward_inputs = {
+            "forward_fcfe": str(fcfe),
+            "forward_fcfe_period": fcfe_metric.period,
+            "forward_fcfe_source": fcfe_metric.source,
+            "forward_fcfe_source_type": fcfe_metric.source_type,
+            "forward_fcfe_as_of": str(fcfe_metric.as_of),
+            "forward_fcfe_is_estimated": fcfe_metric.is_estimated,
+            "fcf_type": "FCFE (equity FCF, NOT FCFF)",
+            "current_price": str(current_price),
+            "diluted_shares": str(shares),
+        }
+        return _unavailable(
+            governance.reason or "FCF yield parameter governance rejected the selected parameter",
+            inputs=forward_inputs,
+            assumptions=fallback_assumptions,
+            warnings=[*warnings, governance.warning or FALLBACK_WARNING],
+            input_metrics={
+                "current_price": metric_dict(snapshot.current_price) or {},
+                "diluted_shares": metric_dict(snapshot.diluted_shares) or {},
+                "forward_fcfe": metric_dict(fcfe_metric) or {},
+            },
+            assumption_metrics=fallback_assumption_metrics,
+        )
+
+    source_type = governance.source_type
+    source_label = governance.source_label
     nd_metric = net_debt_metric(snapshot)
 
     input_metrics = {
@@ -185,7 +305,7 @@ def run_fcf_yield(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssu
         *high_steps,
     ]
     quality = DataQuality.LOW if snapshot.is_demo else (
-        DataQuality.LOW if historical_proxy else (DataQuality.MEDIUM if fcfe_metric.is_estimated else DataQuality.HIGH)
+        DataQuality.MEDIUM if fcfe_metric.is_estimated else DataQuality.HIGH
     )
     return ModelValuation(
         formula=FORMULA,
@@ -200,11 +320,7 @@ def run_fcf_yield(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssu
             "forward_fcfe_source_type": fcfe_metric.source_type,
             "forward_fcfe_as_of": str(fcfe_metric.as_of),
             "forward_fcfe_is_estimated": fcfe_metric.is_estimated,
-            "forward_fcfe_is_historical_proxy": historical_proxy,
-            "forward_fcfe_quality_note": (
-                "Historical TTM proxy; not a verified forward FCFE estimate."
-                if historical_proxy else "Forward FCFE estimate or normalized bridge input."
-            ),
+            "forward_fcfe_quality_note": "Forward FCFE estimate or explicit forward bridge input.",
             "fcf_type": "FCFE (equity FCF, NOT FCFF)",
             "current_price": str(current_price),
             "diluted_shares": str(shares),
@@ -215,7 +331,11 @@ def run_fcf_yield(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssu
             "yield_high": str(yields.high),
             "source": source_type,
             "source_label": source_label,
-            "yield_source": "user_override" if source_type == SourceType.USER_OVERRIDE else "fallback",
+            "yield_source": (
+                "user_override"
+                if source_type == SourceType.USER_OVERRIDE
+                else "provided"
+            ),
         },
         input_metrics=input_metrics,
         assumption_metrics=assumption_metrics,
