@@ -1,5 +1,4 @@
 import {
-  CLASSIFICATION_LABELS_ZH,
   DATA_QUALITY_LABELS_ZH,
   MODEL_LABELS_ZH,
   type FinancialMetric,
@@ -8,7 +7,6 @@ import {
   type ValuationResponse,
 } from "./types";
 import {
-  CLASSIFICATION_ZH,
   displayMetricValue,
   fmtBigNumber,
   fmtDate,
@@ -165,11 +163,11 @@ export function formatScenarioIntermediates(
       parts.push(`前瞻 EPS: ${fmtNumber(intermediates.forward_eps)}`);
     }
     if (intermediates.target_multiple !== undefined) {
-      parts.push(`目标 P/E: ${fmtNumber(intermediates.target_multiple)}x`);
+      parts.push(`采用 P/E: ${fmtNumber(intermediates.target_multiple)}x`);
     }
   } else if (modelKey === "ev_ebitda") {
     if (intermediates.multiple !== undefined) {
-      parts.push(`目标倍数: ${fmtNumber(intermediates.multiple)}x`);
+      parts.push(`采用倍数: ${fmtNumber(intermediates.multiple)}x`);
     }
     if (intermediates.ev !== undefined) {
       parts.push(`EV: ${fmtBigNumber(intermediates.ev, currencySymbol)}`);
@@ -188,7 +186,7 @@ export function formatScenarioIntermediates(
       parts.push(`前瞻 FCFE: ${fmtBigNumber(intermediates.forward_fcfe, currencySymbol)}`);
     }
     if (intermediates.yield_rate !== undefined) {
-      parts.push(`目标收益率: ${fmtPct(intermediates.yield_rate)}`);
+      parts.push(`采用收益率: ${fmtPct(intermediates.yield_rate)}`);
     }
     if (intermediates.equity_value !== undefined) {
       parts.push(`股权价值: ${fmtBigNumber(intermediates.equity_value, currencySymbol)}`);
@@ -253,6 +251,12 @@ function projectionRows(sc: DCFScenario): Array<{
   fcff: unknown;
   pv: unknown;
   growth: unknown;
+  start: unknown;
+  end: unknown;
+  discountTime: unknown;
+  discountFactor: unknown;
+  proration: unknown;
+  isStub: boolean | undefined;
 }> {
   const metrics = sc.projection_metrics;
   if (Array.isArray(metrics) && metrics.length > 0) {
@@ -260,11 +264,22 @@ function projectionRows(sc: DCFScenario): Array<{
       const fcff = row.fcff ?? row.fcff_metric ?? (isFinancialMetric(row) ? row : "—");
       const pv = row.pv ?? row.pv_metric ?? sc.pv_projections[index] ?? "—";
       const growth = row.growth_rate ?? sc.projection_growth_rates?.[index] ?? null;
+      const start = row.period_start ?? row.start_date ?? sc.period_start_dates?.[index] ?? "—";
+      const end = row.period_end ?? row.end_date ?? sc.period_end_dates?.[index] ?? "—";
+      const discountTime = row.discount_time ?? row.t ?? sc.discount_times?.[index] ?? sc.year_fractions?.[index] ?? "—";
+      const discountFactor = row.discount_factor ?? sc.discount_factors?.[index] ?? "—";
+      const proration = row.proration_factor ?? sc.projection_proration_factors?.[index] ?? "—";
       return {
         label: String(row.label ?? row.period ?? row.year ?? `第${index + 1}年`),
         fcff,
         pv,
         growth,
+        start,
+        end,
+        discountTime,
+        discountFactor,
+        proration,
+        isStub: row.is_stub ?? sc.period_is_stub?.[index],
       };
     });
   }
@@ -273,11 +288,22 @@ function projectionRows(sc: DCFScenario): Array<{
       const fcff = row.fcff ?? row.fcff_metric ?? (isFinancialMetric(row) ? row : "—");
       const pv = row.pv ?? row.pv_metric ?? sc.pv_projections[index] ?? "—";
       const growth = row.growth_rate ?? sc.projection_growth_rates?.[index] ?? null;
+      const start = row.period_start ?? row.start_date ?? sc.period_start_dates?.[index] ?? "—";
+      const end = row.period_end ?? row.end_date ?? sc.period_end_dates?.[index] ?? "—";
+      const discountTime = row.discount_time ?? row.t ?? sc.discount_times?.[index] ?? sc.year_fractions?.[index] ?? "—";
+      const discountFactor = row.discount_factor ?? sc.discount_factors?.[index] ?? "—";
+      const proration = row.proration_factor ?? sc.projection_proration_factors?.[index] ?? "—";
       return {
         label: String(row.label ?? row.period ?? row.year ?? key ?? `第${index + 1}年`),
         fcff,
         pv,
         growth,
+        start,
+        end,
+        discountTime,
+        discountFactor,
+        proration,
+        isStub: row.is_stub ?? sc.period_is_stub?.[index],
       };
     });
   }
@@ -290,6 +316,12 @@ function projectionRows(sc: DCFScenario): Array<{
     fcff,
     pv: sc.pv_projections?.[index] ?? "—",
     growth: sc.projection_growth_rates?.[index] ?? null,
+    start: sc.period_start_dates?.[index] ?? "—",
+    end: sc.period_end_dates?.[index] ?? "—",
+    discountTime: sc.discount_times?.[index] ?? sc.year_fractions?.[index] ?? "—",
+    discountFactor: sc.discount_factors?.[index] ?? "—",
+    proration: sc.projection_proration_factors?.[index] ?? "—",
+    isStub: sc.period_is_stub?.[index],
   }));
 }
 
@@ -321,21 +353,12 @@ export function generateValuationMarkdown(
   const exportTimeStr = fmtDateTime(exportTime.toISOString());
   const currencySymbol = data.currency === "USD" ? "$" : `${data.currency} `;
   const qualityLabel = DATA_QUALITY_LABELS_ZH[data.data_quality] ?? data.data_quality ?? "—";
-  const composite = data.composite;
-  const isCompositeAvailable =
-    composite?.available !== false && (composite?.available_models?.length ?? 0) > 0;
-
-  const classification = composite?.classification_label_zh
-    ?? (composite?.classification ? CLASSIFICATION_LABELS_ZH[composite.classification] : undefined)
-    ?? (composite?.classification ? CLASSIFICATION_ZH[composite.classification] : undefined)
-    ?? (isCompositeAvailable ? "暂不可判定" : "不可用");
-
   const lines: string[] = [];
 
   // 1. Header & Metadata
   lines.push(`# ${escapeMarkdownText(data.company_name)} (${escapeMarkdownText(data.ticker)}) 估值分析报告`);
   lines.push("");
-  lines.push("> 本报告由美股估值分析平台自动生成，包含当前所有四套独立估值模型、综合评估、输入明细及数据来源。");
+  lines.push("> 本报告由美股估值分析平台自动生成，包含当前四套独立估值模型、输入明细及数据来源。");
   lines.push("");
   lines.push("### 基本信息与行情基准");
   lines.push("");
@@ -388,58 +411,10 @@ export function generateValuationMarkdown(
     lines.push("");
   }
 
-  // 3. Composite Valuation
+  // 3. Model Assumptions & Effective Overrides
   lines.push("---");
   lines.push("");
-  lines.push("## 一、综合估值结论");
-  lines.push("");
-  if (isCompositeAvailable) {
-    const lowPrice = fmtPrice(composite?.fair_value_low ?? composite?.low, currencySymbol);
-    const basePrice = fmtPrice(composite?.fair_value_base ?? composite?.base, currencySymbol);
-    const highPrice = fmtPrice(composite?.fair_value_high ?? composite?.high, currencySymbol);
-    const mos = fmtPctSigned(composite?.margin_of_safety ?? composite?.mos_pct);
-    const upside = fmtPctSigned(composite?.upside_downside ?? composite?.upside_pct);
-
-    lines.push("| 综合指标 | 数值 / 评定 | 说明 |");
-    lines.push("| :--- | :--- | :--- |");
-    lines.push(`| **综合公允价值区间** | **低位 ${lowPrice} · 基准 ${basePrice} · 高位 ${highPrice}** | 四模型加权综合目标价 |`);
-    lines.push(`| **估值判断** | **${classification}** | 现价对比基准公允价值分类 |`);
-    lines.push(`| **安全边际 (MOS)** | **${mos}** | （基准公允价值 − 当前价）/ 基准公允价值 |`);
-    lines.push(`| **预期上行 / 下跌空间** | **${upside}** | （基准公允价值 − 当前价）/ 当前价 |`);
-    lines.push(`| **有效模型数量** | **${composite?.available_models?.length ?? 0} / 4** | 参与综合权重的模型数量 |`);
-    lines.push(`| **现金流口径** | **FCF Yield = FCFE · DCF = FCFF** | 权益自由现金流 vs 企业自由现金流口径隔离 |`);
-    lines.push("");
-
-    if (composite?.weights_used && Object.keys(composite.weights_used).length > 0) {
-      lines.push("#### 模型权重分布");
-      lines.push("");
-      lines.push("| 模型 | 键值 | 综合权重 | 状态 |");
-      lines.push("| :--- | :--- | :--- | :--- |");
-      for (const [key, weight] of Object.entries(composite.weights_used)) {
-        const name = MODEL_LABELS_ZH[key] ?? labelForKey(key);
-        lines.push(`| ${escapeTableCell(name)} | \`${key}\` | ${fmtPct(weight)} | 已纳入 |`);
-      }
-      lines.push("");
-    }
-
-    if (composite?.calculation_steps && composite.calculation_steps.length > 0) {
-      lines.push("#### 综合计算推导过程");
-      lines.push("");
-      composite.calculation_steps.forEach((step, idx) => {
-        lines.push(`${idx + 1}. ${escapeTableCell(step)}`);
-      });
-      lines.push("");
-    }
-  } else {
-    lines.push("> **综合估值暂不可用**");
-    lines.push(`> 原因：${escapeTableCell(composite?.unavailable_reason ?? "由于必要财务输入缺失，未能得出综合公允价值区间。")}`);
-    lines.push("");
-  }
-
-  // 4. Model Assumptions & Effective Overrides
-  lines.push("---");
-  lines.push("");
-  lines.push("## 二、估值假设与情景参数");
+  lines.push("## 一、估值假设与情景参数");
   lines.push("");
   lines.push("下表列出系统采用的核心估值参数、情景设定及数据来源（含用户自定义覆盖生效情况）：");
   lines.push("");
@@ -467,7 +442,7 @@ export function generateValuationMarkdown(
     }
     if (assumptions.fcf_yield) {
       lines.push(
-        `| FCF 目标收益率 (FCF Yield) | ${fmtPct(assumptions.fcf_yield.low)} | **${fmtPct(assumptions.fcf_yield.base)}** | ${fmtPct(assumptions.fcf_yield.high)} | ${statusLabel(assumptions.fcf_yield_source)} | ${escapeTableCell(assumptions.fcf_yield_source_label || assumptions.fcf_yield_source || "无风险利率 + 风险溢价")} |`,
+        `| FCF 收益率 (FCF Yield) | ${fmtPct(assumptions.fcf_yield.low)} | **${fmtPct(assumptions.fcf_yield.base)}** | ${fmtPct(assumptions.fcf_yield.high)} | ${statusLabel(assumptions.fcf_yield_source)} | ${escapeTableCell(assumptions.fcf_yield_source_label || assumptions.fcf_yield_source || "无风险利率 + 风险溢价")} |`,
       );
     }
     if (assumptions.dcf_wacc) {
@@ -510,10 +485,10 @@ export function generateValuationMarkdown(
     const src = fb.drivers_source || {};
     lines.push("---");
     lines.push("");
-    lines.push("## 三、前瞻财务驱动与对账桥接 (Financial Driver Bridge)");
+    lines.push("## 二、前瞻财务驱动与对账桥接 (Financial Driver Bridge)");
     lines.push("");
     lines.push(
-      `> 本系统采用严谨的企业自由现金流 (FCFF) 与股权自由现金流 (FCFE) 细分财务科目驱动模型，前瞻预测基于驱动桥接对账，杜绝机械外推。预测期间目标：**${escapeTableCell(fb.period ?? "FY1E")}**。`,
+      `> 本系统采用严谨的企业自由现金流 (FCFF) 与股权自由现金流 (FCFE) 细分财务科目驱动模型，前瞻预测基于驱动桥接对账，杜绝机械外推。预测期间：**${escapeTableCell(fb.period ?? "FY1E")}**。`,
     );
     if (fb.forecast_start_date && fb.forecast_end_date) {
       lines.push(`> 预测区间：**${fb.forecast_start_date} 至 ${fb.forecast_end_date}**（数据基准日：${fb.as_of ?? "—"} · 币种：${fb.currency ?? "USD"}）。`);
@@ -605,10 +580,10 @@ export function generateValuationMarkdown(
     lines.push("");
   }
 
-  // 5. Four Independent Valuation Models
+  // 4. Four Independent Valuation Models
   lines.push("---");
   lines.push("");
-  lines.push(data.financial_bridge ? "## 四、四套独立估值模型明细" : "## 三、四套独立估值模型明细");
+  lines.push(data.financial_bridge ? "## 三、四套独立估值模型明细" : "## 二、四套独立估值模型明细");
   lines.push("");
 
   const modelKeys: Array<keyof ValuationResponse["valuations"]> = [
@@ -621,7 +596,7 @@ export function generateValuationMarkdown(
   modelKeys.forEach((key, modelIndex) => {
     const model = data.valuations?.[key];
     const modelName = MODEL_LABELS_ZH[key] ?? key;
-    lines.push(`### 3.${modelIndex + 1} ${modelName} (${key})`);
+    lines.push(`### ${data.financial_bridge ? "3" : "2"}.${modelIndex + 1} ${modelName} (${key})`);
     lines.push("");
 
     if (!model) {
@@ -656,9 +631,9 @@ export function generateValuationMarkdown(
 
     // Scenarios Table
     lines.push("");
-    lines.push("#### 估值情景目标价");
+    lines.push("#### 估值情景价格");
     lines.push("");
-    lines.push("| 情景 | 每股公允价值 | 预期上行空间 | 现价相对估值溢折价 | 核心计算中间值 (Intermediates) |");
+    lines.push("| 情景 | 每股估值 | 预期上行空间 | 现价相对估值溢折价 | 核心计算中间值 (Intermediates) |");
     lines.push("| :--- | :--- | :--- | :--- | :--- |");
     const lowP = model.low ? fmtPrice(model.low.price_per_share, currencySymbol) : "—";
     const lowUp = model.low ? fmtPctSigned(model.low.upside_pct) : "—";
@@ -787,6 +762,15 @@ export function generateValuationMarkdown(
         if (sc.fcff_year6 !== undefined) {
           lines.push(`- **终值下一年 FCFF₆**：${fmtBigNumber(sc.fcff_year6, currencySymbol)}（FCFF₅ × (1 + terminal growth)）`);
         }
+        if (sc.terminal_period_end_date) {
+          lines.push(`- **终值日期**：${escapeTableCell(sc.terminal_period_end_date)}`);
+          if (sc.terminal_discount_time !== undefined) {
+            lines.push(`- **终值折现时间 t₅**：${escapeTableCell(fmtNumber(sc.terminal_discount_time, 4))}`);
+          }
+          if (sc.terminal_discount_factor !== undefined) {
+            lines.push(`- **终值折现因子 DF₅**：${escapeTableCell(fmtNumber(sc.terminal_discount_factor, 4))}`);
+          }
+        }
         lines.push("");
 
         // Valuation bridge
@@ -802,9 +786,9 @@ export function generateValuationMarkdown(
         lines.push(`| 净负债 (Net Debt) | ${fmtBigNumber(sc.net_debt, currencySymbol)} | 总债务 − 现金 |`);
         lines.push(`| 股权价值 (Equity Value) | **${fmtBigNumber(sc.equity_value, currencySymbol)}** | EV − 净负债 (EV + 现金 − 总债务) |`);
         lines.push(`| 稀释后总股数 | ${fmtShares(sc.diluted_shares)} 股 | 最新稀释股本 |`);
-        lines.push(`| **每股公允价值** | **${fmtPrice(sc.price_per_share, currencySymbol)}** | 股权价值 / 稀释总股数 |`);
-        lines.push(`| 预期上行空间 | ${fmtPctSigned(sc.upside_pct)} | （每股价值 − 当前价）/ 当前价 |`);
-        lines.push(`| 现价相对估值溢折价 | ${fmtPctSigned(sc.premium_discount_pct)} | 现价相比该情景公允价值之溢折比率 |`);
+        lines.push(`| **每股估值** | **${fmtPrice(sc.price_per_share, currencySymbol)}** | 股权价值 / 稀释总股数 |`);
+        lines.push(`| 预期上行空间 | ${fmtPctSigned(sc.upside_pct)} | （每股估值 − 当前价）/ 当前价 |`);
+        lines.push(`| 现价相对估值溢折价 | ${fmtPctSigned(sc.premium_discount_pct)} | 现价相比该情景估值之溢折比率 |`);
         lines.push("");
 
         // 5-Year Projections Table
@@ -812,8 +796,8 @@ export function generateValuationMarkdown(
         if (rows.length > 0) {
           lines.push("###### 五年 FCFF 预测与折现明细");
           lines.push("");
-          lines.push("| 预测期间 | 增长率 | FCFF 预测值 | FCFF 数据来源与属性 | PV 折现现值 | PV 数据来源与属性 |");
-          lines.push("| :--- | :---: | :--- | :--- | :--- | :--- |");
+          lines.push("| 预测期间 | 起始日 | 结束日 | t | 折现因子 | FY1比例 | 增长率 | FCFF 预测值 | FCFF 数据来源与属性 | PV 折现现值 | PV 数据来源与属性 |");
+          lines.push("| :--- | :--- | :--- | :---: | :---: | :---: | :---: | :--- | :--- | :--- | :--- |");
           for (const r of rows) {
             const fcffMetric = isFinancialMetric(r.fcff) ? r.fcff : undefined;
             const pvMetric = isFinancialMetric(r.pv) ? r.pv : undefined;
@@ -821,9 +805,10 @@ export function generateValuationMarkdown(
             const pvVal = fmtBigNumber(pvMetric?.value ?? r.pv, currencySymbol);
             const fcffProv = formatMetricProvenance(fcffMetric);
             const pvProv = formatMetricProvenance(pvMetric);
+            const stubLabel = r.isStub ? "（stub）" : "";
 
             lines.push(
-              `| ${escapeTableCell(r.label)} | ${escapeTableCell(fmtPct(r.growth, 2))} | ${escapeTableCell(fcffVal)} | ${escapeTableCell(fcffProv)} | ${escapeTableCell(pvVal)} | ${escapeTableCell(pvProv)} |`,
+              `| ${escapeTableCell(r.label)} | ${escapeTableCell(r.start)} | ${escapeTableCell(r.end)} | ${escapeTableCell(fmtNumber(r.discountTime, 4))} | ${escapeTableCell(fmtNumber(r.discountFactor, 4))} | ${escapeTableCell(fmtPct(r.proration, 2) + stubLabel)} | ${escapeTableCell(fmtPct(r.growth, 2))} | ${escapeTableCell(fcffVal)} | ${escapeTableCell(fcffProv)} | ${escapeTableCell(pvVal)} | ${escapeTableCell(pvProv)} |`,
             );
           }
           lines.push("");
@@ -879,7 +864,7 @@ export function generateValuationMarkdown(
   // 6. Disclaimer
   lines.push("---");
   lines.push("");
-  lines.push("## 四、免责声明与使用条款");
+  lines.push(data.financial_bridge ? "## 四、免责声明与使用条款" : "## 三、免责声明与使用条款");
   lines.push("");
   lines.push("- **仅供参考**：本报告及估值结果仅用于教育、学术研究及量化财务模型验证，**不构成任何投资建议、买卖要约或财务咨询**。");
   lines.push("- **风险提示**：股票市场具有固有波动风险，未来实际业绩、宏观利率、资本开支与自由现金流可能与模型假设产生重大偏差。");

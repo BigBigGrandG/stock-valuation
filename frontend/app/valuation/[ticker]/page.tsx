@@ -11,8 +11,6 @@ import {
   resetValuation,
 } from "@/lib/api";
 import {
-  CLASSIFICATION_COLORS,
-  CLASSIFICATION_ZH,
   displayMetricValue,
   fmtDate,
   fmtDateTime,
@@ -24,7 +22,6 @@ import {
   qualityClass,
 } from "@/lib/format";
 import {
-  CLASSIFICATION_LABELS_ZH,
   DATA_QUALITY_LABELS_ZH,
   MODEL_LABELS_ZH,
   type FinancialMetric,
@@ -50,10 +47,6 @@ const EMPTY_FORM: OverrideForm = {
   dcf_growth_floor: "",
   dcf_growth_cap: "",
   forecast_horizon: undefined,
-  weight_pe: "",
-  weight_ev_ebitda: "",
-  weight_fcf_yield: "",
-  weight_dcf: "",
   driver_ebitda_margin: "",
   driver_capex: "",
   driver_nwc_change: "",
@@ -615,10 +608,6 @@ function buildOverrides(form: OverrideForm): { request?: OverrideRequest; error?
     ["FCFF 预测增长率", form.dcf_fcf_growth],
     ["DCF 增长下限", form.dcf_growth_floor],
     ["DCF 增长上限", form.dcf_growth_cap],
-    ["P/E 权重", form.weight_pe],
-    ["EV/EBITDA 权重", form.weight_ev_ebitda],
-    ["FCF 收益率权重", form.weight_fcf_yield],
-    ["DCF 权重", form.weight_dcf],
   ];
   const values: Record<string, number | undefined> = {};
   for (const [label, raw] of fields) {
@@ -640,13 +629,6 @@ function buildOverrides(form: OverrideForm): { request?: OverrideRequest; error?
   if (values["DCF 增长下限"] !== undefined) dcf.growth_floor = values["DCF 增长下限"];
   if (values["DCF 增长上限"] !== undefined) dcf.growth_cap = values["DCF 增长上限"];
   if (Object.keys(dcf).length > 0) request.dcf = dcf;
-
-  const weights: NonNullable<OverrideRequest["weights"]> = {};
-  if (values["P/E 权重"] !== undefined) weights.weight_pe = values["P/E 权重"];
-  if (values["EV/EBITDA 权重"] !== undefined) weights.weight_ev_ebitda = values["EV/EBITDA 权重"];
-  if (values["FCF 收益率权重"] !== undefined) weights.weight_fcf_yield = values["FCF 收益率权重"];
-  if (values["DCF 权重"] !== undefined) weights.weight_dcf = values["DCF 权重"];
-  if (Object.keys(weights).length > 0) request.weights = weights;
 
   if (form.forecast_horizon) {
     request.forecast_horizon = form.forecast_horizon;
@@ -672,14 +654,6 @@ function buildOverrides(form: OverrideForm): { request?: OverrideRequest; error?
   if (Object.keys(drivers).length > 0) request.drivers = drivers;
 
   return { request };
-}
-
-function classificationLabel(composite: ValuationResponse["composite"] | undefined): string {
-  if (!composite) return "暂不可判定";
-  return composite.classification_label_zh
-    ?? (composite.classification ? CLASSIFICATION_LABELS_ZH[composite.classification] : undefined)
-    ?? (composite.classification ? CLASSIFICATION_ZH[composite.classification] : undefined)
-    ?? "暂不可判定";
 }
 
 export default function ValuationPage() {
@@ -894,12 +868,7 @@ export default function ValuationPage() {
     downloadMarkdown(filename, content);
   }
 
-  const composite = data?.composite;
-  const isCompositeAvailable = composite?.available !== false && (composite?.available_models?.length ?? 0) > 0;
   const qualityLabel = data ? DATA_QUALITY_LABELS_ZH[data.data_quality] ?? data.data_quality : "";
-  const classificationTone = composite?.classification
-    ? CLASSIFICATION_COLORS[composite.classification] ?? "classification-neutral"
-    : "classification-neutral";
   const currencySymbol = data?.currency === "USD" ? "$" : `${data?.currency ?? "USD"} `;
 
   return (
@@ -958,7 +927,7 @@ export default function ValuationPage() {
             <section className="hero-card">
               <div className="hero-heading">
                 <div>
-                  <div className="eyebrow">综合估值 · {data.ticker}</div>
+                  <div className="eyebrow">独立估值 · {data.ticker}</div>
                   <h1>{data.company_name}</h1>
                   <p className="hero-meta">
                     <span>{data.ticker}</span>
@@ -1036,47 +1005,6 @@ export default function ValuationPage() {
                 </div>
               )}
 
-              <div className="composite-grid">
-                <div className="composite-main">
-                  <div className="section-kicker">综合目标价区间</div>
-                  {isCompositeAvailable ? (
-                    <div className="fair-value-row">
-                      <div><span>低位</span><strong>{fmtPrice(composite?.fair_value_low ?? composite?.low, currencySymbol)}</strong></div>
-                      <div className="fair-value-base"><span>基准</span><strong>{fmtPrice(composite?.fair_value_base ?? composite?.base, currencySymbol)}</strong></div>
-                      <div><span>高位</span><strong>{fmtPrice(composite?.fair_value_high ?? composite?.high, currencySymbol)}</strong></div>
-                    </div>
-                  ) : (
-                    <div className="fair-value-unavailable">
-                      <strong>综合估值暂不可用</strong>
-                      <p>{composite?.unavailable_reason ?? "由于必要财务输入缺失，未能得出综合公允价值区间。"}</p>
-                      {composite?.cashflow_group_policy_message && (
-                        <p className="mt-2 text-xs text-amber-700 bg-amber-50 p-2 rounded border border-amber-200">
-                          {composite.cashflow_group_policy_message}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <div className="composite-metric">
-                  <span>安全边际（MOS）</span>
-                  <strong className={pctColor(composite?.margin_of_safety ?? composite?.mos_pct)}>
-                    {isCompositeAvailable ? fmtPctSigned(composite?.margin_of_safety ?? composite?.mos_pct) : "—"}
-                  </strong>
-                  <small>MOS =（基准公允价值 − 当前价）/ 基准公允价值</small>
-                </div>
-                <div className="composite-metric">
-                  <span>上涨 / 下跌空间</span>
-                  <strong className={pctColor(composite?.upside_downside ?? composite?.upside_pct)}>
-                    {isCompositeAvailable ? fmtPctSigned(composite?.upside_downside ?? composite?.upside_pct) : "—"}
-                  </strong>
-                  <small>（公允价值 − 当前价）/ 当前价</small>
-                </div>
-                <div className={`classification-card ${isCompositeAvailable ? classificationTone : "classification-neutral"}`}>
-                  <span>估值判断</span>
-                  <strong>{isCompositeAvailable ? classificationLabel(composite) : "暂不可判定"}</strong>
-                  <small>价格 / 基准公允价值分类</small>
-                </div>
-              </div>
             </section>
 
             {data.warnings?.length > 0 && (
@@ -1125,7 +1053,7 @@ export default function ValuationPage() {
                 <div className="col-span-full">
                   <details className="mt-3 p-3 bg-slate-900/50 border border-slate-800 rounded-lg">
                     <summary className="text-xs font-semibold text-indigo-300 cursor-pointer select-none">
-                      ⚙️ 高级配置：预测周期选择、模型权重与增长上下限
+                      ⚙️ 高级配置：预测周期选择与增长上下限
                     </summary>
                     <div className="mt-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                       <label>
@@ -1168,50 +1096,6 @@ export default function ValuationPage() {
                           inputMode="decimal"
                         />
                         <small>最高 2.0 (200%)</small>
-                      </label>
-
-                      <label>
-                        <span>P/E 权重</span>
-                        <input
-                          value={form.weight_pe || ""}
-                          onChange={(e) => updateField("weight_pe", e.target.value)}
-                          placeholder="0.25 (25%)"
-                          inputMode="decimal"
-                        />
-                        <small>非负数值（自动归一化）</small>
-                      </label>
-
-                      <label>
-                        <span>EV/EBITDA 权重</span>
-                        <input
-                          value={form.weight_ev_ebitda || ""}
-                          onChange={(e) => updateField("weight_ev_ebitda", e.target.value)}
-                          placeholder="0.20 (20%)"
-                          inputMode="decimal"
-                        />
-                        <small>非负数值（自动归一化）</small>
-                      </label>
-
-                      <label>
-                        <span>FCF 收益率权重</span>
-                        <input
-                          value={form.weight_fcf_yield || ""}
-                          onChange={(e) => updateField("weight_fcf_yield", e.target.value)}
-                          placeholder="0.25 (25%)"
-                          inputMode="decimal"
-                        />
-                        <small>现金流组受 40% 上限保护</small>
-                      </label>
-
-                      <label>
-                        <span>DCF 权重</span>
-                        <input
-                          value={form.weight_dcf || ""}
-                          onChange={(e) => updateField("weight_dcf", e.target.value)}
-                          placeholder="0.30 (30%)"
-                          inputMode="decimal"
-                        />
-                        <small>现金流组受 40% 上限保护</small>
                       </label>
 
                       <div className="col-span-full border-t border-slate-800 pt-3 mt-2">
@@ -1294,8 +1178,8 @@ export default function ValuationPage() {
 
             <section className="assumption-strip">
               <div><span>数据质量</span><strong className={`quality-badge ${qualityClass(data.data_quality)}`}>{qualityLabel}</strong></div>
-              <div><span>有效模型</span><strong>{composite?.available_models?.length ?? 0} / 4</strong></div>
-              <div><span>综合权重</span><strong>{Object.entries(composite?.weights_used ?? {}).map(([key, value]) => `${key} ${fmtPct(value)}`).join(" · ") || (isCompositeAvailable ? "后端未提供" : "无有效权重")}</strong></div>
+              <div><span>可用模型</span><strong>{MODEL_KEYS.filter((key) => data.valuations?.[key]?.available).length} / 4</strong></div>
+              <div><span>估值口径</span><strong>四套模型独立输出</strong></div>
               <div><span>现金流口径</span><strong>FCF Yield = FCFE · DCF = FCFF</strong></div>
             </section>
 
@@ -1324,13 +1208,6 @@ export default function ValuationPage() {
                 ))}
               </div>
             </section>
-
-            {composite?.calculation_steps && composite.calculation_steps.length > 0 && (
-              <section className="notice-card composite-steps-card">
-                <div className="section-kicker">综合计算过程</div>
-                <ol className="steps-list">{composite.calculation_steps.map((step, index) => <li key={`${index}-${step}`}>{step}</li>)}</ol>
-              </section>
-            )}
 
             <footer className="page-footer">估值结果仅用于教育和模型验证，不构成投资建议。数据来源、日期和估算标记请以各输入行展示为准。</footer>
           </>

@@ -134,6 +134,12 @@ class DCFOverride(BaseModel):
 
 
 class WeightOverride(BaseModel):
+    """Retained for callers of the retired composite helper.
+
+    It is intentionally not referenced by ``ValuationOverrideRequest`` and
+    therefore is not part of the public HTTP contract.
+    """
+
     weight_pe: Optional[Decimal] = None
     weight_ev_ebitda: Optional[Decimal] = None
     weight_fcf_yield: Optional[Decimal] = None
@@ -217,7 +223,6 @@ class ValuationOverrideRequest(BaseModel):
     ev_ebitda: Optional[EVEBITDAOverride] = None
     fcf_yield: Optional[FCFYieldOverride] = None
     dcf: Optional[DCFOverride] = None
-    weights: Optional[WeightOverride] = None
     drivers: Optional[FinancialDriversOverride] = None
     forecast_horizon: Optional[Literal["ntm", "current_fy", "next_fy"]] = None
 
@@ -268,17 +273,6 @@ class ValuationOverrideRequest(BaseModel):
                 result["dcf.growth_floor"] = self.dcf.growth_floor
             if self.dcf.growth_cap is not None:
                 result["dcf.growth_cap"] = self.dcf.growth_cap
-        if self.weights is not None:
-            if self.weights.weight_pe is not None:
-                result["weights.weight_pe"] = self.weights.weight_pe
-            if self.weights.weight_ev_ebitda is not None:
-                result["weights.weight_ev_ebitda"] = self.weights.weight_ev_ebitda
-            if self.weights.weight_fcf_yield is not None:
-                result["weights.weight_fcf_yield"] = self.weights.weight_fcf_yield
-            if self.weights.weight_dcf is not None:
-                result["weights.weight_dcf"] = self.weights.weight_dcf
-            if self.weights.cashflow_group_max_weight is not None:
-                result["weights.cashflow_group_max_weight"] = self.weights.cashflow_group_max_weight
         if self.drivers is not None:
             if self.drivers.ebitda_margin is not None:
                 result["drivers.ebitda_margin"] = self.drivers.ebitda_margin

@@ -136,6 +136,33 @@ def _to_decimal(val: Any) -> Optional[Decimal]:
         return None
 
 
+def _extract_forward_net_borrowing(info: dict[str, Any], slot: int) -> tuple[Optional[Decimal], Optional[str]]:
+    """Read only explicitly named vendor forward-borrowing fields.
+
+    Yahoo's standard ``info`` payload does not currently publish a forward
+    debt-flow estimate.  This helper deliberately does not derive one from
+    the TTM cash-flow statement; it merely preserves a value if an upstream
+    adapter supplies an explicit, forecast-labelled field.
+    """
+
+    if slot not in (1, 2):
+        return None, None
+    suffix = f"{slot}Y"
+    keys = (
+        f"forwardNetBorrowing{suffix}",
+        f"forward_net_borrowing_{slot}y",
+        f"forwardBorrowing{suffix}",
+        f"forward_borrowing_{slot}y",
+        f"netBorrowingForecast{suffix}",
+    )
+    for key in keys:
+        if key in info:
+            value = _to_decimal(info.get(key))
+            if value is not None:
+                return value, key
+    return None, None
+
+
 def _normalize_query_symbol(ticker: str) -> str:
     """Normalize ticker for Yahoo Finance query (e.g. BRK.B -> BRK-B, BF.B -> BF-B)."""
     t = ticker.strip().upper()
@@ -723,10 +750,28 @@ class YFinanceProvider(FinancialDataProvider):
         forward_fcfe_2y: Optional[Decimal] = None
         forward_fcff_1y: Optional[Decimal] = None
         forward_fcff_2y: Optional[Decimal] = None
+        # Forward borrowing is a separate input.  Standard Yahoo payloads do
+        # not expose it; only an explicitly named vendor field is accepted.
+        forward_net_borrowing_1y, forward_net_borrowing_1y_key = _extract_forward_net_borrowing(info, 1)
+        forward_net_borrowing_2y, forward_net_borrowing_2y_key = _extract_forward_net_borrowing(info, 2)
         forward_fcfe_1y_notes: Optional[str] = None
         forward_fcfe_2y_notes: Optional[str] = None
         forward_fcff_1y_notes: Optional[str] = None
         forward_fcff_2y_notes: Optional[str] = None
+        forward_net_borrowing_1y_period = (
+            str(info.get("forwardNetBorrowing1YPeriod") or info.get("forward_net_borrowing_1y_period") or "FY1E")
+            if forward_net_borrowing_1y is not None else None
+        )
+        forward_net_borrowing_2y_period = (
+            str(info.get("forwardNetBorrowing2YPeriod") or info.get("forward_net_borrowing_2y_period") or "FY2E")
+            if forward_net_borrowing_2y is not None else None
+        )
+        forward_net_borrowing_warning = None
+        if forward_net_borrowing_1y is None and forward_net_borrowing_2y is None:
+            forward_net_borrowing_warning = (
+                "Yahoo Finance did not provide explicit forward net borrowing; "
+                f"historical {period_str} net borrowing is retained for display only and is not used as a forward FCFE driver."
+            )
 
         period_note = "Annual fiscal year statement" if is_annual_statement else "TTM quote summary"
         return {
@@ -734,6 +779,9 @@ class YFinanceProvider(FinancialDataProvider):
             "capex": capex,
             "net_borrowing": net_borrowing,
             "has_net_borrowing": has_net_borrowing,
+            "historical_net_borrowing": net_borrowing,
+            "historical_net_borrowing_period": period_str,
+            "historical_net_borrowing_as_of": cf_as_of,
             "interest": interest,
             "tax_rate": tax_rate,
             "nwc_change": nwc_change,
@@ -752,6 +800,35 @@ class YFinanceProvider(FinancialDataProvider):
             "forward_fcfe_2y_source_type": None,
             "forward_fcfe_2y_period": "+1y",
             "forward_fcfe_2y_notes": forward_fcfe_2y_notes,
+            "forward_net_borrowing_1y": forward_net_borrowing_1y,
+            "forward_net_borrowing_1y_period": forward_net_borrowing_1y_period,
+            "forward_net_borrowing_1y_source": (
+                f"Yahoo Finance explicit field {forward_net_borrowing_1y_key}" if forward_net_borrowing_1y_key else None
+            ),
+            "forward_net_borrowing_1y_source_type": "provider_forward" if forward_net_borrowing_1y is not None else None,
+            "forward_net_borrowing_1y_as_of": cf_as_of if forward_net_borrowing_1y is not None else None,
+            "forward_net_borrowing_1y_unit": str(info.get("financialCurrency") or info.get("currency") or "USD").upper() if forward_net_borrowing_1y is not None else None,
+            "forward_net_borrowing_1y_currency": str(info.get("financialCurrency") or info.get("currency") or "USD").upper() if forward_net_borrowing_1y is not None else None,
+            "forward_net_borrowing_1y_confidence": 0.7 if forward_net_borrowing_1y is not None else None,
+            "forward_net_borrowing_1y_is_estimated": True if forward_net_borrowing_1y is not None else None,
+            "forward_net_borrowing_1y_notes": (
+                "Explicit provider forward net-borrowing field; not derived from TTM." if forward_net_borrowing_1y is not None else None
+            ),
+            "forward_net_borrowing_2y": forward_net_borrowing_2y,
+            "forward_net_borrowing_2y_period": forward_net_borrowing_2y_period,
+            "forward_net_borrowing_2y_source": (
+                f"Yahoo Finance explicit field {forward_net_borrowing_2y_key}" if forward_net_borrowing_2y_key else None
+            ),
+            "forward_net_borrowing_2y_source_type": "provider_forward" if forward_net_borrowing_2y is not None else None,
+            "forward_net_borrowing_2y_as_of": cf_as_of if forward_net_borrowing_2y is not None else None,
+            "forward_net_borrowing_2y_unit": str(info.get("financialCurrency") or info.get("currency") or "USD").upper() if forward_net_borrowing_2y is not None else None,
+            "forward_net_borrowing_2y_currency": str(info.get("financialCurrency") or info.get("currency") or "USD").upper() if forward_net_borrowing_2y is not None else None,
+            "forward_net_borrowing_2y_confidence": 0.7 if forward_net_borrowing_2y is not None else None,
+            "forward_net_borrowing_2y_is_estimated": True if forward_net_borrowing_2y is not None else None,
+            "forward_net_borrowing_2y_notes": (
+                "Explicit provider forward net-borrowing field; not derived from TTM." if forward_net_borrowing_2y is not None else None
+            ),
+            "forward_net_borrowing_warning": forward_net_borrowing_warning,
             "fcff_ttm": fcff,
             "fcff_ttm_source_type": "derived" if fcff is not None else None,
             "fcff_definition": fcff_def,
@@ -1031,6 +1108,28 @@ class YFinanceProvider(FinancialDataProvider):
             "forward_fcfe_2y_source_type": "derived" if f_fcfe2 is not None else None,
             "forward_fcfe_2y_period": cf_data.get("forward_fcfe_2y_period") or "+1y",
             "forward_fcfe_2y_notes": cf_data.get("forward_fcfe_2y_notes"),
+
+            "forward_net_borrowing_1y": cf_data.get("forward_net_borrowing_1y"),
+            "forward_net_borrowing_1y_period": cf_data.get("forward_net_borrowing_1y_period"),
+            "forward_net_borrowing_1y_source": cf_data.get("forward_net_borrowing_1y_source"),
+            "forward_net_borrowing_1y_source_type": cf_data.get("forward_net_borrowing_1y_source_type"),
+            "forward_net_borrowing_1y_as_of": cf_data.get("forward_net_borrowing_1y_as_of"),
+            "forward_net_borrowing_1y_unit": cf_data.get("forward_net_borrowing_1y_unit"),
+            "forward_net_borrowing_1y_currency": cf_data.get("forward_net_borrowing_1y_currency"),
+            "forward_net_borrowing_1y_confidence": cf_data.get("forward_net_borrowing_1y_confidence"),
+            "forward_net_borrowing_1y_is_estimated": cf_data.get("forward_net_borrowing_1y_is_estimated"),
+            "forward_net_borrowing_1y_notes": cf_data.get("forward_net_borrowing_1y_notes"),
+            "forward_net_borrowing_2y": cf_data.get("forward_net_borrowing_2y"),
+            "forward_net_borrowing_2y_period": cf_data.get("forward_net_borrowing_2y_period"),
+            "forward_net_borrowing_2y_source": cf_data.get("forward_net_borrowing_2y_source"),
+            "forward_net_borrowing_2y_source_type": cf_data.get("forward_net_borrowing_2y_source_type"),
+            "forward_net_borrowing_2y_as_of": cf_data.get("forward_net_borrowing_2y_as_of"),
+            "forward_net_borrowing_2y_unit": cf_data.get("forward_net_borrowing_2y_unit"),
+            "forward_net_borrowing_2y_currency": cf_data.get("forward_net_borrowing_2y_currency"),
+            "forward_net_borrowing_2y_confidence": cf_data.get("forward_net_borrowing_2y_confidence"),
+            "forward_net_borrowing_2y_is_estimated": cf_data.get("forward_net_borrowing_2y_is_estimated"),
+            "forward_net_borrowing_2y_notes": cf_data.get("forward_net_borrowing_2y_notes"),
+            "forward_net_borrowing_warning": cf_data.get("forward_net_borrowing_warning"),
 
             "forward_fcff_1y": f_fcff1,
             "forward_fcff_1y_source_type": "derived" if f_fcff1 is not None else None,

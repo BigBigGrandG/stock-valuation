@@ -162,4 +162,5 @@ def test_r5_api_isolates_missing_capex_in_production_response(monkeypatch: pytes
     dcf = payload["valuations"]["dcf"]
     assert dcf["available"] is False
     assert "No FCFF data" in (dcf.get("unavailable_reason") or "")
-    assert payload["composite"]["available"] is True
+    assert "composite" not in payload
+    assert payload["valuations"]["forward_pe"]["available"] is True

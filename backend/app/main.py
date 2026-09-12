@@ -15,9 +15,7 @@ from pydantic import BaseModel
 
 from app.config import DEFAULT_ASSUMPTIONS, CACHE_TTL_SECONDS, DATA_PROVIDER
 from app.models.domain import (
-    CLASSIFICATION_LABELS_ZH,
     CompanyFinancialSnapshot,
-    ValuationClassification,
     ValuationResponse,
 )
 from app.models.overrides import OverrideValidationError, ValuationOverrideRequest
@@ -107,26 +105,8 @@ def _resolve_valuation_service(provider_override: Optional[str] = None) -> Valua
 
 
 def _enrich(data: dict[str, Any]) -> dict[str, Any]:
-    """Add small UI aliases while retaining the stable nested schema."""
+    """Return the public response without retired composite aliases."""
 
-    composite = data.get("composite") or {}
-    composite.setdefault("fair_value_low", composite.get("low"))
-    composite.setdefault("fair_value_base", composite.get("base"))
-    composite.setdefault("fair_value_high", composite.get("high"))
-    composite["current_price"] = data.get("current_price")
-    classification = composite.get("classification")
-    if classification:
-        try:
-            composite["classification_label_zh"] = CLASSIFICATION_LABELS_ZH[ValuationClassification(classification)]
-        except (KeyError, ValueError):
-            pass
-    data["composite"] = composite
-    for model in (data.get("valuations") or {}).values():
-        if not isinstance(model, dict):
-            continue
-        model.setdefault("fair_value_low", (model.get("low") or {}).get("price_per_share"))
-        model.setdefault("fair_value_base", (model.get("base") or {}).get("price_per_share"))
-        model.setdefault("fair_value_high", (model.get("high") or {}).get("price_per_share"))
     return data
 
 

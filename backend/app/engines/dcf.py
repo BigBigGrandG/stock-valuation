@@ -1,17 +1,18 @@
 """Five-year FCFF DCF engine.
 
 The engine never substitutes FCFE for FCFF. Forward FCFF1/FCFF2 are used as
-the first two explicit forecast years; if they are missing, a historical TTM
-value is grown into a newly-labelled forecast year for standalone/direct
-callers. Years 3–5 use a deterministic linear fade from the effective
-scenario growth start to that scenario's terminal growth, with each derived
-projection carrying its own provenance metric; FCFF6 is exposed for the
-terminal-value bridge.
+the first two explicit forecast years; with a provider fiscal-year anchor,
+FY1 is prorated to the remaining stub and FY2+ are complete fiscal years.
+When the explicit inputs are missing, a historical TTM value is grown into a
+newly-labelled forecast year for standalone/direct callers. Years 3–5 use a
+deterministic linear fade from the effective scenario growth start to that
+scenario's terminal growth, with each derived projection carrying its own
+provenance metric; FCFF6 is exposed for the terminal-value bridge.
 """
 from __future__ import annotations
 
 import re
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional
 
@@ -25,7 +26,6 @@ from app.config import (
     DEFAULT_GROWTH_CAP,
     DEFAULT_GROWTH_FLOOR,
 )
-from app.services.projections import calculate_ntm_weights
 from app.models.domain import (
     CompanyFinancialSnapshot,
     DataQuality,
@@ -44,9 +44,14 @@ from app.models.domain import (
 
 PREC = Decimal("0.01")
 FOUR = Decimal("0.0001")
+EIGHT = Decimal("0.00000001")
 ZERO = Decimal("0")
 N_YEARS = 5
-FORMULA = "EV = Σ FCFF_t/(1+WACC)^t + TV/(1+WACC)^5; Equity = EV − Net Debt; Price = Equity/Shares"
+FORMULA = (
+    "EV = Σ FCFF_t/(1+WACC)^t + TV/(1+WACC)^t_5; "
+    "t = (fiscal period end − valuation date)/365; "
+    "Equity = EV − Net Debt; Price = Equity/Shares"
+)
 
 
 def _upside(price: Decimal, current: Decimal) -> Decimal:
@@ -248,6 +253,125 @@ def _forecast_period(period: str, as_of: date, offset: int = 0) -> str:
     return f"FY{year}E"
 
 
+def _safe_add_years(value: date, years: int) -> date:
+    """Add calendar years without losing a leap-day valuation date."""
+
+    try:
+        return value.replace(year=value.year + years)
+    except ValueError:
+        # February 29 has no anniversary in a non-leap year.  February 28 is
+        # the same convention used by the projection service and provider.
+        return value.replace(year=value.year + years, day=28)
+
+
+def _fiscal_year_bounds(fiscal_year_end: date, slot: int) -> tuple[date, date]:
+    """Return the inclusive fiscal-year dates for a forecast slot.
+
+    ``forecast_fiscal_year_end`` is the provider-verified end of FY1.  A
+    fiscal year starts the day after the prior year's matching end date; this
+    handles non-December year ends and leap years without guessing a 365-day
+    period.
+    """
+
+    end = _safe_add_years(fiscal_year_end, slot - 1)
+    # Derive both endpoints from the original anchor.  Computing the prior
+    # end from ``end`` would turn a leap-day anchor (2028-02-29) into
+    # 2028-02-28 for the following period and overlap one day.
+    previous_end = _safe_add_years(fiscal_year_end, slot - 2)
+    return previous_end + timedelta(days=1), end
+
+
+def _build_projection_schedule(
+    as_of: date,
+    *,
+    first_period: str,
+    base_year: int,
+    fiscal_year_end: Optional[date] = None,
+) -> tuple[list[str], list[str], list[Decimal], list[Decimal], list[bool], list[int]]:
+    """Build the DCF cash-flow timeline and its audit metadata.
+
+    When a fiscal-year anchor is supplied, the first forecast is the portion
+    of FY1 remaining after the valuation date.  Its cash flow is prorated by
+    remaining fiscal-year days, except when valuation occurs on/before the
+    fiscal start (where the full FY estimate is still ahead).  Later forecasts
+    are complete, non-overlapping fiscal years.  Discount times are measured
+    from the valuation date to each fiscal period end using ACT/365.
+
+    The no-anchor branch intentionally retains the historical direct-helper
+    anniversary schedule.  Production callers have a provider fiscal anchor;
+    retaining this compatibility seam prevents a bare unit-level helper call
+    from silently inventing a fiscal calendar.
+
+    Returns ``(starts, ends, discount_times, proration_factors, is_stub,
+    fiscal_year_days)``.  Date strings are used here because they are the
+    stable wire representation in the DCF response.
+    """
+
+    starts: list[str] = []
+    ends: list[str] = []
+    discount_times: list[Decimal] = []
+    proration_factors: list[Decimal] = []
+    is_stub: list[bool] = []
+    fiscal_year_days: list[int] = []
+
+    for slot in range(1, N_YEARS + 1):
+        if fiscal_year_end is None:
+            full_start = _safe_add_years(as_of, slot - 1)
+            end = _safe_add_years(as_of, slot)
+            start = full_start
+            factor = Decimal("1")
+            stub = False
+            fy_days = (end - full_start).days + 1
+        else:
+            full_start, end = _fiscal_year_bounds(fiscal_year_end, slot)
+            if end <= as_of:
+                raise ValueError(
+                    f"DCF fiscal period {slot} ends on {end}, not after valuation date {as_of}"
+                )
+            # The valuation date is the effective start of an in-progress FY1
+            # stub.  For a valuation before the FY begins, no proration is
+            # necessary and the period starts at the actual fiscal start.
+            start = max(as_of, full_start) if slot == 1 else full_start
+            # ``full_start`` and ``end`` are inclusive fiscal dates.  The
+            # denominator therefore includes both endpoints (and naturally
+            # becomes 366 for a leap fiscal year).
+            fy_days = (end - full_start).days + 1
+            if slot == 1 and as_of > full_start:
+                remaining_days = (end - as_of).days
+                factor = (
+                    Decimal(str(max(0, remaining_days))) / Decimal(str(fy_days))
+                    if fy_days > 0
+                    else ZERO
+                )
+                factor = min(max(factor, ZERO), Decimal("1"))
+                stub = factor < Decimal("1")
+            else:
+                factor = Decimal("1")
+                stub = False
+
+        days_to_end = (end - as_of).days
+        if days_to_end <= 0:
+            raise ValueError(
+                f"DCF fiscal period {slot} has no positive discount horizon from {as_of}"
+            )
+        starts.append(start.isoformat())
+        ends.append(end.isoformat())
+        discount_times.append(
+            (Decimal(str(days_to_end)) / Decimal("365")).quantize(EIGHT, ROUND_HALF_UP)
+        )
+        proration_factors.append(factor.quantize(EIGHT, ROUND_HALF_UP))
+        is_stub.append(stub)
+        fiscal_year_days.append(fy_days)
+
+    return starts, ends, discount_times, proration_factors, is_stub, fiscal_year_days
+
+
+def _discount_factor(discount_time: Decimal, wacc: Decimal) -> Decimal:
+    """Return ACT/365 discount factor using deterministic Decimal math."""
+
+    return ((discount_time * (Decimal("1") + wacc).ln()).exp())
+
+
 def _projection_metric(
     value: Decimal,
     *,
@@ -287,12 +411,9 @@ def _calculate_dcf(
     """
     if not wacc.is_finite() or not terminal_growth.is_finite() or wacc <= terminal_growth:
         raise ValueError(f"WACC ({wacc}) must be > terminal_growth ({terminal_growth})")
-    one_plus_wacc = Decimal("1") + wacc
-    ln_wacc = one_plus_wacc.ln()
-
     pvs: list[Decimal] = []
     for proj, frac in zip(projections, year_fractions):
-        disc_factor = (frac * ln_wacc).exp()
+        disc_factor = _discount_factor(frac, wacc)
         pv = (proj / disc_factor).quantize(PREC, ROUND_HALF_UP)
         pvs.append(pv)
 
@@ -301,7 +422,7 @@ def _calculate_dcf(
     ).quantize(PREC, ROUND_HALF_UP)
 
     tv_frac = year_fractions[-1]
-    tv_disc_factor = (tv_frac * ln_wacc).exp()
+    tv_disc_factor = _discount_factor(tv_frac, wacc)
     pv_tv = (terminal_val / tv_disc_factor).quantize(PREC, ROUND_HALF_UP)
 
     ev = (sum(pvs) + pv_tv).quantize(PREC, ROUND_HALF_UP)
@@ -355,8 +476,16 @@ def _compute_dcf_scenario(
     net_debt_value: Optional[Decimal] = None,
     projection_as_of: Optional[date] = None,
     growth_compound_horizon: Optional[str] = None,
+    fiscal_year_end: Optional[date] = None,
+    forecast_fiscal_year_end: Optional[date] = None,
 ) -> DCFScenario:
-    """Compute one path using explicit five-year PV math."""
+    """Compute one path using explicit five-year PV math.
+
+    ``fiscal_year_end`` (or its descriptive alias
+    ``forecast_fiscal_year_end``) is the provider-verified FY1 end.  With an
+    anchor, FY1 is prorated when the valuation date falls inside that year;
+    no-anchor direct calls retain the legacy anniversary schedule.
+    """
 
     if not wacc.is_finite() or not terminal_growth.is_finite() or wacc <= terminal_growth:
         raise ValueError(
@@ -374,31 +503,26 @@ def _compute_dcf_scenario(
     as_of = projection_as_of or (fcff_y1_metric.as_of if fcff_y1_metric else date.today())
     effective_floor = growth_floor if growth_floor is not None else FCF_GROWTH_FLOOR
 
-    def _safe_date(y: int, m: int, d: int) -> date:
-        try:
-            return date(y, m, d)
-        except ValueError:
-            return date(y, m, 28)
-
     # Guarantee first_period never labels a past year as future
     first_period = fcff_y1_metric.period if fcff_y1_metric else f"FY{base_year}E"
     match_y = re.search(r"(?:FY)?(20\d{2})", first_period or "")
     if match_y and int(match_y.group(1)) < as_of.year:
         first_period = f"FY{as_of.year}E"
 
-    start_dates: list[str] = []
-    end_dates: list[str] = []
-    year_fractions: list[Decimal] = []
-
-    for yr in range(1, N_YEARS + 1):
-        s_date = _safe_date(as_of.year + yr - 1, as_of.month, as_of.day)
-        e_date = _safe_date(as_of.year + yr, as_of.month, as_of.day)
-        start_dates.append(s_date.isoformat())
-        end_dates.append(e_date.isoformat())
-        days_elapsed = (e_date - as_of).days
-        yf = (Decimal(str(days_elapsed)) / Decimal("365")).quantize(Decimal("0.00000001"), ROUND_HALF_UP)
-        year_fractions.append(yf)
-
+    effective_fiscal_year_end = fiscal_year_end or forecast_fiscal_year_end
+    (
+        start_dates,
+        end_dates,
+        year_fractions,
+        proration_factors,
+        period_is_stub,
+        fiscal_year_days,
+    ) = _build_projection_schedule(
+        as_of,
+        first_period=first_period,
+        base_year=base_year,
+        fiscal_year_end=effective_fiscal_year_end,
+    )
 
     projections: list[Decimal] = []
     projection_growth_rates: list[Optional[Decimal]] = []
@@ -406,6 +530,10 @@ def _compute_dcf_scenario(
     metrics: list[dict] = []
 
     previous: Optional[Decimal] = None
+    # Keep the unprorated FY1 value available for deriving a full FY2 when a
+    # provider did not supply the second explicit year.  Starting FY2 from a
+    # short FY1 stub would compound only a fraction of an annual cash flow.
+    full_fcff_y1 = fcff_y1.quantize(PREC, ROUND_HALF_UP)
     raw_growth_metric = growth_metric
     effective_growth_metric = growth_metric
     if growth_metric is not None:
@@ -429,9 +557,10 @@ def _compute_dcf_scenario(
         s_str = start_dates[year - 1]
         e_str = end_dates[year - 1]
         if year == 1:
-            value = fcff_y1.quantize(PREC, ROUND_HALF_UP)
+            full_value = full_fcff_y1
+            value = (full_value * proration_factors[0]).quantize(PREC, ROUND_HALF_UP)
             metric = fcff_y1_metric or _projection_metric(
-                value,
+                full_value,
                 period=first_period,
                 source=fcff_y1_label,
                 source_type=SourceType.DERIVED,
@@ -440,6 +569,18 @@ def _compute_dcf_scenario(
                 is_estimated=True,
                 notes=f"FCFF Year 1 ({s_str} to {e_str}) supplied directly to DCF.",
             )
+            if period_is_stub[0]:
+                original_notes = metric.notes or ""
+                metric = metric.model_copy(update={
+                    "value": value,
+                    "source": f"{metric.source}; prorated FY1 stub",
+                    "notes": (
+                        f"FY1 full-year FCFF={full_value}; prorated to {value} using "
+                        f"{max(0, int((Decimal(str(fiscal_year_days[0])) * proration_factors[0]).to_integral_value(rounding=ROUND_HALF_UP)))} "
+                        f"of {fiscal_year_days[0]} fiscal days remaining ({proration_factors[0]}). "
+                        f"Period {s_str} to {e_str}. {original_notes}"
+                    ).strip(),
+                })
         elif year == 2 and fcff_y2 is not None:
             value = fcff_y2.quantize(PREC, ROUND_HALF_UP)
             y2_label_period = fcff_y2_metric.period if fcff_y2_metric else _forecast_period(first_period, as_of, 1)
@@ -462,7 +603,12 @@ def _compute_dcf_scenario(
                 if year == 2
                 else _fade_growth_rate(growth_rate, terminal_growth, year)
             )
-            value = (previous * (Decimal("1") + projection_growth)).quantize(PREC, ROUND_HALF_UP)  # type: ignore[operator]
+            growth_base = (
+                full_fcff_y1
+                if year == 2 and period_is_stub[0]
+                else previous
+            )
+            value = (growth_base * (Decimal("1") + projection_growth)).quantize(PREC, ROUND_HALF_UP)  # type: ignore[operator]
             proj_period = _forecast_period(first_period, as_of, year - 1)
             metric = _projection_metric(
                 value,
@@ -483,8 +629,9 @@ def _compute_dcf_scenario(
             projection_growth = None
         elif year == 2 and fcff_y2 is not None:
             # An explicit Y2 estimate remains authoritative; expose its
-            # observed one-year rate separately from the scenario g_start.
-            projection_growth = (value / projections[0] - Decimal("1")) if projections else growth_rate
+            # observed one-year rate separately from the scenario g_start.  A
+            # prorated FY1 is not a valid denominator for an annual rate.
+            projection_growth = (value / full_fcff_y1 - Decimal("1")) if full_fcff_y1 else growth_rate
         elif year == 2:
             projection_growth = growth_rate
         if value <= ZERO:
@@ -499,6 +646,17 @@ def _compute_dcf_scenario(
             if year >= 3
             else ("explicit_forward" if year == 2 and fcff_y2 is not None else "growth_start")
         )
+        metric_row["period_start"] = s_str
+        metric_row["period_end"] = e_str
+        # ``start_date``/``end_date`` are retained as explicit aliases for
+        # consumers that use the provider's bridge vocabulary.
+        metric_row["start_date"] = s_str
+        metric_row["end_date"] = e_str
+        metric_row["discount_time"] = str(year_fractions[year - 1])
+        metric_row["t"] = str(year_fractions[year - 1])
+        metric_row["proration_factor"] = str(proration_factors[year - 1])
+        metric_row["is_stub"] = period_is_stub[year - 1]
+        metric_row["fiscal_year_days"] = fiscal_year_days[year - 1]
         metrics.append(metric_row)
         previous = value
 
@@ -507,6 +665,10 @@ def _compute_dcf_scenario(
     pvs, terminal_value, pv_terminal_value, enterprise_value, equity_value, price, _ = _calculate_dcf(
         projections, year_fractions, wacc, terminal_growth, net_debt, diluted_shares
     )
+    discount_factors = [
+        _discount_factor(discount_time, wacc).quantize(EIGHT, ROUND_HALF_UP)
+        for discount_time in year_fractions
+    ]
 
     # Keep PV provenance next to each projection so the API, frontend and
     # Markdown exporter can render the same values without reimplementing the
@@ -520,31 +682,53 @@ def _compute_dcf_scenario(
             as_of=as_of,
             confidence=1.0,
             is_estimated=True,
-            notes=f"PV = FCFF / (1 + WACC)^{year_fractions[index]:.8f} using ACT/365 day fraction.",
+            notes=(
+                f"PV = FCFF / discount factor; t={year_fractions[index]:.8f}; "
+                f"discount factor={discount_factors[index]:.8f}; "
+                "ACT/365 day fraction from valuation date to fiscal period end."
+            ),
         )) or {}
+        metric_row["discount_factor"] = str(discount_factors[index])
+        metric_row["pv_value"] = str(pvs[index])
 
     formulas = {
         "growth_fade": "g_t = g_start + ((t - 2) / 3) × (g_terminal - g_start), t=3..5; g_5=g_terminal",
-        "pv_year": "PV_t = FCFF_t / (1 + WACC)^t (ACT/365 day-fraction)",
+        "stub_proration": "FCFF_1,stub = FCFF_1,full × remaining fiscal-year days / fiscal-year days",
+        "discount_time": "t = (fiscal period end − valuation date) / 365 (ACT/365)",
+        "discount_factor": "DF_t = (1 + WACC)^t = exp(t × ln(1 + WACC))",
+        "pv_year": "PV_t = FCFF_t / DF_t; DF_t=(1+WACC)^t (ACT/365 day-fraction)",
         "terminal_value": "TV = FCFF_5 × (1 + g) / (WACC - g)",
         "terminal_year_cash_flow": "FCFF_6 = FCFF_5 × (1 + terminal_growth)",
-        "pv_terminal_value": "PVTV = TV / (1 + WACC)^t_5 (ACT/365 Year 5 fraction)",
+        "pv_terminal_value": "PVTV = TV / DF_t5; t5=(terminal period end − valuation date)/365",
         "enterprise_value": "EV = Σ(PV_1..PV_5) + PVTV",
         "equity_value": "Equity = EV - debt + cash = EV - net_debt",
         "price_per_share": "Price = Equity / diluted shares",
     }
     steps = [
         f"[{scenario_name}] FCFF projections ({', '.join(periods)}) = {projections}",
+        *[
+            f"[{scenario_name}] Fiscal period {year}: {start_dates[year - 1]} to {end_dates[year - 1]}"
+            f"; proration={proration_factors[year - 1]}"
+            f"; stub={period_is_stub[year - 1]}"
+            for year in range(1, N_YEARS + 1)
+        ],
         f"[{scenario_name}] Linear growth fade: g_start={growth_rate}; g3={projection_growth_rates[2]}; g4={projection_growth_rates[3]}; g5={projection_growth_rates[4]} = terminal_growth={terminal_growth}",
-        *[f"[{scenario_name}] PV year {year} (t={year_fractions[year - 1]:.4f}) = {projections[year - 1]} / (1 + {wacc})^{year_fractions[year - 1]:.4f} = {pvs[year - 1]}" for year in range(1, N_YEARS + 1)],
+        *[
+            f"[{scenario_name}] PV year {year} (t={year_fractions[year - 1]:.8f}; "
+            f"factor={discount_factors[year - 1]:.8f}) = {projections[year - 1]} / "
+            f"{discount_factors[year - 1]} = {pvs[year - 1]}"
+            for year in range(1, N_YEARS + 1)
+        ],
         f"[{scenario_name}] TV = {projections[-1]} × (1 + {terminal_growth}) / ({wacc} - {terminal_growth}) = {terminal_value}",
-        f"[{scenario_name}] PVTV = {terminal_value} / (1 + {wacc})^{year_fractions[-1]:.4f} = {pv_terminal_value}",
+        f"[{scenario_name}] PVTV at {end_dates[-1]} (t={year_fractions[-1]:.8f}; factor={discount_factors[-1]:.8f}) = {terminal_value} / {discount_factors[-1]} = {pv_terminal_value}",
         f"[{scenario_name}] EV = {sum(pvs)} + {pv_terminal_value} = {enterprise_value}",
         f"[{scenario_name}] Equity = {enterprise_value} - {total_debt} + {cash} = {equity_value}",
         f"[{scenario_name}] Price/share = {equity_value} / {diluted_shares} = {price}",
     ]
     compound_horizon = growth_compound_horizon or (
-        f"From valuation as_of {as_of} to Year 1 end {end_dates[0]} (ACT/365 convention; annual end-of-year discounting: t1={year_fractions[0]:.4f}, t5={year_fractions[-1]:.4f})"
+        f"Fiscal-year DCF timeline from valuation date {as_of}; "
+        f"FY1 end={end_dates[0]} (t1={year_fractions[0]:.8f}), "
+        f"terminal FY5 end={end_dates[-1]} (t5={year_fractions[-1]:.8f}); ACT/365"
     )
 
     return DCFScenario(
@@ -568,6 +752,16 @@ def _compute_dcf_scenario(
         year_fractions=year_fractions,
         period_start_dates=start_dates,
         period_end_dates=end_dates,
+        projection_proration_factors=proration_factors,
+        period_is_stub=period_is_stub,
+        discount_times=year_fractions,
+        projection_discount_times=year_fractions,
+        discount_factors=discount_factors,
+        projection_discount_factors=discount_factors,
+        fiscal_year_days=fiscal_year_days,
+        terminal_period_end_date=end_dates[-1],
+        terminal_discount_time=year_fractions[-1],
+        terminal_discount_factor=discount_factors[-1],
         growth_compound_horizon=compound_horizon,
         pv_projections=pvs,
         terminal_value=terminal_value,
@@ -629,6 +823,8 @@ def _generate_sensitivity_matrix(
     growth_start = base_scenario.growth_start if base_scenario.growth_start is not None else base_scenario.growth_rate
     base_growth_rates = list(base_scenario.projection_growth_rates or [])
     year_fractions = base_scenario.year_fractions
+    period_start_dates = base_scenario.period_start_dates
+    period_end_dates = base_scenario.period_end_dates
     net_debt = base_scenario.net_debt
     diluted_shares = base_scenario.diluted_shares
 
@@ -691,6 +887,10 @@ def _generate_sensitivity_matrix(
                 pvs, terminal_val, pv_tv, ev, equity, price, tv_ratio = _calculate_dcf(
                     projections, year_fractions, wacc, tg, net_debt, diluted_shares
                 )
+                discount_factors = [
+                    _discount_factor(discount_time, wacc).quantize(EIGHT, ROUND_HALF_UP)
+                    for discount_time in year_fractions
+                ]
                 row.append(
                     DCFSensitivityCell(
                         wacc=wacc,
@@ -702,6 +902,12 @@ def _generate_sensitivity_matrix(
                         fcff_projections=projections,
                         fcff_year6=projections[-1] * (Decimal("1") + tg),
                         projection_growth_rates=growth_rates,
+                        year_fractions=year_fractions,
+                        discount_times=year_fractions,
+                        discount_factors=discount_factors,
+                        period_start_dates=period_start_dates,
+                        period_end_dates=period_end_dates,
+                        pv_projections=pvs,
                         available=True,
                     )
                 )
@@ -876,56 +1082,27 @@ def run_dcf(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssumption
             )
 
     val_date = snapshot.current_price.as_of
+    y1_end_date = _safe_add_years(val_date, 1)
 
-    def _safe_date(y: int, m: int, d: int) -> date:
-        try:
-            return date(y, m, d)
-        except ValueError:
-            return date(y, m, 28)
-
-    y1_end_date = _safe_date(val_date.year + 1, val_date.month, val_date.day)
-
-    match_fwd = re.search(r"(?:FY)?(20\d{2})", y1_metric.period if y1_metric else "")
-    is_mismatched_forward_fy = False
-    fy_end = None
-    if y1_metric is not None and match_fwd and "NTM" not in (y1_metric.period or "").upper():
-        fy_year = int(match_fwd.group(1))
-        fy_end = getattr(snapshot, "forecast_fiscal_year_end", None) or _safe_date(fy_year, 12, 31)
-        days_to_fy_end = (fy_end - val_date).days
-        # If less than 330 days remain in this fiscal year (e.g. 112 days when val_date is in September),
-        # it is a discrete fiscal year that does not cover the full upcoming 12-month anniversary window.
-        if days_to_fy_end < 330:
-            is_mismatched_forward_fy = True
-
+    # ``forecast_fiscal_year_end`` is the provider's verified end of the
+    # current forward fiscal year.  It is the sole anchor for production DCF
+    # timing.  A concrete FY2026E-style metric can safely use the calendar
+    # year only when no upstream anchor exists; relative labels remain on the
+    # legacy direct-call path because they have no date evidence of their own.
+    provider_fiscal_end = getattr(snapshot, "forecast_fiscal_year_end", None)
+    timeline_fiscal_end: Optional[date] = None
     y1_value: Optional[Decimal] = None
     y1_label: str = ""
     first_period: str = ""
     base_year: int = val_date.year
 
-    if y1_metric is not None and not is_mismatched_forward_fy:
-        y1_value = y1_metric.value
-        y1_label = f"Forward FCFF {y1_metric.period} [{y1_metric.source}]"
-        first_period = y1_metric.period
-        base_year = _year_from_period(first_period, y1_metric.as_of)
-    elif y1_metric is not None and is_mismatched_forward_fy:
-        if y2_metric is not None and fy_end is not None:
-            w0, w1, _, _ = calculate_ntm_weights(val_date, fy_end)
-            y1_blended = (w0 * y1_metric.value + w1 * y2_metric.value).quantize(PREC, ROUND_HALF_UP)
-            y1_value = y1_blended
-            y1_label = f"NTM blended forward FCFF ({w0:.1%} {y1_metric.period} + {w1:.1%} {y2_metric.period})"
-            first_period = f"NTM (w0={w0:.2f}, w1={w1:.2f})"
-            base_year = val_date.year
-            warnings.append(f"Discrete fiscal year {y1_metric.period} blended with {y2_metric.period} into NTM anniversary cash flow.")
-        elif ttm_metric is not None:
-            y1_value = None
-            y1_label = f"Historical proxy (derived from FCFF TTM [{ttm_metric.source}])"
-            first_period = f"Anniversary Year 1 ({val_date} to {y1_end_date})"
-            base_year = val_date.year
-            warnings.append(
-                f"Forward FCFF {y1_metric.period} is a discrete fiscal year without +2y estimate for NTM blending; "
-                f"fell back to historical FCFF proxy compounded over {(y1_end_date - ttm_metric.as_of).days} days to anniversary Year 1."
-            )
-        else:
+    if y1_metric is not None:
+        y1_period = str(y1_metric.period or "")
+        upper_y1_period = y1_period.upper().strip()
+        explicit_y1_match = re.search(r"(?:FY)?(20\d{2})", y1_period)
+        explicit_y1_year = int(explicit_y1_match.group(1)) if explicit_y1_match else None
+
+        if provider_fiscal_end is not None and any(token in upper_y1_period for token in ("NTM", "TTM")):
             return ModelValuation(
                 formula=FORMULA,
                 formula_description="Five-year discounted FCFF model",
@@ -934,19 +1111,79 @@ def run_dcf(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssumption
                 calculation_steps=[],
                 available=False,
                 unavailable_reason=(
-                    f"Forward FCFF estimate {y1_metric.period} represents a discrete fiscal year ending {fy_end}, "
-                    f"which does not match the DCF anniversary horizon ending {y1_end_date}. "
-                    f"Without a +2y estimate for NTM blending or a historical FCFF proxy, anniversary cash flow cannot be constructed without blind relabeling."
+                    f"Forward FCFF period {y1_period} is a rolling/non-annual metric; "
+                    "a provider-anchored fiscal-year DCF requires a full FY1 estimate "
+                    "before applying stub proration."
                 ),
                 warnings=warnings,
                 data_quality=DataQuality.LOW,
             )
+
+        if provider_fiscal_end is not None:
+            if explicit_y1_year is not None and explicit_y1_year != provider_fiscal_end.year:
+                return ModelValuation(
+                    formula=FORMULA,
+                    formula_description="Five-year discounted FCFF model",
+                    inputs={},
+                    assumptions={},
+                    calculation_steps=[],
+                    available=False,
+                    unavailable_reason=(
+                        f"Forward FCFF period {y1_period} does not match provider fiscal anchor "
+                        f"FY{provider_fiscal_end.year} ending {provider_fiscal_end}."
+                    ),
+                    warnings=warnings,
+                    data_quality=DataQuality.LOW,
+                )
+            timeline_fiscal_end = provider_fiscal_end
+        elif explicit_y1_year is not None and "NTM" not in upper_y1_period and "TTM" not in upper_y1_period:
+            # Concrete fiscal years are self-anchored to calendar year end;
+            # this fallback is only for direct callers without provider
+            # metadata, never for relative 0y/+1y labels.
+            timeline_fiscal_end = date(explicit_y1_year, 12, 31)
+
+        y1_value = y1_metric.value
+        y1_label = f"Forward FCFF {y1_metric.period} [{y1_metric.source}]"
+        first_period = y1_metric.period
+        base_year = _year_from_period(first_period, y1_metric.as_of)
     else:
         y1_value = None
         y1_label = f"Derived from FCFF TTM [{ttm_metric.source}]"  # type: ignore[union-attr]
         first_period = _forecast_period(ttm_metric.period, val_date)  # type: ignore[union-attr]
         base_year = _year_from_period(first_period, val_date)  # type: ignore[union-attr]
         warnings.append(f"FCFF TTM used only as historical base; Year 1 is derived as {first_period}.")
+
+    # Validate a supplied FY2 label against the same fiscal anchor.  A
+    # mismatched second year would otherwise make the growth rate and the
+    # non-overlapping fiscal timeline disagree silently.
+    if y2_metric is not None and timeline_fiscal_end is not None:
+        y2_period = str(y2_metric.period or "")
+        y2_match = re.search(r"(?:FY)?(20\d{2})", y2_period)
+        if y2_match and int(y2_match.group(1)) != timeline_fiscal_end.year + 1:
+            return ModelValuation(
+                formula=FORMULA,
+                formula_description="Five-year discounted FCFF model",
+                inputs={},
+                assumptions={},
+                calculation_steps=[],
+                available=False,
+                unavailable_reason=(
+                    f"Forward FCFF period {y2_period} does not match provider fiscal anchor "
+                    f"FY{timeline_fiscal_end.year + 1} for DCF Year 2."
+                ),
+                warnings=warnings,
+                data_quality=DataQuality.LOW,
+            )
+
+    if timeline_fiscal_end is not None:
+        fy1_start, fy1_end = _fiscal_year_bounds(timeline_fiscal_end, 1)
+        if val_date > fy1_start:
+            remaining_days = (fy1_end - val_date).days
+            fiscal_days = (fy1_end - fy1_start).days + 1
+            warnings.append(
+                f"DCF FY1 uses a valuation-date stub from {val_date} to {fy1_end}; "
+                f"full-year FCFF is prorated by {remaining_days}/{fiscal_days} fiscal days."
+            )
 
     scenarios: list[DCFScenario] = []
     errors: list[str] = []
@@ -1009,6 +1246,7 @@ def run_dcf(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssumption
                 net_debt_value=nd_metric.value,
                 projection_as_of=val_date,
                 growth_compound_horizon=horizon_desc,
+                fiscal_year_end=timeline_fiscal_end,
             )
             scenarios.append(scenario)
         except ValueError as exc:
@@ -1060,6 +1298,14 @@ def run_dcf(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssumption
                 "growth_fade_formula": scenario.growth_fade_formula,
                 "fcff_year6": str(scenario.fcff_year6) if scenario.fcff_year6 is not None else None,
                 "pv_projections": [str(value) for value in scenario.pv_projections],
+                "period_start_dates": list(scenario.period_start_dates),
+                "period_end_dates": list(scenario.period_end_dates),
+                "discount_times": [str(value) for value in scenario.discount_times],
+                "discount_factors": [str(value) for value in scenario.discount_factors],
+                "proration_factors": [str(value) for value in scenario.projection_proration_factors],
+                "terminal_period_end_date": scenario.terminal_period_end_date,
+                "terminal_discount_time": str(scenario.terminal_discount_time) if scenario.terminal_discount_time is not None else None,
+                "terminal_discount_factor": str(scenario.terminal_discount_factor) if scenario.terminal_discount_factor is not None else None,
             },
         )
 
@@ -1136,6 +1382,12 @@ def run_dcf(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssumption
 
     steps = [
         "IMPORTANT: Uses FCFF (firm/unlevered FCF), NOT FCFE.",
+        (
+            f"DCF timeline basis: fiscal FY1 end {timeline_fiscal_end} from valuation date {val_date}; "
+            "FY1 is a remaining-period stub when valuation is inside the fiscal year."
+            if timeline_fiscal_end is not None
+            else "DCF timeline basis: anniversary compatibility schedule (no provider fiscal-year anchor)."
+        ),
         "Year 1 and Year 2 use explicit forward FCFF metrics when available; missing years are derived and labelled.",
         f"Growth lineage: {growth_label}; source_type={growth_source_type}",
         f"WACC lineage: {wacc_source}; {wacc_source_label}",
@@ -1147,8 +1399,10 @@ def run_dcf(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssumption
     return ModelValuation(
         formula=FORMULA,
         formula_description=(
-            "Five-year FCFF DCF. PV_t = FCFF_t/(1+WACC)^t; TV = FCFF5×(1+g)/(WACC-g); "
-            "PVTV = TV/(1+WACC)^5; EV = ΣPV + PVTV; equity = EV − debt + cash; price = equity/shares."
+            "Five-year FCFF DCF. PV_t = FCFF_t/DF_t; DF_t=(1+WACC)^t with "
+            "t=(fiscal period end−valuation date)/365; TV = FCFF5×(1+g)/(WACC-g); "
+            "PVTV = TV/DF_t5 at the actual terminal fiscal period end; EV = ΣPV + PVTV; "
+            "equity = EV − debt + cash; price = equity/shares."
         ),
         inputs={
             "fcff_y1": str(scenario_map["bear"].fcff_projections[0]),
@@ -1185,6 +1439,12 @@ def run_dcf(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssumption
             "terminal_growth_source": terminal_source_type,
             "terminal_growth_source_label": terminal_source_label,
             "n_years": N_YEARS,
+            "timeline_basis": "fiscal_year_end" if timeline_fiscal_end is not None else "anniversary_compatibility",
+            "valuation_date": val_date.isoformat(),
+            "forecast_fiscal_year_end": timeline_fiscal_end.isoformat() if timeline_fiscal_end is not None else None,
+            "terminal_period_end_date": base_scenario.terminal_period_end_date,
+            "terminal_discount_time": str(base_scenario.terminal_discount_time),
+            "terminal_discount_factor": str(base_scenario.terminal_discount_factor),
         },
         input_metrics=input_metrics,
         assumption_metrics=assumption_metrics,

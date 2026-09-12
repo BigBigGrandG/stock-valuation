@@ -169,10 +169,7 @@
       "available": true,
       "unavailable_reason": null,
       "warnings": [],
-      "data_quality": "MEDIUM",
-      "fair_value_low": "137.16",
-      "fair_value_base": "152.40",
-      "fair_value_high": "167.64"
+      "data_quality": "MEDIUM"
     },
     "ev_ebitda": {
       "formula": "EV = Forward EBITDA × Multiple; Price = (EV - Net Debt) / Shares",
@@ -190,10 +187,7 @@
       "available": false,
       "unavailable_reason": "No forward EBITDA estimate available",
       "warnings": [],
-      "data_quality": "LOW",
-      "fair_value_low": null,
-      "fair_value_base": null,
-      "fair_value_high": null
+      "data_quality": "LOW"
     },
     "fcf_yield": {
       "formula": "Equity Value = Forward FCFE / Yield Rate; Price = Equity / Shares",
@@ -369,10 +363,7 @@
       "warnings": [
         "Using TTM FCFE as a forward proxy because no forward FCFE estimate is available"
       ],
-      "data_quality": "HIGH",
-      "fair_value_low": "6.55",
-      "fair_value_base": "7.20",
-      "fair_value_high": "8.00"
+      "data_quality": "HIGH"
     },
     "dcf": {
       "formula": "EV = Σ FCFF_t/(1+WACC)^t + TV/(1+WACC)^5; Equity = EV − Net Debt; Price = Equity/Shares",
@@ -1321,66 +1312,8 @@
       "warnings": [
         "DCF Terminal Value accounts for 80.2% of Enterprise Value (>80%). High sensitivity to terminal assumptions."
       ],
-      "data_quality": "MEDIUM",
-      "fair_value_low": "17.55",
-      "fair_value_base": "23.63",
-      "fair_value_high": "42.12"
+      "data_quality": "MEDIUM"
     }
-  },
-  "composite": {
-    "current_price": "100.00",
-    "low": "87.32",
-    "base": "97.91",
-    "high": "111.23",
-    "fair_value_low": "87.32",
-    "fair_value_base": "97.91",
-    "fair_value_high": "111.23",
-    "weights_used": {
-      "forward_pe": "0.6000",
-      "fcf_yield": "0.1818",
-      "dcf": "0.2182"
-    },
-    "selected_weights": {
-      "forward_pe": "0.25",
-      "ev_ebitda": "0.20",
-      "fcf_yield": "0.25",
-      "dcf": "0.30"
-    },
-    "effective_weights": {
-      "forward_pe": "0.6000",
-      "fcf_yield": "0.1818",
-      "dcf": "0.2182"
-    },
-    "cashflow_group_weight": "0.4000",
-    "cashflow_group_max_weight": "0.40",
-    "cashflow_sensitivity": null,
-    "cashflow_group_policy_message": null,
-    "available_models": [
-      "forward_pe",
-      "fcf_yield",
-      "dcf"
-    ],
-    "classification": "fairly_valued",
-    "margin_of_safety": "-0.0213",
-    "upside_downside": "-0.0209",
-    "premium_discount_pct": "0.0213",
-    "formula": "Weighted average of complete model scenario fair values",
-    "calculation_steps": [
-      "Complete models used: forward_pe, fcf_yield, dcf",
-      "Selected weights = {'forward_pe': Decimal('0.25'), 'ev_ebitda': Decimal('0.20'), 'fcf_yield': Decimal('0.25'), 'dcf': Decimal('0.30')}",
-      "Effective weights = {'forward_pe': Decimal('0.6000'), 'fcf_yield': Decimal('0.1818'), 'dcf': Decimal('0.2182')}",
-      "Cash flow group weight = 0.4000 (cap = 0.40)",
-      "Composite low = weighted low values = 87.32",
-      "Composite base = weighted base values = 97.91",
-      "Composite high = weighted high values = 111.23",
-      "MOS = (fair value base - current price) / fair value base = -0.0213",
-      "Upside = (fair value base - current price) / current price = -0.0209"
-    ],
-    "warnings": [],
-    "data_quality": "MEDIUM",
-    "available": true,
-    "unavailable_reason": null,
-    "classification_label_zh": "合理估值"
   },
   "is_demo": false,
   "data_quality": "MEDIUM",
@@ -1426,11 +1359,6 @@
     "dcf_wacc_source_label": "Configured fallback: 12%/10%/8% (bear/base/bull)",
     "dcf_terminal_growth_source": "configured_fallback",
     "dcf_terminal_growth_source_label": "Configured fallback terminal growth",
-    "weight_pe": "0.25",
-    "weight_ev_ebitda": "0.20",
-    "weight_fcf_yield": "0.25",
-    "weight_dcf": "0.30",
-    "cashflow_group_max_weight": "0.40",
     "growth_floor": "-0.20",
     "growth_cap": "0.40",
     "forecast_horizon": "ntm"

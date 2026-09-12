@@ -8,15 +8,14 @@ const fixturePath = path.resolve(__dirname, "./fixtures/contract_avgo_response.j
 const rawData: ValuationResponse = JSON.parse(fs.readFileSync(fixturePath, "utf-8"));
 
 test.describe("Frontend Contract: Markdown Export Format", () => {
-  test("exported Markdown includes statement basis, shares basis, model weights, and 3x3 sensitivity matrix", () => {
+  test("exported Markdown includes independent model output and 3x3 sensitivity matrix", () => {
     const md = generateValuationMarkdown(rawData);
 
     // Section headers
     expect(md).toContain("(AVGO) 估值分析报告");
-    expect(md).toContain("## 一、综合估值结论");
-    expect(md).toContain("## 二、估值假设与情景参数");
-    expect(md).toContain("## 三、四套独立估值模型明细");
-    expect(md).toContain("## 四、免责声明与使用条款");
+    expect(md).toContain("## 一、估值假设与情景参数");
+    expect(md).toContain("## 二、四套独立估值模型明细");
+    expect(md).toContain("## 三、免责声明与使用条款");
 
     // Statement basis
     expect(md).toContain("**财务报表统计口径**：连续 4 季度 (TTM)");
@@ -24,9 +23,15 @@ test.describe("Frontend Contract: Markdown Export Format", () => {
     // Shares basis
     expect(md).toContain("**总股本口径**");
 
-    // Model weights
-    expect(md).toContain("#### 模型权重分布");
-    expect(md).toContain("| 模型 | 键值 | 综合权重 | 状态 |");
+    // Composite output and weight semantics must not leak into exports.
+    expect(md).not.toContain("综合估值");
+    expect(md).not.toContain("综合公允价值");
+    expect(md).not.toContain("模型权重分布");
+    expect(md).not.toContain("effective_weights");
+
+    for (const key of ["forward_pe", "ev_ebitda", "fcf_yield", "dcf"]) {
+      expect(md).toContain(`(${key})`);
+    }
 
     // Sensitivity matrix
     expect(md).toContain("#### 终值敏感性分析矩阵 (3×3 Sensitivity Matrix)");
@@ -44,7 +49,6 @@ test.describe("Frontend Contract: Markdown Export Format", () => {
         dcf: {
           ...rawData.valuations.dcf,
           available: false,
-          fair_value_base: undefined,
           base: undefined,
         },
       },

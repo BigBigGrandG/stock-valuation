@@ -91,11 +91,34 @@ def run_fcf_yield(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssu
         )
 
     fcfe_metric = snapshot.forward_fcf_1y or snapshot.forward_fcf_2y
+    historical_proxy = False
+    if fcfe_metric is not None and str(fcfe_metric.period or "").upper().strip() in {"TTM", "LTM", "HISTORICAL"}:
+        warnings.append(
+            f"Forward FCFE field is historical ({fcfe_metric.period}); it is excluded from forward valuation and retained for display only."
+        )
+        fcfe_metric = None
     if fcfe_metric is None and snapshot.fcf_ttm is not None:
         fcfe_metric = snapshot.fcf_ttm
-        warnings.append("Using TTM FCFE as a forward proxy because no forward FCFE estimate is available")
+        historical_proxy = True
+        warnings.append(
+            "Using historical TTM FCFE as a temporary proxy because no forward FCFE estimate is available; "
+            "valuation quality is downgraded and historical net borrowing is never promoted to forward borrowing."
+        )
     if fcfe_metric is None:
         return _unavailable("No forward FCFE (equity FCF) estimate available", warnings=warnings)
+    metric_notes = str(fcfe_metric.notes or "")
+    if any(
+        marker in metric_notes.lower()
+        for marker in (
+            "normalized forward borrowing",
+            "historical net_borrowing_ttm",
+            "historical ttm net borrowing",
+            "no explicit forward net borrowing",
+        )
+    ):
+        warnings.append(
+            "Forward FCFE bridge uses no historical TTM net borrowing; missing forward borrowing was normalized to zero."
+        )
     fcfe = fcfe_metric.value
     if fcfe <= ZERO:
         return _unavailable(
@@ -162,7 +185,7 @@ def run_fcf_yield(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssu
         *high_steps,
     ]
     quality = DataQuality.LOW if snapshot.is_demo else (
-        DataQuality.MEDIUM if fcfe_metric.is_estimated else DataQuality.HIGH
+        DataQuality.LOW if historical_proxy else (DataQuality.MEDIUM if fcfe_metric.is_estimated else DataQuality.HIGH)
     )
     return ModelValuation(
         formula=FORMULA,
@@ -177,6 +200,11 @@ def run_fcf_yield(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssu
             "forward_fcfe_source_type": fcfe_metric.source_type,
             "forward_fcfe_as_of": str(fcfe_metric.as_of),
             "forward_fcfe_is_estimated": fcfe_metric.is_estimated,
+            "forward_fcfe_is_historical_proxy": historical_proxy,
+            "forward_fcfe_quality_note": (
+                "Historical TTM proxy; not a verified forward FCFE estimate."
+                if historical_proxy else "Forward FCFE estimate or normalized bridge input."
+            ),
             "fcf_type": "FCFE (equity FCF, NOT FCFF)",
             "current_price": str(current_price),
             "diluted_shares": str(shares),

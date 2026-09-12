@@ -142,6 +142,10 @@ class CompanyFinancialSnapshot(BaseModel):
     cfo_ttm: Optional[FinancialMetric] = None
     capex_ttm: Optional[FinancialMetric] = None
     net_borrowing_ttm: Optional[FinancialMetric] = None
+    # Explicit provider forward net borrowing; never inferred from the
+    # historical ``net_borrowing_ttm`` driver above.
+    forward_net_borrowing_1y: Optional[FinancialMetric] = None
+    forward_net_borrowing_2y: Optional[FinancialMetric] = None
     da_ttm: Optional[FinancialMetric] = None
     nwc_change_ttm: Optional[FinancialMetric] = None
     interest_ttm: Optional[FinancialMetric] = None
@@ -252,7 +256,12 @@ def _default_decimal(name: str) -> Decimal:
 
 
 class ValuationAssumptions(BaseModel):
-    """Valuation assumptions; defaults are supplied by ``app.config``."""
+    """Internal valuation assumptions; defaults are supplied by ``app.config``.
+
+    The legacy composite-weight fields remain here solely so callers importing
+    the retired ``app.engines.composite`` helper do not break.  They are not
+    part of the public valuation response; see ``ValuationAssumptionsResponse``.
+    """
 
     pe_target: ScenarioValues = Field(default_factory=lambda: _default_scenarios("DEFAULT_PE_TARGET"))
     pe_source: SourceType = SourceType.CONFIGURED_FALLBACK
@@ -311,6 +320,63 @@ class ValuationAssumptions(BaseModel):
     driver_tax_rate: Optional[Decimal] = None
 
 
+class ValuationAssumptionsResponse(BaseModel):
+    """Public assumptions contract for the four independent models.
+
+    Composite weighting was removed from the product contract.  Keep the
+    internal ``ValuationAssumptions`` model available to calculation helpers,
+    while exposing only assumptions that affect an individual model here.
+    """
+
+    pe_target: ScenarioValues = Field(default_factory=lambda: _default_scenarios("DEFAULT_PE_TARGET"))
+    pe_source: SourceType = SourceType.CONFIGURED_FALLBACK
+    pe_source_label: str = "Configured fallback"
+    pe_selection_layer: str = "system"
+    pe_selection_as_of: Optional[date] = None
+    pe_selection_sample_size: Optional[int] = None
+    pe_selection_basis: Optional[str] = None
+
+    ev_ebitda_multiple: ScenarioValues = Field(
+        default_factory=lambda: _default_scenarios("DEFAULT_EV_EBITDA_MULTIPLE")
+    )
+    ev_ebitda_source: SourceType = SourceType.CONFIGURED_FALLBACK
+    ev_ebitda_source_label: str = "Configured fallback"
+    ev_ebitda_selection_layer: str = "system"
+    ev_ebitda_selection_as_of: Optional[date] = None
+    ev_ebitda_selection_sample_size: Optional[int] = None
+    ev_ebitda_selection_basis: Optional[str] = None
+
+    fcf_yield: ScenarioValues = Field(default_factory=lambda: _default_scenarios("DEFAULT_FCF_YIELD"))
+    fcf_yield_source: SourceType = SourceType.CONFIGURED_FALLBACK
+    fcf_yield_source_label: str = "Configured fallback"
+
+    dcf_wacc: ScenarioValues = Field(default_factory=lambda: _default_scenarios("DEFAULT_DCF_WACC"))
+    dcf_terminal_growth: ScenarioValues = Field(
+        default_factory=lambda: _default_scenarios("DEFAULT_DCF_TERMINAL_GROWTH")
+    )
+    dcf_fcf_growth: Optional[ScenarioValues] = None
+    dcf_wacc_source: SourceType = SourceType.CONFIGURED_FALLBACK
+    dcf_wacc_source_label: str = "Configured fallback"
+    dcf_terminal_growth_source: SourceType = SourceType.CONFIGURED_FALLBACK
+    dcf_terminal_growth_source_label: str = "Configured fallback"
+
+    growth_floor: Decimal = Field(default_factory=lambda: _default_decimal("DEFAULT_GROWTH_FLOOR"))
+    growth_cap: Decimal = Field(default_factory=lambda: _default_decimal("DEFAULT_GROWTH_CAP"))
+    forecast_horizon: str = Field(default="ntm")
+
+    driver_ebitda_margin: Optional[Decimal] = None
+    driver_capex: Optional[Decimal] = None
+    driver_capex_ratio: Optional[Decimal] = None
+    driver_nwc_change: Optional[Decimal] = None
+    driver_nwc_ratio: Optional[Decimal] = None
+    driver_net_borrowing: Optional[Decimal] = None
+    driver_da: Optional[Decimal] = None
+    driver_da_ratio: Optional[Decimal] = None
+    driver_tax_rate: Optional[Decimal] = None
+
+    model_config = {"frozen": True, "extra": "ignore"}
+
+
 class PriceEstimate(BaseModel):
     price_per_share: Decimal
     upside_pct: Decimal
@@ -345,6 +411,18 @@ class DCFScenario(BaseModel):
     year_fractions: list[Decimal] = Field(default_factory=list)
     period_start_dates: list[str] = Field(default_factory=list)
     period_end_dates: list[str] = Field(default_factory=list)
+    # Fiscal-year timeline audit fields. ``year_fractions`` remains the
+    # backwards-compatible name for discount time (t).
+    projection_proration_factors: list[Decimal] = Field(default_factory=list)
+    period_is_stub: list[bool] = Field(default_factory=list)
+    fiscal_year_days: list[int] = Field(default_factory=list)
+    discount_times: list[Decimal] = Field(default_factory=list)
+    projection_discount_times: list[Decimal] = Field(default_factory=list)
+    discount_factors: list[Decimal] = Field(default_factory=list)
+    projection_discount_factors: list[Decimal] = Field(default_factory=list)
+    terminal_period_end_date: Optional[str] = None
+    terminal_discount_time: Optional[Decimal] = None
+    terminal_discount_factor: Optional[Decimal] = None
     growth_compound_horizon: Optional[str] = None
     pv_projections: list[Decimal]
     terminal_value: Decimal
@@ -377,6 +455,12 @@ class DCFSensitivityCell(BaseModel):
     fcff_projections: list[Decimal] = Field(default_factory=list)
     fcff_year6: Optional[Decimal] = None
     projection_growth_rates: list[Optional[Decimal]] = Field(default_factory=list)
+    year_fractions: list[Decimal] = Field(default_factory=list)
+    discount_times: list[Decimal] = Field(default_factory=list)
+    discount_factors: list[Decimal] = Field(default_factory=list)
+    period_start_dates: list[str] = Field(default_factory=list)
+    period_end_dates: list[str] = Field(default_factory=list)
+    pv_projections: list[Decimal] = Field(default_factory=list)
     available: bool = True
     unavailable_reason: Optional[str] = None
 
@@ -422,7 +506,11 @@ class ModelValuation(BaseModel):
 
 
 class CompositeValuation(BaseModel):
-    """Composite of complete, positive three-scenario model results."""
+    """Legacy composite result kept for import compatibility only.
+
+    The public ``ValuationResponse`` no longer includes this model and the
+    service does not calculate it.
+    """
 
     current_price: Optional[Decimal] = None
     low: Optional[Decimal] = None
@@ -462,11 +550,10 @@ class ValuationResponse(BaseModel):
     as_of: datetime
     price_timestamp: datetime
     valuations: dict[str, ModelValuation]
-    composite: CompositeValuation
     is_demo: bool = False
     data_quality: DataQuality
     warnings: list[str] = Field(default_factory=list)
-    assumptions_used: ValuationAssumptions
+    assumptions_used: ValuationAssumptionsResponse
     provider: Optional[str] = None
     provider_label: Optional[str] = None
     shares_basis: Optional[str] = None

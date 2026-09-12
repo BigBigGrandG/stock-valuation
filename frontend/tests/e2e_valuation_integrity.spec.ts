@@ -77,15 +77,13 @@ test.describe("Fullstack Real Browser E2E Valuation Integrity (No API Mocks)", (
     await expect(advancedDetails).toBeVisible();
     await advancedDetails.click();
 
-    // 6. Fill in overrides: growth_cap = 0.80, forecast_horizon = ntm, weight_pe = 0.40
+    // 6. Fill in independent-model overrides: growth_cap = 0.80, forecast_horizon = ntm
     const growthCapInput = page.locator('label:has-text("DCF 增长率上限") input');
     await growthCapInput.fill("0.80");
 
     const horizonSelect = page.locator('label:has-text("前瞻预测跨期选择") select');
     await horizonSelect.selectOption("ntm");
 
-    const peWeightInput = page.locator('label:has-text("P/E 权重") input');
-    await peWeightInput.fill("0.40");
     const driverCapexInput = page.locator('label:has-text("资本开支 CapEx") input');
     await driverCapexInput.fill("100000000");
 
@@ -101,6 +99,8 @@ test.describe("Fullstack Real Browser E2E Valuation Integrity (No API Mocks)", (
     const postData = await recalcResponse.json();
 
     // Verify backend calculated fields
+    expect(postData.composite).toBeUndefined();
+    expect(Object.keys(postData.assumptions_used).some((key) => key.startsWith("weight_"))).toBe(false);
     expect(["0.8", "0.80"]).toContain(postData.growth_cap_effective);
     expect(postData.forecast_horizon_effective).toBe("ntm");
     expect(postData.valuations.dcf.available).toBe(true);

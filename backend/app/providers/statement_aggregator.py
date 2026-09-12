@@ -369,6 +369,17 @@ def aggregate_ttm_cashflow(
                 "capex": capex_sum,
                 "net_borrowing": nb_sum,
                 "has_net_borrowing": nb_sum is not None,
+                # This function aggregates historical statements only.  Keep
+                # forward slots explicit and empty so a caller cannot promote
+                # the TTM amount into a forecast by field-name coincidence.
+                "historical_net_borrowing": nb_sum,
+                "historical_net_borrowing_period": "TTM",
+                "forward_net_borrowing_1y": None,
+                "forward_net_borrowing_2y": None,
+                "forward_net_borrowing_warning": (
+                    "No provider forward net-borrowing estimate is present; "
+                    "historical TTM net borrowing is not promoted to forecast."
+                ),
                 "interest": interest_sum,
                 "tax_rate": tax_rate,
                 "nwc_change": nwc_investment_sum,
@@ -477,6 +488,14 @@ def aggregate_ttm_cashflow(
             "capex": capex,
             "net_borrowing": nb,
             "has_net_borrowing": nb is not None,
+            "historical_net_borrowing": nb,
+            "historical_net_borrowing_period": f"FY{col_dt.year}",
+            "forward_net_borrowing_1y": None,
+            "forward_net_borrowing_2y": None,
+            "forward_net_borrowing_warning": (
+                "No provider forward net-borrowing estimate is present; "
+                "historical annual net borrowing is not promoted to forecast."
+            ),
             "interest": interest,
             "tax_rate": tax_rate,
             "nwc_change": annual_nwc_investment,
@@ -495,6 +514,14 @@ def aggregate_ttm_cashflow(
         "capex": None,
         "net_borrowing": None,
         "has_net_borrowing": False,
+        "historical_net_borrowing": None,
+        "historical_net_borrowing_period": "TTM",
+        "forward_net_borrowing_1y": None,
+        "forward_net_borrowing_2y": None,
+        "forward_net_borrowing_warning": (
+            "No provider forward net-borrowing estimate is present; "
+            "historical net borrowing is not promoted to forecast."
+        ),
         "interest": None,
         "tax_rate": None,
         "nwc_change": None,

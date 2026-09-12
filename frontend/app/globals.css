@@ -279,8 +279,6 @@ a {
 .hero-price span,
 .hero-price small,
 .metric-tile span,
-.composite-metric span,
-.fair-value-row span,
 .valuation-scenario span,
 .assumption-strip span,
 .override-form label > span {
@@ -299,8 +297,7 @@ a {
 }
 
 .hero-price small,
-.valuation-scenario small,
-.composite-metric small {
+.valuation-scenario small {
   color: var(--faint);
   font-size: 10px;
 }
@@ -376,70 +373,6 @@ a {
   color: var(--muted);
 }
 
-.composite-grid {
-  align-items: stretch;
-  border-top: 1px solid var(--border-soft);
-  display: grid;
-  gap: 14px;
-  grid-template-columns: minmax(315px, 2fr) repeat(3, minmax(150px, 1fr));
-  padding-top: 20px;
-}
-
-.composite-main {
-  background: rgba(7, 11, 17, 0.24);
-  border: 1px solid var(--border-soft);
-  border-radius: 10px;
-  padding: 14px 16px;
-}
-
-.fair-value-row {
-  align-items: end;
-  display: flex;
-  gap: 23px;
-  margin-top: 10px;
-}
-
-.fair-value-row > div {
-  flex: 1;
-}
-
-.fair-value-row strong {
-  color: var(--text);
-  display: block;
-  font-size: 20px;
-  font-variant-numeric: tabular-nums;
-  margin-top: 4px;
-}
-
-.fair-value-row .fair-value-base {
-  border-left: 1px solid var(--border);
-  border-right: 1px solid var(--border);
-  padding: 0 18px;
-}
-
-.fair-value-base strong {
-  color: var(--accent);
-  font-size: 26px;
-}
-
-.composite-metric,
-.classification-card {
-  border: 1px solid var(--border-soft);
-  border-radius: 10px;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  min-height: 112px;
-}
-
-.composite-metric strong,
-.classification-card strong {
-  font-size: 22px;
-  font-variant-numeric: tabular-nums;
-  margin: 7px 0 3px;
-}
-
 .positive {
   color: var(--positive) !important;
 }
@@ -450,50 +383,6 @@ a {
 
 .muted {
   color: var(--muted) !important;
-}
-
-.classification-strong-positive {
-  background: rgba(85, 212, 155, 0.11);
-  border-color: rgba(85, 212, 155, 0.28);
-}
-
-.classification-positive,
-.classification-soft-positive {
-  background: rgba(85, 212, 155, 0.07);
-  border-color: rgba(85, 212, 155, 0.2);
-}
-
-.classification-strong-positive strong,
-.classification-positive strong,
-.classification-soft-positive strong {
-  color: var(--positive);
-}
-
-.classification-neutral {
-  background: rgba(85, 184, 255, 0.08);
-  border-color: rgba(85, 184, 255, 0.2);
-}
-
-.classification-neutral strong {
-  color: var(--accent);
-}
-
-.classification-warning {
-  background: rgba(240, 186, 100, 0.08);
-  border-color: rgba(240, 186, 100, 0.22);
-}
-
-.classification-warning strong {
-  color: var(--warning);
-}
-
-.classification-negative {
-  background: rgba(240, 120, 120, 0.08);
-  border-color: rgba(240, 120, 120, 0.22);
-}
-
-.classification-negative strong {
-  color: var(--negative);
 }
 
 .notice-card {
@@ -1121,10 +1010,6 @@ a {
   text-align: center;
 }
 
-.composite-steps-card {
-  margin-top: 18px;
-}
-
 .model-card-unavailable .model-card-header {
   background: rgba(80, 25, 34, 0.18);
 }
@@ -1145,10 +1030,6 @@ a {
 }
 
 @media (max-width: 1100px) {
-  .composite-grid {
-    grid-template-columns: minmax(270px, 1.6fr) repeat(3, minmax(130px, 1fr));
-  }
-
   .override-form {
     grid-template-columns: repeat(3, minmax(135px, 1fr));
   }
@@ -1193,14 +1074,6 @@ a {
 
   .hero-price {
     text-align: left;
-  }
-
-  .composite-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .composite-main {
-    grid-column: 1 / -1;
   }
 
   .override-form {
@@ -1263,31 +1136,10 @@ a {
     margin-left: 44px;
   }
 
-  .composite-grid,
   .override-form,
   .assumption-strip,
   .model-summary-grid {
     grid-template-columns: 1fr;
-  }
-
-  .fair-value-row {
-    gap: 8px;
-  }
-
-  .fair-value-row .fair-value-base {
-    padding: 0 9px;
-  }
-
-  .fair-value-row strong {
-    font-size: 16px;
-  }
-
-  .fair-value-base strong {
-    font-size: 20px;
-  }
-
-  .composite-main {
-    grid-column: auto;
   }
 
   .form-submit-row {
@@ -1468,20 +1320,3 @@ a {
   border-color: var(--accent);
   color: var(--accent);
 }
-
-.fair-value-unavailable {
-  padding: 10px 0;
-}
-
-.fair-value-unavailable strong {
-  color: var(--warning);
-  font-size: 15px;
-  display: block;
-}
-
-.fair-value-unavailable p {
-  color: var(--muted);
-  font-size: 12px;
-  margin: 4px 0 0;
-}
-

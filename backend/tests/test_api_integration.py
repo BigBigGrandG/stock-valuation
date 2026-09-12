@@ -66,20 +66,15 @@ def test_get_valuation_avgo():
     vals = data.get("valuations", {})
     assert set(vals.keys()) == {"forward_pe", "ev_ebitda", "fcf_yield", "dcf"}
 
-    # Each model must have fair_value aliases
+    # Each model exposes only its own low/base/high scenario values.
     for model_name, model in vals.items():
-        assert "fair_value_base" in model, f"{model_name} missing fair_value_base"
+        assert "base" in model, f"{model_name} missing base scenario"
+        assert "low" in model or model.get("available") is False
+        assert "high" in model or model.get("available") is False
 
-    # Composite fields
-    comp = data.get("composite", {})
-    assert comp.get("available") is True
-    assert "fair_value_base" in comp
-    assert "margin_of_safety" in comp
-    assert "upside_downside" in comp
-    assert "current_price" in comp
-    assert "classification" in comp
-    assert "classification_label_zh" in comp
-    assert len(comp.get("available_models", [])) > 0
+    # Cross-model synthesis and weight metadata are not part of the API.
+    assert "composite" not in data
+    assert not any(key.startswith("weight_") for key in data["assumptions_used"])
 
 
 def test_valuation_unknown_ticker_404():
@@ -100,7 +95,7 @@ def test_post_valuation_nested_override():
     assert data["ticker"] == "AVGO"
     vals = data["valuations"]
     # PE base should reflect override (18x * 19.21 = 345.78)
-    pe_base = vals["forward_pe"].get("fair_value_base")
+    pe_base = vals["forward_pe"]["base"]["price_per_share"]
     assert pe_base == "345.78", f"PE base with override 18x: expected 345.78, got {pe_base}"
 
 
@@ -111,9 +106,9 @@ def test_post_valuation_sparse_base_auto_derives_bounds():
     assert r.status_code == 200
     data = r.json()
     pe = data["valuations"]["forward_pe"]
-    low = Decimal(pe["fair_value_low"])
-    base_val = Decimal(pe["fair_value_base"])
-    high = Decimal(pe["fair_value_high"])
+    low = Decimal(pe["low"]["price_per_share"])
+    base_val = Decimal(pe["base"]["price_per_share"])
+    high = Decimal(pe["high"]["price_per_share"])
     assert low < base_val < high, f"low={low} base={base_val} high={high}"
 
 
@@ -157,9 +152,8 @@ def test_reset_clears_cache():
     assert r.status_code == 200
     data = r.json()
     assert data["ticker"] == "AVGO"
-    # Should use default assumptions (PE base = 384.20 with historical 22x from fixture)
-    comp = data["composite"]
-    assert comp.get("available") is True
+    assert "composite" not in data
+    assert data["valuations"]["forward_pe"]["base"]["price_per_share"] is not None
 
 
 def test_decimal_fields_are_strings():
@@ -169,9 +163,7 @@ def test_decimal_fields_are_strings():
     data = r.json()
     # current_price should be a string
     assert isinstance(data["current_price"], str)
-    comp = data["composite"]
-    if comp.get("base") is not None:
-        assert isinstance(comp["base"], str)
+    assert isinstance(data["valuations"]["forward_pe"]["base"]["price_per_share"], str)
 
 
 def test_demo_marker_always_present():

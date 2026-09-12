@@ -22,6 +22,8 @@ from app.models.domain import (
     ValuationAssumptions,
 )
 
+ZERO = Decimal("0")
+
 
 @dataclass(frozen=True)
 class RequestProjections:
@@ -40,6 +42,13 @@ class RequestProjections:
     financial_bridge: Optional[dict[str, Any]] = None
     dcf_fcff_1y: Optional[FinancialMetric] = None
     dcf_fcff_2y: Optional[FinancialMetric] = None
+    # Forward borrowing is intentionally separate from ``snapshot``'s
+    # historical ``net_borrowing_ttm`` field.  A missing provider estimate is
+    # represented by ``forward_net_borrowing_status`` and a normalized zero in
+    # the bridge, never by borrowing the historical value.
+    forward_net_borrowing: Optional[FinancialMetric] = None
+    forward_net_borrowing_status: str = "missing_normalized_zero"
+    warnings: tuple[str, ...] = ()
 
 
 def _is_leap_year(y: int) -> bool:
@@ -116,6 +125,134 @@ def _periods_compatible(left: Optional[FinancialMetric], right: Optional[Financi
     left_year = _period_year(left_period)
     right_year = _period_year(right_period)
     return left_year is not None and left_year == right_year
+
+
+def _forward_borrowing_period_is_historical(period: object) -> bool:
+    text = str(period or "").upper().strip()
+    return not text or any(token in text for token in ("TTM", "LTM", "HISTORICAL", "TRAILING"))
+
+
+def _forward_borrowing_candidate(snapshot: CompanyFinancialSnapshot, slot: int) -> Any:
+    """Read an explicitly transported forward borrowing candidate.
+
+    ``CompanyFinancialSnapshot`` remains backward compatible while providers
+    roll out this field, so this resolver accepts both the canonical name and
+    the short compatibility alias.  A provider may transport a FinancialMetric
+    directly, a metadata mapping, or a Decimal plus companion metadata; the
+    latter two forms are normalized below without consulting TTM borrowing.
+    """
+
+    suffix = f"{slot}y"
+    names = (
+        f"forward_net_borrowing_{suffix}",
+        f"forward_borrowing_{suffix}",
+        f"net_borrowing_forward_{suffix}",
+    )
+    for name in names:
+        candidate = getattr(snapshot, name, None)
+        if candidate is not None:
+            return candidate
+
+    # Accommodate a provider adapter that transports both years in a mapping.
+    for container_name in ("forward_net_borrowing", "forward_borrowing"):
+        container = getattr(snapshot, container_name, None)
+        if isinstance(container, dict):
+            for key in (slot, str(slot), f"{slot}y", f"{slot}Y", f"forward_{slot}y"):
+                if key in container and container[key] is not None:
+                    return container[key]
+    return None
+
+
+def _normalize_forward_borrowing_metric(
+    snapshot: CompanyFinancialSnapshot,
+    slot: int,
+    as_of: date,
+) -> tuple[Optional[FinancialMetric], str, Optional[str]]:
+    """Validate a provider forward borrowing metric without historical fallback."""
+
+    candidate = _forward_borrowing_candidate(snapshot, slot)
+    if candidate is None:
+        return None, "missing_normalized_zero", None
+
+    original_source_type: Optional[str] = None
+    if isinstance(candidate, FinancialMetric):
+        metric = candidate
+    else:
+        payload: dict[str, Any]
+        if isinstance(candidate, dict):
+            payload = dict(candidate)
+        else:
+            payload = {"value": candidate}
+
+        prefix = f"forward_net_borrowing_{slot}y"
+        def _metadata(name: str, default: Any = None) -> Any:
+            if name in payload:
+                return payload[name]
+            return getattr(snapshot, f"{prefix}_{name}", default)
+
+        original_source_type = _metadata("source_type")
+        raw_source_type = str(original_source_type or "analyst_estimate").strip().lower()
+        source_type_aliases = {
+            "provider_forward": SourceType.ANALYST_ESTIMATE,
+            "provider": SourceType.ANALYST_ESTIMATE,
+            "forward_provider": SourceType.ANALYST_ESTIMATE,
+            "analyst": SourceType.ANALYST_ESTIMATE,
+            "analyst_estimate": SourceType.ANALYST_ESTIMATE,
+            "actual": SourceType.ACTUAL,
+            "derived": SourceType.DERIVED,
+            "reliable_model": SourceType.DERIVED,
+            "fixture": SourceType.FIXTURE,
+        }
+        normalized_source_type = source_type_aliases.get(raw_source_type)
+        if normalized_source_type is None:
+            return None, "rejected_invalid_forward_source", (
+                f"Forward net borrowing source_type={original_source_type!r} is not an accepted explicit provider/model source."
+            )
+        period = _metadata("period", f"FY{slot}E")
+        source = _metadata("source", "provider forward net borrowing")
+        metric_as_of = _metadata("as_of", as_of) or as_of
+        unit = _metadata("unit", None) or _metadata("currency", None) or getattr(snapshot, "currency", "USD") or "USD"
+        confidence = _metadata("confidence", 0.7)
+        is_estimated = _metadata("is_estimated", normalized_source_type != SourceType.ACTUAL)
+        notes = _metadata("notes", None)
+        try:
+            metric = FinancialMetric(
+                value=payload.get("value"),
+                unit=str(unit),
+                period=str(period),
+                source=str(source),
+                source_type=normalized_source_type,
+                as_of=metric_as_of,
+                confidence=float(confidence),
+                is_estimated=bool(is_estimated),
+                notes=notes,
+            )
+        except Exception as exc:
+            return None, "rejected_invalid_forward_source", f"Forward net borrowing metadata is invalid: {exc}"
+
+    period = str(metric.period or "").upper().strip()
+    if _forward_borrowing_period_is_historical(period):
+        return None, "rejected_historical_forward_source", (
+            f"Forward net borrowing candidate has historical period {metric.period!r}; "
+            "net_borrowing_ttm remains display-only."
+        )
+
+    # Do not silently accept a configured fallback as a forward debt-flow
+    # estimate.  Named forward fields and a non-historical period are required.
+    source_type = getattr(metric.source_type, "value", str(metric.source_type)).lower()
+    if source_type in {SourceType.CONFIGURED_FALLBACK.value, "fallback", "system_default"}:
+        return None, "rejected_unreliable_forward_source", (
+            "Configured fallback cannot be used as forward net borrowing; "
+            "provide an explicit provider estimate or user override."
+        )
+    if metric.value is None or not metric.value.is_finite():
+        return None, "rejected_invalid_forward_source", "Forward net borrowing must be finite."
+
+    note = metric.notes or ""
+    if original_source_type and original_source_type not in {source_type, getattr(metric.source_type, "value", source_type)}:
+        note = f"{note}; original provider source_type={original_source_type}".strip("; ")
+        metric = metric.model_copy(update={"notes": note})
+    return metric, "provider_forward", None
 
 
 def _fiscal_year_bounds(
@@ -640,21 +777,49 @@ def derive_request_projections(
         interest_period_str = snapshot.interest_ttm.period
     after_tax_interest = (interest_val * (Decimal("1") - tax_rate_val)).quantize(Decimal("1"), ROUND_HALF_UP) if interest_val is not None else None
 
-    # Resolve Net Borrowing
-    net_borrowing_val: Optional[Decimal] = None
-    net_borrowing_source: Optional[str] = None
-    net_borrowing_as_of: Any = getattr(snapshot, "cash_flow_as_of", None) or as_of
-    net_borrowing_period_str: str = "TTM"
+    # Resolve forward Net Borrowing.  The historical TTM field is deliberately
+    # not a fallback: it remains available on the snapshot for display/audit,
+    # but cannot enter the forward FCFE bridge.
+    net_borrowing_val: Decimal = ZERO
+    net_borrowing_source: str = "normalized_zero_missing_forward"
+    net_borrowing_source_type: Optional[str] = None
+    net_borrowing_as_of: Any = as_of
+    net_borrowing_period_str: str = "forward_unavailable"
+    forward_borrowing_metric: Optional[FinancialMetric] = None
+    forward_borrowing_status = "missing_normalized_zero"
+    forward_borrowing_warnings: list[str] = []
+    borrowing_slot = 2 if horizon == "next_fy" else 1
+    normalized_forward_borrowing, forward_borrowing_status, forward_borrowing_error = _normalize_forward_borrowing_metric(
+        snapshot, borrowing_slot, as_of
+    )
+    if forward_borrowing_error:
+        forward_borrowing_warnings.append(forward_borrowing_error)
+
     if getattr(assumptions, "driver_net_borrowing", None) is not None:
         net_borrowing_val = assumptions.driver_net_borrowing
         net_borrowing_source = "user_override"
+        net_borrowing_source_type = SourceType.USER_OVERRIDE.value
         net_borrowing_as_of = as_of
-        net_borrowing_period_str = "user_override"
-    elif getattr(snapshot, "net_borrowing_ttm", None) is not None:
-        net_borrowing_val = snapshot.net_borrowing_ttm.value
-        net_borrowing_source = "derived_historical"
-        net_borrowing_as_of = snapshot.net_borrowing_ttm.as_of
-        net_borrowing_period_str = snapshot.net_borrowing_ttm.period
+        net_borrowing_period_str = "forward_user_override"
+        forward_borrowing_status = "user_override"
+    elif normalized_forward_borrowing is not None:
+        forward_borrowing_metric = normalized_forward_borrowing
+        net_borrowing_val = normalized_forward_borrowing.value
+        net_borrowing_source = "provider_forward"
+        net_borrowing_source_type = getattr(normalized_forward_borrowing.source_type, "value", str(normalized_forward_borrowing.source_type))
+        net_borrowing_as_of = normalized_forward_borrowing.as_of
+        net_borrowing_period_str = normalized_forward_borrowing.period
+        forward_borrowing_status = "provider_forward"
+    else:
+        # This zero is a normalization decision, not an observed cash-flow
+        # fact.  Preserve the historical metric separately in the bridge and
+        # emit a warning so downstream quality/risk displays stay honest.
+        historical_borrowing = getattr(snapshot, "net_borrowing_ttm", None)
+        history_label = historical_borrowing.period if historical_borrowing is not None else "TTM"
+        forward_borrowing_warnings.append(
+            "No explicit forward net borrowing is available; normalized forward borrowing to 0. "
+            f"Historical net_borrowing_ttm ({history_label}) is display-only and was not used in forward FCFE."
+        )
 
     # FCFE = FCFF - After-Tax Interest + Net Borrowing
     raw_forward_fcfe = getattr(snapshot, "forward_fcf_1y", None) or getattr(snapshot, "forward_fcfe_1y", None)
@@ -670,6 +835,7 @@ def derive_request_projections(
         derived_fcfe_1y = raw_forward_fcfe
     elif derived_fcff_1y is not None and after_tax_interest is not None and net_borrowing_val is not None:
         fcfe_calc = (derived_fcff_1y.value - after_tax_interest + net_borrowing_val).quantize(Decimal("1"), ROUND_HALF_UP)
+        borrowing_note = " ".join(forward_borrowing_warnings)
         derived_fcfe_1y = FinancialMetric(
             value=fcfe_calc,
             unit=getattr(snapshot, "currency", "USD") or "USD",
@@ -679,13 +845,32 @@ def derive_request_projections(
             as_of=as_of,
             confidence=0.8,
             is_estimated=True,
-            notes="FCFE derived from FCFF with debt cash flow adjustment.",
+            notes=(
+                "FCFE derived from FCFF with debt cash flow adjustment. "
+                + borrowing_note
+                if borrowing_note else "FCFE derived from FCFF with debt cash flow adjustment."
+            ),
         )
+
+    # A direct analyst FCFE estimate remains authoritative, but still carries
+    # the borrowing-evidence warning when no explicit forward debt-flow input
+    # exists.  This prevents the response from implying that historical TTM
+    # borrowing reconciled the direct estimate.
+    if (
+        derived_fcfe_1y is not None
+        and is_fcfe_consensus
+        and forward_borrowing_warnings
+        and not has_driver_overrides_fcfe
+    ):
+        prior_notes = derived_fcfe_1y.notes or ""
+        derived_fcfe_1y = derived_fcfe_1y.model_copy(update={
+            "notes": (prior_notes + " " if prior_notes else "") + " ".join(forward_borrowing_warnings)
+        })
 
     # FCFE's reconciliation is deliberately separate from FCFF's.  Net
     # borrowing is an equity cash-flow adjustment and must never enter FCFF.
     bridge_fcfe: Optional[Decimal] = None
-    if bridge_fcff is not None and after_tax_interest is not None and net_borrowing_val is not None:
+    if bridge_fcff is not None and after_tax_interest is not None:
         bridge_fcfe = (bridge_fcff - after_tax_interest + net_borrowing_val).quantize(Decimal("1"), ROUND_HALF_UP)
 
     # Build comprehensive financial bridge report payload
@@ -772,14 +957,24 @@ def derive_request_projections(
                 )
         if identity_holds is None and not reconciliation_messages:
             reconciliation_messages.append("Accounting identities cannot be fully verified because one or more driver inputs are unavailable.")
+        if forward_borrowing_warnings:
+            reconciliation_messages.extend(forward_borrowing_warnings)
         reconciliation_note = " ".join(reconciliation_messages) or None
 
         dcf_forecasts: list[dict[str, Any]] = []
-        for year, metric, start_date, end_date in (
-            (1, dcf_fcff_1y, fy1_start, fy1_end),
-            (2, dcf_fcff_2y, fy2_start, fy2_end),
-        ):
-            if metric is not None:
+        # A partial FY1/FY2 projection is not a production DCF input.  Keep
+        # FCFF bridge calculations available for FCFE reconciliation, but do
+        # not expose a partial ``dcf_forecasts`` payload that looks eligible
+        # for DCF valuation.
+        dcf_projection_complete = all(
+            metric is not None and metric.value.is_finite() and metric.value > ZERO
+            for metric in (dcf_fcff_1y, dcf_fcff_2y)
+        )
+        if dcf_projection_complete:
+            for year, metric, start_date, end_date in (
+                (1, dcf_fcff_1y, fy1_start, fy1_end),
+                (2, dcf_fcff_2y, fy2_start, fy2_end),
+            ):
                 dcf_forecasts.append({
                     "year": year,
                     "value": str(metric.value),
@@ -821,7 +1016,36 @@ def derive_request_projections(
             "reconciliation_note": reconciliation_note,
             "interest": str(interest_val) if interest_val is not None else None,
             "after_tax_interest": str(after_tax_interest) if after_tax_interest is not None else None,
-            "net_borrowing": str(net_borrowing_val) if net_borrowing_val is not None else None,
+            # ``net_borrowing`` is retained as a compatibility alias for the
+            # value used by the FCFE identity, but the explicit names below
+            # make its forward-only semantics unambiguous.
+            "net_borrowing": str(net_borrowing_val),
+            "forward_net_borrowing": str(net_borrowing_val),
+            "forward_net_borrowing_status": forward_borrowing_status,
+            "forward_net_borrowing_source": net_borrowing_source,
+            "forward_net_borrowing_source_type": net_borrowing_source_type,
+            "forward_net_borrowing_period": str(net_borrowing_period_str),
+            "forward_net_borrowing_as_of": str(net_borrowing_as_of.isoformat() if hasattr(net_borrowing_as_of, "isoformat") else net_borrowing_as_of),
+            "forward_net_borrowing_unit": getattr(snapshot, "currency", "USD") or "USD",
+            "forward_net_borrowing_is_estimated": (
+                True if forward_borrowing_metric is None or forward_borrowing_metric.is_estimated else False
+            ),
+            "forward_net_borrowing_confidence": (
+                str(forward_borrowing_metric.confidence) if forward_borrowing_metric is not None else None
+            ),
+            "forward_net_borrowing_warnings": list(forward_borrowing_warnings),
+            "historical_net_borrowing": (
+                str(getattr(snapshot, "net_borrowing_ttm", None).value)
+                if getattr(snapshot, "net_borrowing_ttm", None) is not None else None
+            ),
+            "historical_net_borrowing_period": (
+                str(getattr(snapshot, "net_borrowing_ttm", None).period)
+                if getattr(snapshot, "net_borrowing_ttm", None) is not None else None
+            ),
+            "historical_net_borrowing_as_of": (
+                str(getattr(snapshot, "net_borrowing_ttm", None).as_of.isoformat())
+                if getattr(snapshot, "net_borrowing_ttm", None) is not None else None
+            ),
             "fcfe": str(derived_fcfe_1y.value) if derived_fcfe_1y is not None else None,
             "dcf_forecasts": dcf_forecasts,
             "restrictions_note": (
@@ -863,10 +1087,16 @@ def derive_request_projections(
                     "description": f"ΔNWC investment: {nwc_change_val} USD (cash outflow when positive)" if nwc_change_val is not None else "N/A",
                 },
                 "net_borrowing": {
-                    "type": net_borrowing_source or "derived_historical",
+                    "type": net_borrowing_source,
+                    "source_type": net_borrowing_source_type,
                     "as_of": str(net_borrowing_as_of.isoformat() if hasattr(net_borrowing_as_of, "isoformat") else net_borrowing_as_of),
                     "period": str(net_borrowing_period_str),
-                    "description": f"Net debt issuance: {net_borrowing_val} USD" if net_borrowing_val is not None else "N/A",
+                    "description": (
+                        f"Forward net debt issuance: {net_borrowing_val} USD"
+                        if forward_borrowing_status in {"provider_forward", "user_override"}
+                        else "Forward net borrowing unavailable; normalized to 0. Historical TTM value is display-only."
+                    ),
+                    "warnings": list(forward_borrowing_warnings),
                 },
             },
         }
@@ -887,5 +1117,8 @@ def derive_request_projections(
         financial_bridge=financial_bridge_dict,
         dcf_fcff_1y=dcf_fcff_1y,
         dcf_fcff_2y=dcf_fcff_2y,
+        forward_net_borrowing=forward_borrowing_metric,
+        forward_net_borrowing_status=forward_borrowing_status,
+        warnings=tuple(forward_borrowing_warnings),
     )
 

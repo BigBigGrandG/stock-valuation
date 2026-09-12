@@ -62,10 +62,9 @@ def test_e2e_avgo_baseline_valuation_provenance_and_export_fields():
     center_cell_price = matrix["cells"][1][1]["price_per_share"]
     assert base_price == center_cell_price, f"Base DCF price {base_price} must equal matrix center cell {center_cell_price}"
 
-    # P1-F: Composite and model weights
-    comp = data["composite"]
-    assert comp["available"] is True
-    assert "effective_weights" in comp
+    # Cross-model synthesis is intentionally absent from the public contract.
+    assert "composite" not in data
+    assert not any(key.startswith("weight_") for key in data["assumptions_used"])
 
 
 def test_e2e_valuation_overrides_recalculate_and_reset():
@@ -77,24 +76,15 @@ def test_e2e_valuation_overrides_recalculate_and_reset():
             "terminal_growth": 0.035,
             "growth_cap": 0.80,
         },
-        "weights": {
-            "weight_pe": 0.50,
-            "weight_dcf": 0.50,
-            "weight_ev_ebitda": 0.0,
-            "weight_fcf_yield": 0.0,
-        },
         "forecast_horizon": "ntm",
     }
     post_resp = client.post("/api/v1/valuation/AVGO", json=override_payload)
     assert post_resp.status_code == 200
     post_data = post_resp.json()
 
-    # Verify override took effect with cashflow group cap (DCF capped at 40%, P/E takes 60%)
+    # Verify the independent DCF override took effect.
     assert Decimal(post_data["growth_cap_effective"]) == Decimal("0.80")
-    comp = post_data["composite"]
-    assert Decimal(comp["effective_weights"]["forward_pe"]) == Decimal("0.6000")
-    assert Decimal(comp["effective_weights"]["dcf"]) == Decimal("0.4000")
-    assert "ev_ebitda" not in comp["effective_weights"]
+    assert "composite" not in post_data
 
     # 2. Reset back to defaults
     reset_resp = client.get("/api/v1/valuation/AVGO/reset")
@@ -103,9 +93,7 @@ def test_e2e_valuation_overrides_recalculate_and_reset():
 
     # Verify clean reset
     assert reset_data["growth_cap_effective"] == "0.40"
-    comp_reset = reset_data["composite"]
-    assert "ev_ebitda" in comp_reset["effective_weights"]
-    assert "fcf_yield" in comp_reset["effective_weights"]
+    assert "composite" not in reset_data
 
 
 def test_e2e_financial_bridge_and_driver_overrides_lifecycle():
@@ -174,4 +162,3 @@ def test_e2e_financial_bridge_and_driver_overrides_lifecycle():
     assert rdata["assumptions_used"]["driver_ebitda_margin"] is None
     assert rdata["assumptions_used"]["driver_capex"] is None
     assert rdata["assumptions_used"]["driver_da"] is None
-

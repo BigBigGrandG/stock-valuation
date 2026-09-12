@@ -14,7 +14,6 @@ from app.config import (
     DEFAULT_ASSUMPTIONS,
     DCF_TERMINAL_GROWTH_MAX,
 )
-from app.engines.composite import run_composite
 from app.engines.dcf import run_dcf
 from app.engines.ev_ebitda import run_ev_ebitda
 from app.engines.fcf_yield import run_fcf_yield
@@ -23,12 +22,12 @@ from app.services.multiples import resolve_multiple_assumptions
 from app.services.projections import derive_request_projections
 from app.models.domain import (
     CompanyFinancialSnapshot,
-    CompositeValuation,
     DataQuality,
     FinancialMetric,
     ModelValuation,
     SourceType,
     ValuationAssumptions,
+    ValuationAssumptionsResponse,
     ValuationResponse,
     net_debt_metric,
 )
@@ -632,7 +631,7 @@ class Normalizer:
         total_debt = self._metric([b], ("total_debt",), unit=fin_curr, period=period_balance, source=str(b.get("source", default_source)), as_of=balance_as_of, required=False)
         income_maps = [inc]
         estimate_maps = [est, cf]
-        return CompanyFinancialSnapshot(
+        snapshot = CompanyFinancialSnapshot(
             ticker=ticker.upper(),
             company_name=str(company_name),
             currency=quote_curr,
@@ -729,6 +728,11 @@ class Normalizer:
             + (["DEMO DATA: values come from a fixed fixture."] if fixture else [])
             + ([f"currency_mismatch: quote in {quote_curr}, financial statements in {p.get('financial_currency')}"] if (p.get("financial_currency") and str(p.get("financial_currency")).upper() != quote_curr.upper()) else []),
         )
+        # Preserve explicitly published provider forward borrowing through the
+        # normalizer.  ``net_borrowing_ttm`` stays historical-only; the shared
+        # boundary helper rejects fallback/invalid metadata and does not infer
+        # a forward value from it.
+        return FinancialDataProvider._attach_forward_borrowing(snapshot, cf, est)
 
 
 def _decimal_override(value: object, field: str) -> Decimal:
@@ -754,9 +758,6 @@ def apply_overrides(base_assumptions: ValuationAssumptions, overrides: Optional[
         "fcf_yield.base", "fcf_yield.low", "fcf_yield.high",
         "dcf.wacc", "dcf.terminal_growth", "dcf.fcf_growth",
         "dcf.growth_floor", "dcf.growth_cap",
-        "weights.weight_pe", "weights.weight_ev_ebitda",
-        "weights.weight_fcf_yield", "weights.weight_dcf",
-        "weights.cashflow_group_max_weight",
         "forecast_horizon",
         "drivers.ebitda_margin",
         "drivers.capex",
@@ -852,41 +853,6 @@ def apply_overrides(base_assumptions: ValuationAssumptions, overrides: Optional[
         data["growth_cap"] = g_cap
     if data.get("growth_floor", Decimal("-0.20")) > data.get("growth_cap", Decimal("0.40")):
         raise OverrideValidationError("growth_floor must be <= growth_cap")
-
-    if "weights.weight_pe" in overrides:
-        w = _decimal_override(overrides["weights.weight_pe"], "weights.weight_pe")
-        if w < ZERO:
-            raise OverrideValidationError("weight_pe must be >= 0")
-        data["weight_pe"] = w
-    if "weights.weight_ev_ebitda" in overrides:
-        w = _decimal_override(overrides["weights.weight_ev_ebitda"], "weights.weight_ev_ebitda")
-        if w < ZERO:
-            raise OverrideValidationError("weight_ev_ebitda must be >= 0")
-        data["weight_ev_ebitda"] = w
-    if "weights.weight_fcf_yield" in overrides:
-        w = _decimal_override(overrides["weights.weight_fcf_yield"], "weights.weight_fcf_yield")
-        if w < ZERO:
-            raise OverrideValidationError("weight_fcf_yield must be >= 0")
-        data["weight_fcf_yield"] = w
-    if "weights.weight_dcf" in overrides:
-        w = _decimal_override(overrides["weights.weight_dcf"], "weights.weight_dcf")
-        if w < ZERO:
-            raise OverrideValidationError("weight_dcf must be >= 0")
-        data["weight_dcf"] = w
-    if "weights.cashflow_group_max_weight" in overrides:
-        w = _decimal_override(overrides["weights.cashflow_group_max_weight"], "weights.cashflow_group_max_weight")
-        if not (ZERO <= w <= Decimal("1.0")):
-            raise OverrideValidationError("cashflow_group_max_weight must be between 0 and 1.0")
-        data["cashflow_group_max_weight"] = w
-
-    if any(k.startswith("weights.weight_") for k in overrides):
-        if (
-            data["weight_pe"] <= ZERO
-            and data["weight_ev_ebitda"] <= ZERO
-            and data["weight_fcf_yield"] <= ZERO
-            and data["weight_dcf"] <= ZERO
-        ):
-            raise OverrideValidationError("At least one model weight must be greater than 0")
 
     if "forecast_horizon" in overrides:
         horizon = str(overrides["forecast_horizon"]).lower()
@@ -1011,7 +977,6 @@ def run_all_engines(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAs
 def assemble_response(
     snapshot: CompanyFinancialSnapshot,
     valuations: dict[str, ModelValuation],
-    composite: CompositeValuation,
     assumptions: ValuationAssumptions,
     financial_bridge: Optional[dict[str, Any]] = None,
 ) -> ValuationResponse:
@@ -1033,11 +998,10 @@ def assemble_response(
         as_of=snapshot.price_timestamp,
         price_timestamp=snapshot.price_timestamp,
         valuations=valuations,
-        composite=composite,
         is_demo=snapshot.is_demo,
         data_quality=quality,
         warnings=list(dict.fromkeys(warnings)),
-        assumptions_used=assumptions,
+        assumptions_used=ValuationAssumptionsResponse.model_validate(assumptions.model_dump()),
         provider=getattr(snapshot, "provider", None),
         provider_label=getattr(snapshot, "provider_label", None),
         shares_basis=getattr(snapshot, "shares_basis", None),
@@ -1181,23 +1145,23 @@ class ValuationService:
         assumptions = apply_overrides(self._default_assumptions, overrides)
         # Multiple arbitration belongs at the normalized snapshot boundary so
         # the selected company/industry/system source reaches every engine,
-        # composite result, API response, and Markdown export consistently.
+        # the API response, and Markdown export consistently.
         assumptions, multiple_warnings = resolve_multiple_assumptions(snapshot, assumptions)
         if multiple_warnings:
             snapshot = snapshot.model_copy(update={
                 "warnings": list(dict.fromkeys([*snapshot.warnings, *multiple_warnings]))
             })
         valuations = run_all_engines(snapshot, assumptions)
-        composite = run_composite(
-            current_price=snapshot.current_price.value,
-            pe_result=valuations["forward_pe"],
-            ev_result=valuations["ev_ebitda"],
-            fcf_result=valuations["fcf_yield"],
-            dcf_result=valuations["dcf"],
-            assumptions=assumptions,
-        )
         proj = derive_request_projections(snapshot, assumptions)
-        return assemble_response(snapshot, valuations, composite, assumptions, financial_bridge=proj.financial_bridge)
+        financial_bridge = proj.financial_bridge
+        # ``run_all_engines`` is the production DCF availability authority.
+        # A request can still have FCFF driver values for FCFE reconciliation
+        # while DCF is unavailable; never expose those partial FY inputs as
+        # ``financial_bridge.dcf_forecasts``.
+        if financial_bridge is not None and not valuations["dcf"].available:
+            financial_bridge = dict(financial_bridge)
+            financial_bridge["dcf_forecasts"] = []
+        return assemble_response(snapshot, valuations, assumptions, financial_bridge=financial_bridge)
 
     # Familiar name for callers that previously invoked FinancialDataService.
     def compute_valuation(

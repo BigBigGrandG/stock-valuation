@@ -11,6 +11,7 @@ import {
   displayMetricValue,
   fmtBigNumber,
   fmtDate,
+  fmtNumber,
   fmtPct,
   fmtPctSigned,
   fmtPrice,
@@ -43,6 +44,12 @@ function projectionRows(sc: DCFScenario): Array<{
   fcff: unknown;
   pv: unknown;
   growth: unknown;
+  start: unknown;
+  end: unknown;
+  discountTime: unknown;
+  discountFactor: unknown;
+  proration: unknown;
+  isStub: boolean | undefined;
 }> {
   const metrics = sc.projection_metrics;
   if (Array.isArray(metrics) && metrics.length > 0) {
@@ -52,12 +59,23 @@ function projectionRows(sc: DCFScenario): Array<{
       const fcff = row.fcff ?? row.fcff_metric ?? (isFinancialMetric(row) ? row : "—");
       const pv = row.pv ?? row.pv_metric ?? sc.pv_projections[index] ?? "—";
       const growth = row.growth_rate ?? sc.projection_growth_rates?.[index] ?? null;
+      const start = row.period_start ?? row.start_date ?? sc.period_start_dates?.[index] ?? "—";
+      const end = row.period_end ?? row.end_date ?? sc.period_end_dates?.[index] ?? "—";
+      const discountTime = row.discount_time ?? row.t ?? sc.discount_times?.[index] ?? sc.year_fractions?.[index] ?? "—";
+      const discountFactor = row.discount_factor ?? sc.discount_factors?.[index] ?? "—";
+      const proration = row.proration_factor ?? sc.projection_proration_factors?.[index] ?? "—";
       return {
         key: `${row.label ?? row.year ?? row.period ?? index}-${index}`,
         label: String(row.label ?? row.period ?? row.year ?? `第${index + 1}年`),
         fcff,
         pv,
         growth,
+        start,
+        end,
+        discountTime,
+        discountFactor,
+        proration,
+        isStub: row.is_stub ?? sc.period_is_stub?.[index],
       };
     });
   }
@@ -66,12 +84,23 @@ function projectionRows(sc: DCFScenario): Array<{
       const fcff = row.fcff ?? row.fcff_metric ?? (isFinancialMetric(row) ? row : "—");
       const pv = row.pv ?? row.pv_metric ?? sc.pv_projections[index] ?? "—";
       const growth = row.growth_rate ?? sc.projection_growth_rates?.[index] ?? null;
+      const start = row.period_start ?? row.start_date ?? sc.period_start_dates?.[index] ?? "—";
+      const end = row.period_end ?? row.end_date ?? sc.period_end_dates?.[index] ?? "—";
+      const discountTime = row.discount_time ?? row.t ?? sc.discount_times?.[index] ?? sc.year_fractions?.[index] ?? "—";
+      const discountFactor = row.discount_factor ?? sc.discount_factors?.[index] ?? "—";
+      const proration = row.proration_factor ?? sc.projection_proration_factors?.[index] ?? "—";
       return {
         key,
         label: String(row.label ?? row.period ?? row.year ?? key ?? `第${index + 1}年`),
         fcff,
         pv,
         growth,
+        start,
+        end,
+        discountTime,
+        discountFactor,
+        proration,
+        isStub: row.is_stub ?? sc.period_is_stub?.[index],
       };
     });
   }
@@ -85,6 +114,12 @@ function projectionRows(sc: DCFScenario): Array<{
     fcff,
     pv: sc.pv_projections[index] ?? "—",
     growth: sc.projection_growth_rates?.[index] ?? null,
+    start: sc.period_start_dates?.[index] ?? "—",
+    end: sc.period_end_dates?.[index] ?? "—",
+    discountTime: sc.discount_times?.[index] ?? sc.year_fractions?.[index] ?? "—",
+    discountFactor: sc.discount_factors?.[index] ?? "—",
+    proration: sc.projection_proration_factors?.[index] ?? "—",
+    isStub: sc.period_is_stub?.[index],
   }));
 }
 
@@ -188,11 +223,27 @@ function ScenarioPanel({
                 )}
               </div>
             )}
+            {scenario.terminal_period_end_date && (
+              <div className="text-xs text-amber-200 bg-amber-950/30 border border-amber-800/40 rounded-lg p-2.5 my-2">
+                时间轴：估值日后按财年期末折现；终值日期 {scenario.terminal_period_end_date}
+                {scenario.terminal_discount_time !== undefined && (
+                  <> · t₅={fmtNumber(scenario.terminal_discount_time, 4)}</>
+                )}
+                {scenario.terminal_discount_factor !== undefined && (
+                  <> · 折现因子={fmtNumber(scenario.terminal_discount_factor, 4)}</>
+                )}
+              </div>
+            )}
             <div className="table-scroll">
               <table className="data-table">
                 <thead>
                   <tr>
                     <th>期间</th>
+                    <th>起始日</th>
+                    <th>结束日</th>
+                    <th>t</th>
+                    <th>折现因子</th>
+                    <th>FY1比例</th>
                     <th>增长率</th>
                     <th>FCFF</th>
                     <th>FCFF 来源 / 期间 / 日期</th>
@@ -207,6 +258,11 @@ function ScenarioPanel({
                     return (
                       <tr key={row.key}>
                         <td className="table-label">{row.label}</td>
+                        <td>{String(row.start ?? "—")}</td>
+                        <td>{String(row.end ?? "—")}</td>
+                        <td>{fmtNumber(row.discountTime, 4)}</td>
+                        <td>{fmtNumber(row.discountFactor, 4)}</td>
+                        <td>{row.proration === "—" ? "—" : fmtPct(row.proration, 2)}{row.isStub ? "（stub）" : ""}</td>
                         <td>{fmtPct(row.growth, 2)}</td>
                         <td>{fmtBigNumber(fcffMetric?.value ?? row.fcff)}</td>
                         <td className="provenance-cell">{metricProvenance(fcffMetric) || "后端计算明细"}</td>

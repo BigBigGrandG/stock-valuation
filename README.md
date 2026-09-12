@@ -3,7 +3,8 @@
 This repository contains a deterministic, provenance-rich stock valuation engine
 for US listed equities. It exposes four independent valuation models through
 FastAPI and a Next.js client: Forward P/E, EV/EBITDA, FCF yield using FCFE, and
-a five-year DCF using FCFF, synthesized into a dynamic Composite valuation.
+a five-year DCF using FCFF. Each model remains independently available or
+unavailable with an explicit reason; no cross-model composite is calculated.
 
 The default configuration ingests live US equity market data via `yfinance`. An
 explicit offline demo fixture (`AVGO`) is preserved for deterministic, network-free
@@ -100,21 +101,15 @@ otherwise the response says `wacc_source=fallback` and exposes the fallback
 metric. A request override says `user_override`. Every scenario validates
 `WACC > terminal_growth`, and terminal growth is capped at 5%.
 
-The composite uses only complete positive low/base/high model outputs and
-renormalizes the configured weights (P/E 25%, EV/EBITDA 20%, FCF yield 25%,
-DCF 30%) over models that remain available. It exposes fair value low/base/
-high, current price, normalized weights, margin of safety
-`(fair_value - price) / fair_value`, upside
-`(fair_value - price) / price`, premium/discount, classification and
-calculation steps. Classification boundaries are centrally configured:
-`<=0.80` significantly undervalued, `<=0.90` undervalued, `<1.00` slightly
-undervalued, `<=1.10` fairly valued, `<=1.25` overvalued, otherwise
-significantly overvalued.
+The four models are deliberately not synthesized: each exposes its own
+low/base/high price estimates, assumptions, provenance, and calculation
+steps. When a model lacks inputs or is not applicable, only that model is
+marked unavailable; other model outputs are not reweighted or altered.
 
 ## Company Scope & Financial Applicability
 
 - **Profitable Operating Equities** (e.g. `NVDA`, `AAPL`, `MSFT`, `AVGO`, `KO`):
-  All four valuation models and composite run fully.
+  All four valuation models can run independently when their inputs are complete.
 - **US-Listed Foreign ADRs** (e.g. `TSM` on NYSE `NYQ`):
   Supported for Forward P/E based on per-ADS USD quotes and analyst forward EPS.
   Financial statement models (EV/EBITDA, FCF yield, DCF) are cleanly isolated
@@ -125,8 +120,7 @@ significantly overvalued.
   standard EV/EBITDA and FCFF DCF economically meaningless. Rather than returning a
   blanket rejection, EV/EBITDA and DCF report `available=False` with explicit reasons
   (`EV/EBITDA is not applicable to banks and financial institutions...`), while
-  Forward P/E remains active. The composite dynamically renormalizes to 100% of
-  the available equity model.
+  Forward P/E remains active. There is no aggregate result to reweight.
 - **Loss-Makers & Early-Stage Companies** (e.g. `RIVN`, `SNAP`):
   Equities are ingested normally. Models requiring positive earnings or cash flows
   report honest model-specific `unavailable_reason` flags (e.g. negative forward EBITDA)
@@ -238,7 +232,7 @@ Typical errors are intentionally distinct and typed:
 
 A failing or non-applicable valuation engine (e.g. negative EBITDA or bank balance sheet)
 is retained as an unavailable model (`available: false` with explanatory `unavailable_reason`)
-while other models continue and the composite dynamically renormalizes.
+while other models continue independently.
 
 ## AVGO Demo Fixture
 
@@ -266,7 +260,7 @@ query parameter `?provider=demo`.
 - Discoverable "⭳ 导出 Markdown" action in the valuation hero card header.
 - Downloads standalone, publication-grade UTF-8 `.md` file named `{ticker}_valuation_{timestamp}.md`.
 - Operates 100% in-memory from client-side valuation state: **zero extra network requests** to backend or upstream data providers.
-- Full inventory coverage: company identity, currency, quotes, statements as-of, LIVE/DEMO modes, data quality, data warnings, parameter overrides comparison, four independent model summaries and exact unavailable isolation reasons, complete DCF 5-year cash flow projections and discounting bridges across all 3 scenarios, composite weighting, calculation steps, and educational disclaimers.
+- Full inventory coverage: company identity, currency, quotes, statements as-of, LIVE/DEMO modes, data quality, data warnings, parameter overrides comparison, four independent model summaries and exact unavailable isolation reasons, complete DCF 5-year cash flow projections and discounting bridges across all 3 scenarios, calculation steps, and educational disclaimers.
 - Table safety: automatic escaping of pipes `|` and newlines to preserve Markdown table integrity.
 
 ## Limitations & Disclaimers

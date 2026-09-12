@@ -6,7 +6,7 @@ Covers:
 3. [P0-C] Calendar-anchored DCF forecasting, ACT/365 discounting, and display hygiene.
 4. [P1-D] NTM consensus horizon selection with verified fiscal year day-weighting.
 5. [P1-E] Configurable derived growth rate floor and cap without request leakage.
-6. [P1-F] Dynamic model weight overrides with cash flow group cap (default 40%) and edge-case handling.
+6. Cross-model weighting is rejected from the public override contract.
 7. [P1-G] 3x3 terminal value sensitivity matrix with TV/EV ratio threshold alerts.
 """
 from __future__ import annotations
@@ -17,11 +17,9 @@ import pytest
 
 from app.config import (
     DEFAULT_ASSUMPTIONS,
-    DEFAULT_CASHFLOW_GROUP_MAX_WEIGHT,
     DEFAULT_GROWTH_CAP,
     DEFAULT_GROWTH_FLOOR,
 )
-from app.engines.composite import run_composite
 from app.engines.dcf import run_dcf
 from app.engines.ev_ebitda import run_ev_ebitda
 from app.engines.fcf_yield import run_fcf_yield
@@ -39,7 +37,6 @@ from app.models.overrides import (
     DCFOverride,
     OverrideValidationError,
     ValuationOverrideRequest,
-    WeightOverride,
 )
 from app.services.valuation_service import apply_overrides
 
@@ -233,55 +230,13 @@ def test_configurable_growth_limits():
 
 
 # ----------------------------------------------------------------------
-# 6. P1-F: Flexible Multi-Model Weighting & Cash Flow Group Cap
+# 6. Cross-model weighting removal
 # ----------------------------------------------------------------------
-def test_weight_overrides_and_cashflow_group_cap():
-    """Verify custom weights, PE-only, cashflow group cap, and all-zero rejection."""
-    # PE-only override
-    req_pe = ValuationOverrideRequest(
-        weights=WeightOverride(weight_pe=Decimal("1.0"), weight_ev_ebitda=Decimal("0"), weight_fcf_yield=Decimal("0"), weight_dcf=Decimal("0"))
-    )
-    d_pe = req_pe.to_override_dict()
-    assump_pe = apply_overrides(DEFAULT_ASSUMPTIONS, d_pe)
-    assert assump_pe.weight_pe == Decimal("1.0")
-    assert assump_pe.weight_ev_ebitda == Decimal("0")
-
-    snap = _make_snapshot()
-    res_pe = run_forward_pe(snap, assump_pe)
-    res_ev = run_ev_ebitda(snap, assump_pe)
-    res_fcf = run_fcf_yield(snap, assump_pe)
-    res_dcf = run_dcf(snap, assump_pe)
-
-    comp_pe = run_composite(
-        current_price=snap.current_price.value,
-        pe_result=res_pe,
-        ev_result=res_ev,
-        fcf_result=res_fcf,
-        dcf_result=res_dcf,
-        assumptions=assump_pe,
-    )
-    assert comp_pe.available
-    assert comp_pe.weights_used.get("forward_pe") == Decimal("1.0000")
-    assert comp_pe.base == res_pe.base.price_per_share
-
-    # Cashflow group cap (default 40% cap on FCF + DCF)
-    comp_default = run_composite(
-        current_price=snap.current_price.value,
-        pe_result=res_pe,
-        ev_result=res_ev,
-        fcf_result=res_fcf,
-        dcf_result=res_dcf,
-        assumptions=DEFAULT_ASSUMPTIONS,
-    )
-    assert comp_default.available
-    # Combined effective FCF + DCF weight should be capped at 40% (0.4000)
-    cf_weight = comp_default.weights_used.get("fcf_yield", Decimal("0")) + comp_default.weights_used.get("dcf", Decimal("0"))
-    assert cf_weight <= Decimal("0.4001")
-
-    # Reject all-zero weights
+def test_weight_overrides_rejected_from_public_contract():
+    """Cross-model weights are no longer accepted by the public POST schema."""
     with pytest.raises((ValueError, OverrideValidationError)):
         ValuationOverrideRequest(
-            weights=WeightOverride(weight_pe=Decimal("0"), weight_ev_ebitda=Decimal("0"), weight_fcf_yield=Decimal("0"), weight_dcf=Decimal("0"))
+            weights={"weight_pe": Decimal("1.0")}
         )
 
 

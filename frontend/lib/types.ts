@@ -37,6 +37,16 @@ export interface ProjectionMetric {
   pv?: FinancialMetric | DecimalLike;
   growth_rate?: DecimalLike | null;
   growth_type?: string;
+  period_start?: string;
+  period_end?: string;
+  start_date?: string;
+  end_date?: string;
+  discount_time?: DecimalLike;
+  t?: DecimalLike;
+  discount_factor?: DecimalLike;
+  proration_factor?: DecimalLike;
+  is_stub?: boolean;
+  fiscal_year_days?: number;
   fcff_metric?: FinancialMetric;
   pv_metric?: FinancialMetric;
   [key: string]: unknown;
@@ -52,6 +62,12 @@ export interface DCFSensitivityCell {
   fcff_projections?: DecimalLike[];
   fcff_year6?: DecimalLike;
   projection_growth_rates?: Array<DecimalLike | null>;
+  year_fractions?: DecimalLike[];
+  discount_times?: DecimalLike[];
+  discount_factors?: DecimalLike[];
+  period_start_dates?: string[];
+  period_end_dates?: string[];
+  pv_projections?: DecimalLike[];
   available: boolean;
   unavailable_reason?: string;
 }
@@ -84,6 +100,16 @@ export interface DCFScenario {
   year_fractions?: DecimalLike[];
   period_start_dates?: string[];
   period_end_dates?: string[];
+  projection_proration_factors?: DecimalLike[];
+  period_is_stub?: boolean[];
+  fiscal_year_days?: number[];
+  discount_times?: DecimalLike[];
+  projection_discount_times?: DecimalLike[];
+  discount_factors?: DecimalLike[];
+  projection_discount_factors?: DecimalLike[];
+  terminal_period_end_date?: string;
+  terminal_discount_time?: DecimalLike;
+  terminal_discount_factor?: DecimalLike;
   growth_compound_horizon?: string;
   projection_years?: Array<number | string>;
   projection_metrics?: ProjectionMetric[] | Record<string, ProjectionMetric>;
@@ -124,39 +150,6 @@ export interface ModelValuation {
   unavailable_reason?: string;
   warnings: string[];
   data_quality: "HIGH" | "MEDIUM" | "LOW" | string;
-  fair_value_low?: DecimalLike;
-  fair_value_base?: DecimalLike;
-  fair_value_high?: DecimalLike;
-}
-
-export interface CompositeValuation {
-  low?: DecimalLike;
-  base?: DecimalLike;
-  high?: DecimalLike;
-  fair_value_low?: DecimalLike;
-  fair_value_base?: DecimalLike;
-  fair_value_high?: DecimalLike;
-  current_price?: DecimalLike;
-  weights_used: Record<string, DecimalLike>;
-  selected_weights?: Record<string, DecimalLike>;
-  effective_weights?: Record<string, DecimalLike>;
-  cashflow_group_weight?: DecimalLike;
-  cashflow_group_max_weight?: DecimalLike;
-  cashflow_sensitivity?: Record<string, unknown>;
-  cashflow_group_policy_message?: string;
-  available_models: string[];
-  normalized_weights?: Record<string, DecimalLike>;
-  formula?: string;
-  calculation_steps?: string[];
-  classification?: string;
-  classification_label_zh?: string;
-  margin_of_safety?: DecimalLike;
-  mos_pct?: DecimalLike;
-  upside_downside?: DecimalLike;
-  upside_pct?: DecimalLike;
-  premium_discount_pct?: DecimalLike;
-  available: boolean;
-  unavailable_reason?: string;
 }
 
 export interface ScenarioValues {
@@ -188,11 +181,6 @@ export interface ValuationAssumptions {
   dcf_fcf_growth?: ScenarioValues;
   dcf_wacc_source: string;
   dcf_wacc_source_label: string;
-  weight_pe: DecimalLike;
-  weight_ev_ebitda: DecimalLike;
-  weight_fcf_yield: DecimalLike;
-  weight_dcf: DecimalLike;
-  cashflow_group_max_weight?: DecimalLike;
   growth_floor?: DecimalLike;
   growth_cap?: DecimalLike;
   forecast_horizon?: string;
@@ -211,7 +199,6 @@ export interface ValuationResponse {
     fcf_yield: ModelValuation;
     dcf: ModelValuation;
   };
-  composite: CompositeValuation;
   is_demo: boolean;
   data_quality: "HIGH" | "MEDIUM" | "LOW" | string;
   warnings: string[];
@@ -310,12 +297,6 @@ export interface OverrideRequest {
     growth_cap?: number;
   };
   drivers?: FinancialDriversOverride;
-  weights?: {
-    weight_pe?: number;
-    weight_ev_ebitda?: number;
-    weight_fcf_yield?: number;
-    weight_dcf?: number;
-  };
   forecast_horizon?: "current_fy" | "next_fy" | "ntm";
 }
 
@@ -329,10 +310,6 @@ export interface OverrideForm {
   dcf_growth_floor?: string;
   dcf_growth_cap?: string;
   forecast_horizon?: "current_fy" | "next_fy" | "ntm";
-  weight_pe?: string;
-  weight_ev_ebitda?: string;
-  weight_fcf_yield?: string;
-  weight_dcf?: string;
   driver_ebitda_margin?: string;
   driver_capex?: string;
   driver_nwc_change?: string;
