@@ -252,16 +252,19 @@ function projectionRows(sc: DCFScenario): Array<{
   label: string;
   fcff: unknown;
   pv: unknown;
+  growth: unknown;
 }> {
   const metrics = sc.projection_metrics;
   if (Array.isArray(metrics) && metrics.length > 0) {
     return metrics.map((row, index) => {
       const fcff = row.fcff ?? row.fcff_metric ?? (isFinancialMetric(row) ? row : "—");
       const pv = row.pv ?? row.pv_metric ?? sc.pv_projections[index] ?? "—";
+      const growth = row.growth_rate ?? sc.projection_growth_rates?.[index] ?? null;
       return {
         label: String(row.label ?? row.period ?? row.year ?? `第${index + 1}年`),
         fcff,
         pv,
+        growth,
       };
     });
   }
@@ -269,10 +272,12 @@ function projectionRows(sc: DCFScenario): Array<{
     return Object.entries(metrics).map(([key, row], index) => {
       const fcff = row.fcff ?? row.fcff_metric ?? (isFinancialMetric(row) ? row : "—");
       const pv = row.pv ?? row.pv_metric ?? sc.pv_projections[index] ?? "—";
+      const growth = row.growth_rate ?? sc.projection_growth_rates?.[index] ?? null;
       return {
         label: String(row.label ?? row.period ?? row.year ?? key ?? `第${index + 1}年`),
         fcff,
         pv,
+        growth,
       };
     });
   }
@@ -284,6 +289,7 @@ function projectionRows(sc: DCFScenario): Array<{
       : `第${index + 1}年`,
     fcff,
     pv: sc.pv_projections?.[index] ?? "—",
+    growth: sc.projection_growth_rates?.[index] ?? null,
   }));
 }
 
@@ -761,6 +767,26 @@ export function generateValuationMarkdown(
         if (sc.growth_rate !== undefined) {
           lines.push(`- **预测期增长率 (Growth Rate)**：${fmtPct(sc.growth_rate, 2)}`);
         }
+        // Older API responses expose the same contract through ``formulas``
+        // (the browser view already renders that map). Keep exports stable
+        // across both shapes so the visible scenario, sensitivity trajectory,
+        // and downloaded report cannot silently disagree.
+        const growthStart = sc.growth_start ?? sc.growth_rate;
+        const growthFadeFormula = sc.growth_fade_formula ?? sc.formulas?.growth_fade;
+        if (growthStart !== undefined) {
+          lines.push(`- **线性衰减起点 (g_start)**：${fmtPct(growthStart, 2)}`);
+        }
+        if (growthFadeFormula || (sc.projection_growth_rates?.length ?? 0) >= 5) {
+          lines.push(
+            `- **Years 3–5 增长路径**：${escapeTableCell(
+              growthFadeFormula
+                ?? "g_t = g_start + ((t - 2) / 3) × (g_terminal - g_start), t=3..5; g_5=g_terminal",
+            )}`,
+          );
+        }
+        if (sc.fcff_year6 !== undefined) {
+          lines.push(`- **终值下一年 FCFF₆**：${fmtBigNumber(sc.fcff_year6, currencySymbol)}（FCFF₅ × (1 + terminal growth)）`);
+        }
         lines.push("");
 
         // Valuation bridge
@@ -786,8 +812,8 @@ export function generateValuationMarkdown(
         if (rows.length > 0) {
           lines.push("###### 五年 FCFF 预测与折现明细");
           lines.push("");
-          lines.push("| 预测期间 | FCFF 预测值 | FCFF 数据来源与属性 | PV 折现现值 | PV 数据来源与属性 |");
-          lines.push("| :--- | :--- | :--- | :--- | :--- |");
+          lines.push("| 预测期间 | 增长率 | FCFF 预测值 | FCFF 数据来源与属性 | PV 折现现值 | PV 数据来源与属性 |");
+          lines.push("| :--- | :---: | :--- | :--- | :--- | :--- |");
           for (const r of rows) {
             const fcffMetric = isFinancialMetric(r.fcff) ? r.fcff : undefined;
             const pvMetric = isFinancialMetric(r.pv) ? r.pv : undefined;
@@ -797,7 +823,7 @@ export function generateValuationMarkdown(
             const pvProv = formatMetricProvenance(pvMetric);
 
             lines.push(
-              `| ${escapeTableCell(r.label)} | ${escapeTableCell(fcffVal)} | ${escapeTableCell(fcffProv)} | ${escapeTableCell(pvVal)} | ${escapeTableCell(pvProv)} |`,
+              `| ${escapeTableCell(r.label)} | ${escapeTableCell(fmtPct(r.growth, 2))} | ${escapeTableCell(fcffVal)} | ${escapeTableCell(fcffProv)} | ${escapeTableCell(pvVal)} | ${escapeTableCell(pvProv)} |`,
             );
           }
           lines.push("");
@@ -843,6 +869,8 @@ export function generateValuationMarkdown(
           const cellValues = row.map((c) => (c.available ? `**${fmtPrice(c.price_per_share, currencySymbol)}** (TV: ${fmtPct(c.tv_ratio, 1)})` : "—"));
           lines.push(`| **${waccLabel}** | ${cellValues.join(" | ")} |`);
         });
+        lines.push("");
+        lines.push("- **敏感性路径口径**：每个可用单元格保留相同的 Years 1–2 FCFF，并按该单元格 terminal growth 对 Years 3–5 线性衰减后重算 PV/TV；轨迹字段由后端提供。");
         lines.push("");
       }
     }

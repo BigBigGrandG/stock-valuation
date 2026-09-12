@@ -42,6 +42,7 @@ function projectionRows(sc: DCFScenario): Array<{
   label: string;
   fcff: unknown;
   pv: unknown;
+  growth: unknown;
 }> {
   const metrics = sc.projection_metrics;
   if (Array.isArray(metrics) && metrics.length > 0) {
@@ -50,11 +51,13 @@ function projectionRows(sc: DCFScenario): Array<{
       // itself; older responses used {fcff, pv} pairs. Support both shapes.
       const fcff = row.fcff ?? row.fcff_metric ?? (isFinancialMetric(row) ? row : "—");
       const pv = row.pv ?? row.pv_metric ?? sc.pv_projections[index] ?? "—";
+      const growth = row.growth_rate ?? sc.projection_growth_rates?.[index] ?? null;
       return {
         key: `${row.label ?? row.year ?? row.period ?? index}-${index}`,
         label: String(row.label ?? row.period ?? row.year ?? `第${index + 1}年`),
         fcff,
         pv,
+        growth,
       };
     });
   }
@@ -62,11 +65,13 @@ function projectionRows(sc: DCFScenario): Array<{
     return Object.entries(metrics).map(([key, row], index) => {
       const fcff = row.fcff ?? row.fcff_metric ?? (isFinancialMetric(row) ? row : "—");
       const pv = row.pv ?? row.pv_metric ?? sc.pv_projections[index] ?? "—";
+      const growth = row.growth_rate ?? sc.projection_growth_rates?.[index] ?? null;
       return {
         key,
         label: String(row.label ?? row.period ?? row.year ?? key ?? `第${index + 1}年`),
         fcff,
         pv,
+        growth,
       };
     });
   }
@@ -79,6 +84,7 @@ function projectionRows(sc: DCFScenario): Array<{
       : `第${index + 1}年`,
     fcff,
     pv: sc.pv_projections[index] ?? "—",
+    growth: sc.projection_growth_rates?.[index] ?? null,
   }));
 }
 
@@ -150,6 +156,7 @@ function ScenarioPanel({
             <SummaryItem label="股权价值" value={fmtBigNumber(scenario.equity_value)} />
             <SummaryItem label="终端价值 TV" value={fmtBigNumber(scenario.terminal_value)} />
             <SummaryItem label="终端价值现值 PVTV" value={fmtBigNumber(scenario.pv_terminal_value)} />
+            <SummaryItem label="终值下一年 FCFF₆" value={fmtBigNumber(scenario.fcff_year6)} />
             <SummaryItem label="净负债" value={fmtBigNumber(scenario.net_debt)} />
             <SummaryItem label="总债务" value={fmtBigNumber(scenario.total_debt)} />
             <SummaryItem label="现金" value={fmtBigNumber(scenario.cash)} />
@@ -171,11 +178,22 @@ function ScenarioPanel({
                 <span>预测日历基准：{scenario.growth_compound_horizon}</span>
               </div>
             )}
+            {(scenario.growth_start !== undefined || scenario.growth_fade_formula) && (
+              <div className="text-xs text-slate-300 bg-slate-900/40 border border-slate-700/40 rounded-lg p-2.5 my-2">
+                {scenario.growth_start !== undefined && (
+                  <span>衰减起点 g_start：{fmtPct(scenario.growth_start, 2)} </span>
+                )}
+                {scenario.growth_fade_formula && (
+                  <span>· 后端线性衰减：{scenario.growth_fade_formula}</span>
+                )}
+              </div>
+            )}
             <div className="table-scroll">
               <table className="data-table">
                 <thead>
                   <tr>
                     <th>期间</th>
+                    <th>增长率</th>
                     <th>FCFF</th>
                     <th>FCFF 来源 / 期间 / 日期</th>
                     <th>PV（现值）</th>
@@ -189,6 +207,7 @@ function ScenarioPanel({
                     return (
                       <tr key={row.key}>
                         <td className="table-label">{row.label}</td>
+                        <td>{fmtPct(row.growth, 2)}</td>
                         <td>{fmtBigNumber(fcffMetric?.value ?? row.fcff)}</td>
                         <td className="provenance-cell">{metricProvenance(fcffMetric) || "后端计算明细"}</td>
                         <td className="value-blue">{fmtBigNumber(pvMetric?.value ?? row.pv)}</td>

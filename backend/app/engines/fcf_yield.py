@@ -20,6 +20,10 @@ TWO_PLACES = Decimal("0.01")
 FOUR_PLACES = Decimal("0.0001")
 ZERO = Decimal("0")
 FORMULA = "Equity Value = Forward FCFE / Yield Rate; Price = Equity / Shares"
+FALLBACK_WARNING = (
+    "No compatible company/industry-specific FCFE-yield benchmark is available; "
+    "using the configured system yield fallback because parameter specificity is insufficient."
+)
 
 
 def _upside(price: Decimal, current: Decimal) -> Decimal:
@@ -105,6 +109,8 @@ def run_fcf_yield(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssu
         return _unavailable("Effective FCF yields must satisfy low >= base >= high > 0", warnings=warnings)
     source_type = assumptions.fcf_yield_source
     source_label = assumptions.fcf_yield_source_label
+    if source_type == SourceType.CONFIGURED_FALLBACK:
+        warnings.append(FALLBACK_WARNING)
     nd_metric = net_debt_metric(snapshot)
 
     input_metrics = {
@@ -192,4 +198,3 @@ def run_fcf_yield(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssu
         warnings=warnings,
         data_quality=quality,
     )
-

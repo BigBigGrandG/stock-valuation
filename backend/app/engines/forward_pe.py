@@ -147,6 +147,8 @@ def run_forward_pe(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAss
     scenarios = assumptions.pe_target
     source_type = assumptions.pe_source
     source_label = assumptions.pe_source_label
+    selection_layer = getattr(assumptions, "pe_selection_layer", "system")
+    selection_as_of = getattr(assumptions, "pe_selection_as_of", None)
     multiple_source = "fallback"
     historical_metric: FinancialMetric | None = None
 
@@ -154,6 +156,11 @@ def run_forward_pe(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAss
     # an override. This ordering is intentional and tested by the API.
     if assumptions.pe_source == SourceType.USER_OVERRIDE:
         multiple_source = "user_override"
+    elif selection_layer in {"company_historical", "industry"}:
+        # The service-level arbiter has already validated and selected this
+        # source independently for P/E.  Do not re-derive it from a current
+        # quote or from an unrelated historical field.
+        multiple_source = selection_layer
     elif snapshot.historical_forward_pe is not None and snapshot.historical_forward_pe.value > ZERO:
         historical_metric = snapshot.historical_forward_pe
         hist = historical_metric.value
@@ -168,10 +175,15 @@ def run_forward_pe(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAss
     elif snapshot.historical_forward_pe is not None:
         warnings.append("Historical P/E is non-positive; using configured fallback")
 
+    if multiple_source == "fallback" and source_type == SourceType.CONFIGURED_FALLBACK:
+        warnings.append(
+            f"P/E used configured fallback because parameter specificity was insufficient [{source_label}]"
+        )
+
     if not (scenarios.low <= scenarios.base <= scenarios.high):
         return _unavailable("Effective P/E assumptions must satisfy low <= base <= high")
 
-    as_of = eps_metric.as_of
+    as_of = selection_as_of or eps_metric.as_of
     assumption_source_type = (
         historical_metric.source_type
         if historical_metric is not None
@@ -275,6 +287,7 @@ def run_forward_pe(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAss
             "pe_source": assumption_source_type,
             "pe_source_label": source_label,
             "multiple_source": multiple_source,
+            "selection_layer": selection_layer,
             "forecast_horizon": horizon,
         },
         input_metrics=input_metrics,

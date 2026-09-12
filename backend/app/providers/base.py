@@ -135,6 +135,38 @@ class HistoricalMultiplesData(_RawData):
     period: str = "historical"
     as_of: Optional[date] = None
     source: str = "provider"
+    # Optional archived company observations.  Each row must include a
+    # contemporaneous as_of/forecast_period/source and the matching price or
+    # enterprise-value evidence; the selector validates the full contract.
+    company_forward_pe_observations: Optional[list[dict[str, Any]]] = None
+    company_ev_ebitda_observations: Optional[list[dict[str, Any]]] = None
+    # Optional versioned public industry snapshot.  These fields are kept at
+    # the provider boundary so source metadata survives normalisation.
+    industry_name: Optional[str] = None
+    industry_forward_pe: Optional[Decimal] = None
+    industry_ev_ebitda: Optional[Decimal] = None
+    industry_sample_size: Optional[int] = None
+    industry_as_of: Optional[date] = None
+    industry_period: Optional[str] = None
+    industry_currency: Optional[str] = None
+    industry_forward_pe_currency: Optional[str] = None
+    industry_ev_ebitda_currency: Optional[str] = None
+    industry_forward_pe_unit: Optional[str] = None
+    industry_ev_ebitda_unit: Optional[str] = None
+    industry_forward_pe_basis: Optional[str] = None
+    industry_forward_pe_forecast_type: Optional[str] = None
+    industry_ev_ebitda_basis: Optional[str] = None
+    industry_ev_ebitda_forecast_type: Optional[str] = None
+    industry_ev_ebitda_denominator_scope: Optional[str] = None
+    industry_mapping_key: Optional[str] = None
+    industry_mapping_source: Optional[str] = None
+    industry_forward_pe_source: Optional[str] = None
+    industry_forward_pe_source_url: Optional[str] = None
+    industry_ev_ebitda_source: Optional[str] = None
+    industry_ev_ebitda_source_url: Optional[str] = None
+    industry_is_estimated: Optional[bool] = None
+    industry_notes: Optional[str] = None
+    industry_unavailable_reason: Optional[str] = None
 
 
 class FinancialDataProvider(ABC):

@@ -157,6 +157,10 @@ class CompanyFinancialSnapshot(BaseModel):
 
     historical_forward_pe: Optional[FinancialMetric] = None
     historical_ev_ebitda: Optional[FinancialMetric] = None
+    # Raw company-history and public-industry candidates retained for the
+    # service-level multiple arbiter.  They are never used as values until
+    # provenance, date, sample and accounting-basis checks pass.
+    multiple_candidates: dict[str, Any] = Field(default_factory=dict)
 
     # fcf_growth is FCFE growth; fcff_growth is FCFF growth.
     revenue_growth: Optional[FinancialMetric] = None
@@ -253,12 +257,20 @@ class ValuationAssumptions(BaseModel):
     pe_target: ScenarioValues = Field(default_factory=lambda: _default_scenarios("DEFAULT_PE_TARGET"))
     pe_source: SourceType = SourceType.CONFIGURED_FALLBACK
     pe_source_label: str = "Configured fallback"
+    pe_selection_layer: str = "system"
+    pe_selection_as_of: Optional[date] = None
+    pe_selection_sample_size: Optional[int] = None
+    pe_selection_basis: Optional[str] = None
 
     ev_ebitda_multiple: ScenarioValues = Field(
         default_factory=lambda: _default_scenarios("DEFAULT_EV_EBITDA_MULTIPLE")
     )
     ev_ebitda_source: SourceType = SourceType.CONFIGURED_FALLBACK
     ev_ebitda_source_label: str = "Configured fallback"
+    ev_ebitda_selection_layer: str = "system"
+    ev_ebitda_selection_as_of: Optional[date] = None
+    ev_ebitda_selection_sample_size: Optional[int] = None
+    ev_ebitda_selection_basis: Optional[str] = None
 
     # low valuation uses the highest yield; high valuation uses the lowest.
     fcf_yield: ScenarioValues = Field(default_factory=lambda: _default_scenarios("DEFAULT_FCF_YIELD"))
@@ -315,12 +327,18 @@ class DCFScenario(BaseModel):
     wacc: Decimal
     terminal_growth: Decimal
     growth_rate: Decimal = Decimal("0")
+    growth_start: Optional[Decimal] = None
+    growth_fade_formula: Optional[str] = None
+    projection_growth_rates: list[Optional[Decimal]] = Field(default_factory=list)
     growth_metric: Optional[dict[str, Any]] = None
     growth_metric_raw: Optional[dict[str, Any]] = None
     growth_cap: Optional[Decimal] = None
     growth_floor: Optional[Decimal] = None
     fcff_year1: Decimal
     fcff_projections: list[Decimal]
+    # Year 6 is the first terminal-period cash flow used by the perpetuity
+    # formula: FCFF_6 = FCFF_5 × (1 + terminal_growth).
+    fcff_year6: Optional[Decimal] = None
     projection_periods: list[str] = Field(default_factory=list)
     projection_metrics: list[dict[str, Any]] = Field(default_factory=list)
     pv_years: list[int] = Field(default_factory=list)
@@ -354,6 +372,11 @@ class DCFSensitivityCell(BaseModel):
     enterprise_value: Optional[Decimal] = None
     equity_value: Optional[Decimal] = None
     tv_ratio: Optional[Decimal] = None
+    # Expose the exact trajectory used by this cell so sensitivity output can
+    # be independently reconciled with the base DCF fade policy.
+    fcff_projections: list[Decimal] = Field(default_factory=list)
+    fcff_year6: Optional[Decimal] = None
+    projection_growth_rates: list[Optional[Decimal]] = Field(default_factory=list)
     available: bool = True
     unavailable_reason: Optional[str] = None
 

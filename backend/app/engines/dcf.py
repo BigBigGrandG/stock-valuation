@@ -2,8 +2,11 @@
 
 The engine never substitutes FCFE for FCFF. Forward FCFF1/FCFF2 are used as
 the first two explicit forecast years; if they are missing, a historical TTM
-value is grown into a newly-labelled forecast year. Years 3–5 are deterministic
-and capped, with each derived projection carrying its own provenance metric.
+value is grown into a newly-labelled forecast year for standalone/direct
+callers. Years 3–5 use a deterministic linear fade from the effective
+scenario growth start to that scenario's terminal growth, with each derived
+projection carrying its own provenance metric; FCFF6 is exposed for the
+terminal-value bridge.
 """
 from __future__ import annotations
 
@@ -311,6 +314,24 @@ def _calculate_dcf(
     return pvs, terminal_val, pv_tv, ev, equity, price, tv_ratio
 
 
+def _fade_growth_rate(growth_start: Decimal, terminal_growth: Decimal, year: int) -> Decimal:
+    """Return the contractual linear fade rate for forecast Years 3–5.
+
+    Year 3 is one third of the way from the bounded/scenario growth start to
+    terminal growth, Year 4 is two thirds, and Year 5 equals terminal growth
+    exactly. Keeping this helper free of clamping is deliberate: the inputs
+    have already passed the configured bounds, and the resulting path must
+    support decreasing, increasing, equal, and negative rates without
+    overshoot.
+    """
+
+    if year not in (3, 4, 5):
+        raise ValueError(f"Linear DCF growth fade is defined only for years 3-5, got {year}")
+    if year == 5:
+        return terminal_growth
+    return growth_start + (Decimal(str(year - 2)) / Decimal("3")) * (terminal_growth - growth_start)
+
+
 def _compute_dcf_scenario(
     scenario_name: str,
     fcff_y1: Decimal,
@@ -380,6 +401,7 @@ def _compute_dcf_scenario(
 
 
     projections: list[Decimal] = []
+    projection_growth_rates: list[Optional[Decimal]] = []
     periods: list[str] = []
     metrics: list[dict] = []
 
@@ -435,33 +457,77 @@ def _compute_dcf_scenario(
                 notes=f"FCFF Year 2 ({s_str} to {e_str}) supplied directly to DCF.",
             )
         else:
-            value = (previous * (Decimal("1") + growth_rate)).quantize(PREC, ROUND_HALF_UP)  # type: ignore[operator]
+            projection_growth = (
+                growth_rate
+                if year == 2
+                else _fade_growth_rate(growth_rate, terminal_growth, year)
+            )
+            value = (previous * (Decimal("1") + projection_growth)).quantize(PREC, ROUND_HALF_UP)  # type: ignore[operator]
             proj_period = _forecast_period(first_period, as_of, year - 1)
             metric = _projection_metric(
                 value,
                 period=proj_period,
-                source=f"Derived from prior FCFF projection × (1 + {growth_rate})",
+                source=f"Derived from prior FCFF projection × (1 + {projection_growth})",
                 source_type=SourceType.DERIVED,
                 as_of=as_of,
                 confidence=(growth_metric.confidence if growth_metric else 1.0),
                 is_estimated=True,
-                notes=f"Capped deterministic FCFF projection for {s_str} ~ {e_str}; no FCFE substitution." + growth_note,
+                notes=(
+                    f"Deterministic FCFF projection for {s_str} ~ {e_str}; "
+                    f"growth={projection_growth}; linear fade from g_start={growth_rate} "
+                    f"to terminal g={terminal_growth} for Years 3-5; no FCFE substitution."
+                    + growth_note
+                ),
             )
+        if year == 1:
+            projection_growth = None
+        elif year == 2 and fcff_y2 is not None:
+            # An explicit Y2 estimate remains authoritative; expose its
+            # observed one-year rate separately from the scenario g_start.
+            projection_growth = (value / projections[0] - Decimal("1")) if projections else growth_rate
+        elif year == 2:
+            projection_growth = growth_rate
         if value <= ZERO:
             raise ValueError(f"DCF [{scenario_name}] produced non-positive FCFF in year {year}")
         projections.append(value)
+        projection_growth_rates.append(projection_growth)
         periods.append(metric.period)
-        metrics.append(metric_dict(metric) or {})
+        metric_row = metric_dict(metric) or {}
+        metric_row["growth_rate"] = str(projection_growth) if projection_growth is not None else None
+        metric_row["growth_type"] = (
+            "linear_terminal_fade"
+            if year >= 3
+            else ("explicit_forward" if year == 2 and fcff_y2 is not None else "growth_start")
+        )
+        metrics.append(metric_row)
         previous = value
 
     net_debt = net_debt_value if net_debt_value is not None else total_debt - cash
+    fcff_year6 = projections[-1] * (Decimal("1") + terminal_growth)
     pvs, terminal_value, pv_terminal_value, enterprise_value, equity_value, price, _ = _calculate_dcf(
         projections, year_fractions, wacc, terminal_growth, net_debt, diluted_shares
     )
 
+    # Keep PV provenance next to each projection so the API, frontend and
+    # Markdown exporter can render the same values without reimplementing the
+    # discounting math client-side.
+    for index, metric_row in enumerate(metrics):
+        metric_row["pv"] = metric_dict(_projection_metric(
+            pvs[index],
+            period=f"PV {periods[index]}",
+            source=f"Discounted {periods[index]} FCFF at WACC={wacc}",
+            source_type=SourceType.DERIVED,
+            as_of=as_of,
+            confidence=1.0,
+            is_estimated=True,
+            notes=f"PV = FCFF / (1 + WACC)^{year_fractions[index]:.8f} using ACT/365 day fraction.",
+        )) or {}
+
     formulas = {
+        "growth_fade": "g_t = g_start + ((t - 2) / 3) × (g_terminal - g_start), t=3..5; g_5=g_terminal",
         "pv_year": "PV_t = FCFF_t / (1 + WACC)^t (ACT/365 day-fraction)",
         "terminal_value": "TV = FCFF_5 × (1 + g) / (WACC - g)",
+        "terminal_year_cash_flow": "FCFF_6 = FCFF_5 × (1 + terminal_growth)",
         "pv_terminal_value": "PVTV = TV / (1 + WACC)^t_5 (ACT/365 Year 5 fraction)",
         "enterprise_value": "EV = Σ(PV_1..PV_5) + PVTV",
         "equity_value": "Equity = EV - debt + cash = EV - net_debt",
@@ -469,6 +535,7 @@ def _compute_dcf_scenario(
     }
     steps = [
         f"[{scenario_name}] FCFF projections ({', '.join(periods)}) = {projections}",
+        f"[{scenario_name}] Linear growth fade: g_start={growth_rate}; g3={projection_growth_rates[2]}; g4={projection_growth_rates[3]}; g5={projection_growth_rates[4]} = terminal_growth={terminal_growth}",
         *[f"[{scenario_name}] PV year {year} (t={year_fractions[year - 1]:.4f}) = {projections[year - 1]} / (1 + {wacc})^{year_fractions[year - 1]:.4f} = {pvs[year - 1]}" for year in range(1, N_YEARS + 1)],
         f"[{scenario_name}] TV = {projections[-1]} × (1 + {terminal_growth}) / ({wacc} - {terminal_growth}) = {terminal_value}",
         f"[{scenario_name}] PVTV = {terminal_value} / (1 + {wacc})^{year_fractions[-1]:.4f} = {pv_terminal_value}",
@@ -485,12 +552,16 @@ def _compute_dcf_scenario(
         wacc=wacc,
         terminal_growth=terminal_growth,
         growth_rate=growth_rate,
+        growth_start=growth_rate,
+        growth_fade_formula="g_t = g_start + ((t - 2) / 3) × (g_terminal - g_start), t=3..5; g_5=g_terminal",
+        projection_growth_rates=projection_growth_rates,
         growth_metric=metric_dict(effective_growth_metric),
         growth_metric_raw=metric_dict(raw_growth_metric),
         growth_cap=growth_cap,
         growth_floor=effective_floor,
         fcff_year1=projections[0],
         fcff_projections=projections,
+        fcff_year6=fcff_year6,
         projection_periods=periods,
         projection_metrics=metrics,
         pv_years=list(range(1, N_YEARS + 1)),
@@ -554,7 +625,9 @@ def _generate_sensitivity_matrix(
         base_tg + tg_step,
     ]
 
-    projections = base_scenario.fcff_projections
+    base_projections = base_scenario.fcff_projections
+    growth_start = base_scenario.growth_start if base_scenario.growth_start is not None else base_scenario.growth_rate
+    base_growth_rates = list(base_scenario.projection_growth_rates or [])
     year_fractions = base_scenario.year_fractions
     net_debt = base_scenario.net_debt
     diluted_shares = base_scenario.diluted_shares
@@ -574,6 +647,46 @@ def _generate_sensitivity_matrix(
                 )
                 continue
 
+            if tg > DCF_TERMINAL_GROWTH_MAX:
+                row.append(
+                    DCFSensitivityCell(
+                        wacc=wacc,
+                        terminal_growth=tg,
+                        available=False,
+                        unavailable_reason=(
+                            f"terminal_growth ({tg}) exceeds configured max "
+                            f"({DCF_TERMINAL_GROWTH_MAX})"
+                        ),
+                    )
+                )
+                continue
+
+            # A sensitivity cell changes terminal growth, so its Years 3–5
+            # trajectory must be rebuilt with the same g_start and the cell's
+            # own terminal rate. Years 1–2 stay explicit and unchanged.
+            projections = list(base_projections[:2])
+            growth_rates: list[Optional[Decimal]] = list(base_growth_rates[:2])
+            while len(growth_rates) < 2:
+                growth_rates.append(None if len(growth_rates) == 0 else growth_start)
+            for year in range(3, N_YEARS + 1):
+                rate = _fade_growth_rate(growth_start, tg, year)
+                value = (projections[-1] * (Decimal("1") + rate)).quantize(PREC, ROUND_HALF_UP)
+                if value <= ZERO:
+                    row.append(
+                        DCFSensitivityCell(
+                            wacc=wacc,
+                            terminal_growth=tg,
+                            available=False,
+                            unavailable_reason=f"Sensitivity cell produced non-positive FCFF in year {year}",
+                        )
+                    )
+                    projections = []
+                    break
+                projections.append(value)
+                growth_rates.append(rate)
+            if not projections:
+                continue
+
             try:
                 pvs, terminal_val, pv_tv, ev, equity, price, tv_ratio = _calculate_dcf(
                     projections, year_fractions, wacc, tg, net_debt, diluted_shares
@@ -586,6 +699,9 @@ def _generate_sensitivity_matrix(
                         enterprise_value=ev,
                         equity_value=equity,
                         tv_ratio=tv_ratio,
+                        fcff_projections=projections,
+                        fcff_year6=projections[-1] * (Decimal("1") + tg),
+                        projection_growth_rates=growth_rates,
                         available=True,
                     )
                 )
@@ -936,6 +1052,13 @@ def run_dcf(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssumption
                 "terminal_value": str(scenario.terminal_value),
                 "pv_terminal_value": str(scenario.pv_terminal_value),
                 "fcff_projections": [str(value) for value in scenario.fcff_projections],
+                "projection_growth_rates": [
+                    str(value) if value is not None else None
+                    for value in scenario.projection_growth_rates
+                ],
+                "growth_start": str(scenario.growth_start) if scenario.growth_start is not None else None,
+                "growth_fade_formula": scenario.growth_fade_formula,
+                "fcff_year6": str(scenario.fcff_year6) if scenario.fcff_year6 is not None else None,
                 "pv_projections": [str(value) for value in scenario.pv_projections],
             },
         )
@@ -1045,6 +1168,10 @@ def run_dcf(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssumption
             "growth_bear": str(growth_scenarios.low),
             "growth_base": str(growth_scenarios.base),
             "growth_bull": str(growth_scenarios.high),
+            "growth_start_bear": str(scenario_map["bear"].growth_start),
+            "growth_start_base": str(scenario_map["base"].growth_start),
+            "growth_start_bull": str(scenario_map["bull"].growth_start),
+            "growth_fade_formula": scenario_map["base"].growth_fade_formula,
             "wacc_bear": str(wacc_sv.low),
             "wacc_base": str(wacc_sv.base),
             "wacc_bull": str(wacc_sv.high),

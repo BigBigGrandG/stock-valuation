@@ -1,0 +1,559 @@
+{
+  "input": ".scratch\\valuation-ai-audit-20260911\\verification\\03-04-r3\\live_results_r3.corrupt-control.json",
+  "corrupt_demo": true,
+  "mapping_checks": [
+    {
+      "input": {
+        "sector": "Technology",
+        "industry": "Software",
+        "expected": null
+      },
+      "actual": null,
+      "expected_match": true,
+      "mapping_key": null,
+      "mapping_source": null,
+      "unavailable_reason": "No public snapshot row mapped from upstream sector='Technology', industry='Software'"
+    },
+    {
+      "input": {
+        "sector": "Communication Services",
+        "industry": "Internet Content & Information",
+        "expected": null
+      },
+      "actual": null,
+      "expected_match": true,
+      "mapping_key": null,
+      "mapping_source": null,
+      "unavailable_reason": "No public snapshot row mapped from upstream sector='Communication Services', industry='Internet Content & Information'"
+    },
+    {
+      "input": {
+        "sector": "Technology",
+        "industry": "Semiconductors",
+        "expected": "Semiconductor"
+      },
+      "actual": "Semiconductor",
+      "expected_match": true,
+      "mapping_key": "semiconductors",
+      "mapping_source": "Yahoo Finance profile industry/sector exact label mapped to the named NYU Stern/Damodaran row",
+      "unavailable_reason": null
+    },
+    {
+      "input": {
+        "sector": "Consumer Defensive",
+        "industry": "Beverages - Non-Alcoholic",
+        "expected": null
+      },
+      "actual": null,
+      "expected_match": true,
+      "mapping_key": null,
+      "mapping_source": null,
+      "unavailable_reason": "No public snapshot row mapped from upstream sector='Consumer Defensive', industry='Beverages - Non-Alcoholic'"
+    }
+  ],
+  "api_output_checks": {
+    "NVDA": {
+      "status_code": 200,
+      "provider_method_count": 7,
+      "scenarios": [
+        {
+          "scenario": "bear",
+          "rates_count": 5,
+          "cashflows_count": 5,
+          "g3_expected": "0.1800000000000000000000000000",
+          "g4_expected": "0.1050000000000000000000000000",
+          "g5_expected": "0.03",
+          "cashflow_checks": [
+            {
+              "year": 3,
+              "expected": "271777729658000.00",
+              "actual": "320697720996.44",
+              "passed": false
+            },
+            {
+              "year": 4,
+              "expected": "354370981701.0662000000000000",
+              "actual": "354370981701.07",
+              "passed": true
+            },
+            {
+              "year": 5,
+              "expected": "365002111152.1021",
+              "actual": "365002111152.10",
+              "passed": true
+            }
+          ],
+          "passed": false,
+          "year6": {
+            "expected": "375952174486.6630",
+            "actual": "375952174486.6630",
+            "passed": true
+          }
+        },
+        {
+          "scenario": "base",
+          "rates_count": 5,
+          "cashflows_count": 5,
+          "g3_expected": "0.2100000000000000000000000000",
+          "g4_expected": "0.1200000000000000000000000000",
+          "g5_expected": "0.03",
+          "cashflow_checks": [
+            {
+              "year": 3,
+              "expected": "328851052886.1800000000000000",
+              "actual": "328851052886.18",
+              "passed": true
+            },
+            {
+              "year": 4,
+              "expected": "368313179232.5216000000000000",
+              "actual": "368313179232.52",
+              "passed": true
+            },
+            {
+              "year": 5,
+              "expected": "379362574609.4956",
+              "actual": "379362574609.50",
+              "passed": true
+            }
+          ],
+          "passed": true,
+          "year6": {
+            "expected": "390743451847.7850",
+            "actual": "390743451847.7850",
+            "passed": true
+          }
+        },
+        {
+          "scenario": "bull",
+          "rates_count": 5,
+          "cashflows_count": 5,
+          "g3_expected": "0.2433333333333333333333333333",
+          "g4_expected": "0.1416666666666666666666666667",
+          "g5_expected": "0.04",
+          "cashflow_checks": [
+            {
+              "year": 3,
+              "expected": "337910310541.4466666666666666",
+              "actual": "337910310541.45",
+              "passed": true
+            },
+            {
+              "year": 4,
+              "expected": "385780937868.1554166666666668",
+              "actual": "385780937868.16",
+              "passed": true
+            },
+            {
+              "year": 5,
+              "expected": "401212175382.8864",
+              "actual": "401212175382.89",
+              "passed": true
+            }
+          ],
+          "passed": true,
+          "year6": {
+            "expected": "417260662398.2056",
+            "actual": "417260662398.2056",
+            "passed": true
+          }
+        }
+      ],
+      "passed": false
+    },
+    "GOOG": {
+      "status_code": 200,
+      "provider_method_count": 7,
+      "scenarios": [
+        {
+          "scenario": "bear",
+          "rates_count": 5,
+          "cashflows_count": 5,
+          "g3_expected": "0.1407202707105294852070280308",
+          "g4_expected": "0.0853601353552647426035140154",
+          "g5_expected": "0.03",
+          "cashflow_checks": [
+            {
+              "year": 3,
+              "expected": "13631138903.15792497465959734",
+              "actual": "13631138903.16",
+              "passed": true
+            },
+            {
+              "year": 4,
+              "expected": "14794694764.98015258042388375",
+              "actual": "14794694764.98",
+              "passed": true
+            },
+            {
+              "year": 5,
+              "expected": "15238535607.9294",
+              "actual": "15238535607.93",
+              "passed": true
+            }
+          ],
+          "passed": true,
+          "year6": {
+            "expected": "15695691676.1679",
+            "actual": "15695691676.1679",
+            "passed": true
+          }
+        },
+        {
+          "scenario": "base",
+          "rates_count": 5,
+          "cashflows_count": 5,
+          "g3_expected": "0.1637885537770935120082682715",
+          "g4_expected": "0.0968942768885467560041341358",
+          "g5_expected": "0.03",
+          "cashflow_checks": [
+            {
+              "year": 3,
+              "expected": "13906795414.93520585254070276",
+              "actual": "13906795414.94",
+              "passed": true
+            },
+            {
+              "year": 4,
+              "expected": "15254284300.50756883579810352",
+              "actual": "15254284300.51",
+              "passed": true
+            },
+            {
+              "year": 5,
+              "expected": "15711912829.5253",
+              "actual": "15711912829.53",
+              "passed": true
+            }
+          ],
+          "passed": true,
+          "year6": {
+            "expected": "16183270214.4159",
+            "actual": "16183270214.4159",
+            "passed": true
+          }
+        },
+        {
+          "scenario": "bull",
+          "rates_count": 5,
+          "cashflows_count": 5,
+          "g3_expected": "0.1901901701769908721428418456",
+          "g4_expected": "0.1150950850884954360714209228",
+          "g5_expected": "0.04",
+          "cashflow_checks": [
+            {
+              "year": 3,
+              "expected": "14222283891.51915339708847484",
+              "actual": "14222283891.52",
+              "passed": true
+            },
+            {
+              "year": 4,
+              "expected": "15859198866.16723239411160775",
+              "actual": "15859198866.17",
+              "passed": true
+            },
+            {
+              "year": 5,
+              "expected": "16493566820.8168",
+              "actual": "16493566820.82",
+              "passed": true
+            }
+          ],
+          "passed": true,
+          "year6": {
+            "expected": "17153309493.6528",
+            "actual": "17153309493.6528",
+            "passed": true
+          }
+        }
+      ],
+      "passed": true
+    },
+    "AMD": {
+      "status_code": 200,
+      "provider_method_count": 7,
+      "scenarios": [
+        {
+          "scenario": "bear",
+          "rates_count": 5,
+          "cashflows_count": 5,
+          "g3_expected": "0.1800000000000000000000000000",
+          "g4_expected": "0.1050000000000000000000000000",
+          "g5_expected": "0.03",
+          "cashflow_checks": [
+            {
+              "year": 3,
+              "expected": "11352185703.62000000000000000",
+              "actual": "11352185703.62",
+              "passed": true
+            },
+            {
+              "year": 4,
+              "expected": "12544165202.50010000000000000",
+              "actual": "12544165202.50",
+              "passed": true
+            },
+            {
+              "year": 5,
+              "expected": "12920490158.5750",
+              "actual": "12920490158.58",
+              "passed": true
+            }
+          ],
+          "passed": true,
+          "year6": {
+            "expected": "13308104863.3374",
+            "actual": "13308104863.3374",
+            "passed": true
+          }
+        },
+        {
+          "scenario": "base",
+          "rates_count": 5,
+          "cashflows_count": 5,
+          "g3_expected": "0.2100000000000000000000000000",
+          "g4_expected": "0.1200000000000000000000000000",
+          "g5_expected": "0.03",
+          "cashflow_checks": [
+            {
+              "year": 3,
+              "expected": "11640800594.39000000000000000",
+              "actual": "11640800594.39",
+              "passed": true
+            },
+            {
+              "year": 4,
+              "expected": "13037696665.71680000000000000",
+              "actual": "13037696665.72",
+              "passed": true
+            },
+            {
+              "year": 5,
+              "expected": "13428827565.6916",
+              "actual": "13428827565.69",
+              "passed": true
+            }
+          ],
+          "passed": true,
+          "year6": {
+            "expected": "13831692392.6607",
+            "actual": "13831692392.6607",
+            "passed": true
+          }
+        },
+        {
+          "scenario": "bull",
+          "rates_count": 5,
+          "cashflows_count": 5,
+          "g3_expected": "0.2433333333333333333333333333",
+          "g4_expected": "0.1416666666666666666666666667",
+          "g5_expected": "0.04",
+          "cashflow_checks": [
+            {
+              "year": 3,
+              "expected": "11961483806.35666666666666666",
+              "actual": "11961483806.36",
+              "passed": true
+            },
+            {
+              "year": 4,
+              "expected": "13656027345.59433333333333334",
+              "actual": "13656027345.59",
+              "passed": true
+            },
+            {
+              "year": 5,
+              "expected": "14202268439.4136",
+              "actual": "14202268439.41",
+              "passed": true
+            }
+          ],
+          "passed": true,
+          "year6": {
+            "expected": "14770359176.9864",
+            "actual": "14770359176.9864",
+            "passed": true
+          }
+        }
+      ],
+      "passed": true
+    },
+    "META": {
+      "status_code": 200,
+      "provider_method_count": 7,
+      "scenarios": [],
+      "passed": true,
+      "dcf_unavailable_reason": "No FCFF data available. FCFE cannot be substituted for FCFF in DCF."
+    },
+    "KO": {
+      "status_code": 200,
+      "provider_method_count": 7,
+      "scenarios": [
+        {
+          "scenario": "bear",
+          "rates_count": 5,
+          "cashflows_count": 5,
+          "g3_expected": "0.01141497681668374466749864376",
+          "g4_expected": "0.02070748840834187233374932188",
+          "g5_expected": "0.03",
+          "cashflow_checks": [
+            {
+              "year": 3,
+              "expected": "13143914036.20799792773701710",
+              "actual": "13143914036.21",
+              "passed": true
+            },
+            {
+              "year": 4,
+              "expected": "13416091483.75506060781983958",
+              "actual": "13416091483.76",
+              "passed": true
+            },
+            {
+              "year": 5,
+              "expected": "13818574228.2728",
+              "actual": "13818574228.27",
+              "passed": true
+            }
+          ],
+          "passed": true,
+          "year6": {
+            "expected": "14233131455.1181",
+            "actual": "14233131455.1181",
+            "passed": true
+          }
+        },
+        {
+          "scenario": "base",
+          "rates_count": 5,
+          "cashflows_count": 5,
+          "g3_expected": "0.01166467860786322902058663972",
+          "g4_expected": "0.02083233930393161451029331986",
+          "g5_expected": "0.03",
+          "cashflow_checks": [
+            {
+              "year": 3,
+              "expected": "13147159053.29117403263178482",
+              "actual": "13147159053.29",
+              "passed": true
+            },
+            {
+              "year": 4,
+              "expected": "13421045131.57089362260004915",
+              "actual": "13421045131.57",
+              "passed": true
+            },
+            {
+              "year": 5,
+              "expected": "13823676485.5171",
+              "actual": "13823676485.52",
+              "passed": true
+            }
+          ],
+          "passed": true,
+          "year6": {
+            "expected": "14238386780.0856",
+            "actual": "14238386780.0856",
+            "passed": true
+          }
+        },
+        {
+          "scenario": "bull",
+          "rates_count": 5,
+          "cashflows_count": 5,
+          "g3_expected": "0.01524771373237604670700796902",
+          "g4_expected": "0.02762385686618802335350398452",
+          "g5_expected": "0.04",
+          "cashflow_checks": [
+            {
+              "year": 3,
+              "expected": "13193722636.73101680419321921",
+              "actual": "13193722636.73",
+              "passed": true
+            },
+            {
+              "year": 4,
+              "expected": "13558184142.37921436226353941",
+              "actual": "13558184142.38",
+              "passed": true
+            },
+            {
+              "year": 5,
+              "expected": "14100511508.0752",
+              "actual": "14100511508.08",
+              "passed": true
+            }
+          ],
+          "passed": true,
+          "year6": {
+            "expected": "14664531968.4032",
+            "actual": "14664531968.4032",
+            "passed": true
+          }
+        }
+      ],
+      "passed": true
+    },
+    "JPM": {
+      "status_code": 200,
+      "provider_method_count": 7,
+      "scenarios": [],
+      "passed": true,
+      "dcf_unavailable_reason": "FCFF DCF is not applicable to banks and financial institutions (operating debt structure is inseparable from operating cash flow)"
+    }
+  },
+  "raw_input_replay": {
+    "NVDA": {
+      "ticker_matches": true,
+      "pe_layer_matches": true,
+      "ev_layer_matches": true,
+      "dcf_available_matches": true,
+      "dcf_base_price_matches": true,
+      "passed": true
+    },
+    "GOOG": {
+      "ticker_matches": true,
+      "pe_layer_matches": true,
+      "ev_layer_matches": true,
+      "dcf_available_matches": true,
+      "dcf_base_price_matches": true,
+      "passed": true
+    },
+    "AMD": {
+      "ticker_matches": true,
+      "pe_layer_matches": true,
+      "ev_layer_matches": true,
+      "dcf_available_matches": true,
+      "dcf_base_price_matches": true,
+      "passed": true
+    },
+    "META": {
+      "ticker_matches": true,
+      "pe_layer_matches": true,
+      "ev_layer_matches": true,
+      "dcf_available_matches": true,
+      "passed": true
+    },
+    "KO": {
+      "ticker_matches": true,
+      "pe_layer_matches": true,
+      "ev_layer_matches": true,
+      "dcf_available_matches": true,
+      "dcf_base_price_matches": true,
+      "passed": true
+    },
+    "JPM": {
+      "ticker_matches": true,
+      "pe_layer_matches": true,
+      "ev_layer_matches": true,
+      "dcf_available_matches": true,
+      "passed": true
+    }
+  },
+  "failures": [
+    "NVDA/bear: g3='999' != expected 0.1800000000000000000000000000",
+    "NVDA/bear: FCFF year 3='320697720996.44' != prior-growth result 271777729658000.00"
+  ],
+  "passed": false
+}

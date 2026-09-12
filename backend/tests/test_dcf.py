@@ -95,7 +95,8 @@ def test_wacc_equal_g_raises():
 def test_dcf_scenario_math():
     """
     Manually verify DCF math for a simple case (no Y2 estimate).
-    FCFF1=100, growth=0.10 for years 2-5, WACC=0.12, terminal_growth=0.03
+    FCFF1=100, g_start=0.10, WACC=0.12, terminal_growth=0.03.
+    Years 3-5 must linearly fade from g_start to terminal growth.
     Y1: 100, PV1 = 100/1.12^1
     Y2: 110, PV2 = 110/1.12^2  (growth-projected since fcff_y2=None)
     ...
@@ -130,10 +131,19 @@ def test_dcf_scenario_math():
     # Y1 = fcff_y1 (actual)
     assert sc.fcff_projections[0] == fcff_y1
 
-    # Y2 onwards = growth-projected (since fcff_y2=None)
+    # Y2 uses g_start; Years 3-5 linearly fade to terminal growth.
+    expected_rates = [
+        None,
+        growth,
+        growth + (Decimal("1") / Decimal("3")) * (tg - growth),
+        growth + (Decimal("2") / Decimal("3")) * (tg - growth),
+        tg,
+    ]
+    assert sc.projection_growth_rates == expected_rates
+    assert sc.growth_start == growth
     for t in range(2, 6):
         prev = sc.fcff_projections[t - 2]
-        expected = (prev * (1 + growth)).quantize(PREC, ROUND_HALF_UP)
+        expected = (prev * (1 + expected_rates[t - 1])).quantize(PREC, ROUND_HALF_UP)  # type: ignore[operator]
         assert sc.fcff_projections[t - 1] == expected, f"Year {t}: {sc.fcff_projections[t-1]} != {expected}"
 
     # Verify PVs using ACT/365 year fractions

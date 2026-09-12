@@ -1,7 +1,7 @@
 # Issue 04: 严重2 - DCF 预测期末至永续期缺乏平滑衰减 (DCF Growth Fade)
 
-Status: ready-for-agent
-Execution: deferred_by_user
+Status: resolved
+Execution: accepted_by_coordinator
 Audit-Finding: confirmed
 Severity: high
 Feature: valuation-ai-audit-20260911
@@ -27,8 +27,10 @@ Feature: valuation-ai-audit-20260911
 2. **公开呈现 Fade 轨迹**：在 DCF 预测明细表中逐年展示生效增速及衰减过程。
 
 ## 4. 验收标准 (Acceptance Criteria)
-- [ ] 高成长标的 Year 3~5 FCFF 增速呈现平滑递减趋势，消除与 3% 永续增长率之间的断崖跳跃。
-- [ ] 单元测试验证平滑衰减算法在各种初速度下的收敛性。
+- [x] 高成长标的 Year 3~5 FCFF 增速呈现平滑递减趋势，收敛至各场景永续增长率。
+- [x] 单元测试验证平滑衰减算法在各种初速度下的收敛性。
 
 ## Comments
+- 2026-09-12: 主控验收通过，见 ../acceptance-03-04-r3.md；03 的 FCFE yield 风险提示收尾不阻塞本工单。
 - 2026-09-11: 财务建模缺陷确凿。已建单。
+- 2026-09-12: R3 保留 R1 DCF 线性 fade、敏感性重算、FCFF 适用性门槛并完成全量验证，等待主控验收；不提前标记 resolved。

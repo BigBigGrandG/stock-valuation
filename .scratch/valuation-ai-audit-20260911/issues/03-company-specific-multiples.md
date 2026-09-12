@@ -1,7 +1,7 @@
 # Issue 03: 严重1 - 全量使用单一硬编码 Fallback 倍数 (Company-Specific Multiples)
 
-Status: ready-for-agent
-Execution: deferred_by_user
+Status: resolved
+Execution: accepted_by_coordinator
 Audit-Finding: confirmed
 Severity: high
 Feature: valuation-ai-audit-20260911
@@ -29,8 +29,10 @@ Feature: valuation-ai-audit-20260911
    - Level 3: 保守系统兜底 Fallback。
 
 ## 4. 验收标准 (Acceptance Criteria)
-- [ ] 系统能够为不同行业标的匹配具有行业针对性的参考倍数。
-- [ ] 当降级至 Level 3 全局兜底时，明确输出参数特异性不足的风险提示。
+- [x] 系统能够为有来源支持的行业标的匹配行业针对性的参考倍数，并对不确定映射保守降级。
+- [x] 当降级至 Level 3 全局兜底时，明确输出参数特异性不足的风险提示（含 P/E、EV/EBITDA 与 FCFE yield）。
 
 ## Comments
+- 2026-09-12: 主控最终验收通过，见 acceptance-03-04-r3.md；R4 FCFE yield 兜底提示及 API/UI/Markdown 回归见 implementation-report-03-r4.md。
 - 2026-09-11: 事实完全确认。已建单备忘。
+- 2026-09-12: R3 实现与证据已交付，等待主控验收；不提前标记 resolved。未经跨 taxonomy 经济可比性证据的行业别名保守降级，兼容的 Semiconductors 直接标签仍可差异化。

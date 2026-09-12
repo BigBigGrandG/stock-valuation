@@ -1,0 +1,157 @@
+{
+  "boundaries": [
+    {
+      "input": {
+        "sector": "Technology",
+        "industry": "Software",
+        "expected": null
+      },
+      "result": null,
+      "sample_size": null,
+      "forward_pe": null,
+      "mapping_key": null,
+      "mapping_source": null,
+      "ev_basis": null,
+      "expected_match": false
+    },
+    {
+      "input": {
+        "sector": "Technology",
+        "industry": "Internet Content & Information",
+        "expected": "Software (Internet)"
+      },
+      "result": "Software (Internet)",
+      "sample_size": 29,
+      "forward_pe": "64.81",
+      "mapping_key": "internet content & information",
+      "mapping_source": "Yahoo Finance profile industry/sector exact label mapped to the named NYU Stern/Damodaran row",
+      "ev_basis": "observed_all_firms_ebitda",
+      "expected_match": true
+    },
+    {
+      "input": {
+        "sector": "Technology",
+        "industry": "Semiconductors",
+        "expected": "Semiconductor"
+      },
+      "result": "Semiconductor",
+      "sample_size": 66,
+      "forward_pe": "37.29",
+      "mapping_key": "semiconductors",
+      "mapping_source": "Yahoo Finance profile industry/sector exact label mapped to the named NYU Stern/Damodaran row",
+      "ev_basis": "observed_all_firms_ebitda",
+      "expected_match": true
+    }
+  ],
+  "replay": {
+    "NVDA": {
+      "input_source": ".scratch\\valuation-ai-audit-20260911\\verification\\03-04-r2\\live_results.json",
+      "status": "success",
+      "selection_layers": {
+        "pe": "industry",
+        "ev_ebitda": "system"
+      },
+      "raw_response_replayed": true,
+      "dcf_available": true,
+      "fade_checks": [
+        {
+          "scenario": "bear",
+          "five_rates": true,
+          "g5_equals_terminal": true,
+          "formula_contains_g_start": true
+        },
+        {
+          "scenario": "base",
+          "five_rates": true,
+          "g5_equals_terminal": true,
+          "formula_contains_g_start": true
+        },
+        {
+          "scenario": "bull",
+          "five_rates": true,
+          "g5_equals_terminal": true,
+          "formula_contains_g_start": true
+        }
+      ],
+      "fade_checks_applicable": true,
+      "all_fade_checks_pass": true
+    },
+    "GOOG": {
+      "input_source": ".scratch\\valuation-ai-audit-20260911\\verification\\03-04-r2\\live_results.json",
+      "status": "success",
+      "selection_layers": {
+        "pe": "industry",
+        "ev_ebitda": "system"
+      },
+      "raw_response_replayed": true,
+      "dcf_available": true,
+      "fade_checks": [
+        {
+          "scenario": "bear",
+          "five_rates": true,
+          "g5_equals_terminal": true,
+          "formula_contains_g_start": true
+        },
+        {
+          "scenario": "base",
+          "five_rates": true,
+          "g5_equals_terminal": true,
+          "formula_contains_g_start": true
+        },
+        {
+          "scenario": "bull",
+          "five_rates": true,
+          "g5_equals_terminal": true,
+          "formula_contains_g_start": true
+        }
+      ],
+      "fade_checks_applicable": true,
+      "all_fade_checks_pass": true
+    },
+    "AMD": {
+      "input_source": ".scratch\\valuation-ai-audit-20260911\\verification\\03-04-r2\\live_results.json",
+      "status": "success",
+      "selection_layers": {
+        "pe": "industry",
+        "ev_ebitda": "system"
+      },
+      "raw_response_replayed": true,
+      "dcf_available": true,
+      "fade_checks": [
+        {
+          "scenario": "bear",
+          "five_rates": true,
+          "g5_equals_terminal": true,
+          "formula_contains_g_start": true
+        },
+        {
+          "scenario": "base",
+          "five_rates": true,
+          "g5_equals_terminal": true,
+          "formula_contains_g_start": true
+        },
+        {
+          "scenario": "bull",
+          "five_rates": true,
+          "g5_equals_terminal": true,
+          "formula_contains_g_start": true
+        }
+      ],
+      "fade_checks_applicable": true,
+      "all_fade_checks_pass": true
+    },
+    "META": {
+      "input_source": ".scratch\\valuation-ai-audit-20260911\\verification\\03-04-r2\\live_results.json",
+      "status": "success",
+      "selection_layers": {
+        "pe": "industry",
+        "ev_ebitda": "system"
+      },
+      "raw_response_replayed": true,
+      "dcf_available": false,
+      "fade_checks": [],
+      "fade_checks_applicable": false,
+      "all_fade_checks_pass": true
+    }
+  }
+}

@@ -125,10 +125,16 @@ def run_ev_ebitda(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssu
     scenarios = assumptions.ev_ebitda_multiple
     source_type = assumptions.ev_ebitda_source
     source_label = assumptions.ev_ebitda_source_label
+    selection_layer = getattr(assumptions, "ev_ebitda_selection_layer", "system")
+    selection_as_of = getattr(assumptions, "ev_ebitda_selection_as_of", None)
     multiple_source = "fallback"
     historical_metric: FinancialMetric | None = None
     if assumptions.ev_ebitda_source == SourceType.USER_OVERRIDE:
         multiple_source = "user_override"
+    elif selection_layer in {"company_historical", "industry"}:
+        # The service-level arbiter validates EV/forward EBITDA evidence
+        # independently from P/E and passes the selected scenarios here.
+        multiple_source = selection_layer
     elif snapshot.historical_ev_ebitda is not None and snapshot.historical_ev_ebitda.value > ZERO:
         historical_metric = snapshot.historical_ev_ebitda
         hist = historical_metric.value
@@ -142,6 +148,11 @@ def run_ev_ebitda(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssu
         multiple_source = "historical"
     elif snapshot.historical_ev_ebitda is not None:
         warnings.append("Historical EV/EBITDA is non-positive; using configured fallback")
+
+    if multiple_source == "fallback" and source_type == SourceType.CONFIGURED_FALLBACK:
+        warnings.append(
+            f"EV/EBITDA used configured fallback because parameter specificity was insufficient [{source_label}]"
+        )
 
     if not (scenarios.low <= scenarios.base <= scenarios.high):
         return _unavailable("Effective EV/EBITDA assumptions must satisfy low <= base <= high")
@@ -201,7 +212,7 @@ def run_ev_ebitda(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssu
             label,
             source_label,
             assumption_source_type,
-            ebitda_metric.as_of,
+            selection_as_of or ebitda_metric.as_of,
             multiple_source,
         )
 
@@ -279,6 +290,7 @@ def run_ev_ebitda(snapshot: CompanyFinancialSnapshot, assumptions: ValuationAssu
             "source": assumption_source_type,
             "source_label": source_label,
             "multiple_source": multiple_source,
+            "selection_layer": selection_layer,
         },
         input_metrics=input_metrics,
         assumption_metrics=assumption_metrics,

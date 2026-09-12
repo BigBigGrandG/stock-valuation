@@ -41,6 +41,7 @@ from app.providers.statement_aggregator import (
     aggregate_ttm_income,
     extract_latest_balance_sheet,
 )
+from app.services.multiples import industry_multiple_payload
 
 logger = logging.getLogger(__name__)
 
@@ -1061,16 +1062,26 @@ class YFinanceProvider(FinancialDataProvider):
         if isinstance(reg_time, (int, float)) and reg_time > 0:
             as_of_date = datetime.fromtimestamp(reg_time, tz=timezone.utc).date()
 
-        # Current trailingPE and enterpriseToEbitda are NOT historical forward or historical averages:
-        # Leave historical multiples unavailable unless actual historical timeseries data exists;
-        # valuation models use explicit configured assumption defaults instead.
-        return {
+        # Current trailingPE and enterpriseToEbitda are NOT historical forward or historical averages.
+        # Never relabel those current fields as historical.  Company history
+        # remains unavailable from this API, while a bounded, versioned public
+        # industry snapshot can be attached by the upstream sector/industry
+        # labels and independently validated by the service arbiter.
+        payload = {
             "historical_forward_pe": None,
             "historical_ev_ebitda": None,
             "period": "historical",
             "as_of": as_of_date,
             "source": f"Yahoo Finance multiples ({bundle.query_symbol})",
         }
+        payload.update(
+            industry_multiple_payload(
+                info.get("sector"),
+                info.get("industry"),
+                as_of=as_of_date,
+            )
+        )
+        return payload
 
     def supports_ticker(self, ticker: str) -> bool:
         try:

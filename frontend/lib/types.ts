@@ -35,6 +35,8 @@ export interface ProjectionMetric {
   period?: string;
   fcff?: FinancialMetric | DecimalLike;
   pv?: FinancialMetric | DecimalLike;
+  growth_rate?: DecimalLike | null;
+  growth_type?: string;
   fcff_metric?: FinancialMetric;
   pv_metric?: FinancialMetric;
   [key: string]: unknown;
@@ -47,6 +49,9 @@ export interface DCFSensitivityCell {
   enterprise_value?: DecimalLike;
   equity_value?: DecimalLike;
   tv_ratio?: DecimalLike;
+  fcff_projections?: DecimalLike[];
+  fcff_year6?: DecimalLike;
+  projection_growth_rates?: Array<DecimalLike | null>;
   available: boolean;
   unavailable_reason?: string;
 }
@@ -64,11 +69,15 @@ export interface DCFScenario {
   wacc: DecimalLike;
   terminal_growth: DecimalLike;
   growth_rate?: DecimalLike;
+  growth_start?: DecimalLike;
+  growth_fade_formula?: string;
+  projection_growth_rates?: Array<DecimalLike | null>;
   growth_metric?: FinancialMetric | Record<string, unknown>;
   growth_cap?: DecimalLike;
   growth_floor?: DecimalLike;
   fcff_year1: DecimalLike;
   fcff_projections: DecimalLike[];
+  fcff_year6?: DecimalLike;
   projection_periods?: string[];
   pv_projections: DecimalLike[];
   pv_years?: number[];
@@ -160,9 +169,17 @@ export interface ValuationAssumptions {
   pe_target: ScenarioValues;
   pe_source: string;
   pe_source_label: string;
+  pe_selection_layer?: string;
+  pe_selection_as_of?: string;
+  pe_selection_sample_size?: number;
+  pe_selection_basis?: string;
   ev_ebitda_multiple: ScenarioValues;
   ev_ebitda_source: string;
   ev_ebitda_source_label: string;
+  ev_ebitda_selection_layer?: string;
+  ev_ebitda_selection_as_of?: string;
+  ev_ebitda_selection_sample_size?: number;
+  ev_ebitda_selection_basis?: string;
   fcf_yield: ScenarioValues;
   fcf_yield_source: string;
   fcf_yield_source_label: string;

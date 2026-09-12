@@ -19,6 +19,7 @@ from app.engines.dcf import run_dcf
 from app.engines.ev_ebitda import run_ev_ebitda
 from app.engines.fcf_yield import run_fcf_yield
 from app.engines.forward_pe import run_forward_pe
+from app.services.multiples import resolve_multiple_assumptions
 from app.services.projections import derive_request_projections
 from app.models.domain import (
     CompanyFinancialSnapshot,
@@ -666,6 +667,39 @@ class Normalizer:
 
             historical_forward_pe=self._metric([mult], ("historical_forward_pe",), unit="ratio", period=str(mult.get("period", "historical")), source=str(mult.get("source", default_source)), as_of=multiples_as_of),
             historical_ev_ebitda=self._metric([mult], ("historical_ev_ebitda",), unit="ratio", period=str(mult.get("period", "historical")), source=str(mult.get("source", default_source)), as_of=multiples_as_of),
+            multiple_candidates={
+                key: value
+                for key, value in {
+                    "company_forward_pe_observations": mult.get("company_forward_pe_observations"),
+                    "company_ev_ebitda_observations": mult.get("company_ev_ebitda_observations"),
+                    "industry_name": mult.get("industry_name"),
+                    "industry_forward_pe": mult.get("industry_forward_pe"),
+                    "industry_ev_ebitda": mult.get("industry_ev_ebitda"),
+                    "industry_sample_size": mult.get("industry_sample_size"),
+                    "industry_as_of": mult.get("industry_as_of"),
+                    "industry_period": mult.get("industry_period"),
+                    "industry_currency": mult.get("industry_currency"),
+                    "industry_forward_pe_currency": mult.get("industry_forward_pe_currency"),
+                    "industry_ev_ebitda_currency": mult.get("industry_ev_ebitda_currency"),
+                    "industry_forward_pe_unit": mult.get("industry_forward_pe_unit"),
+                    "industry_ev_ebitda_unit": mult.get("industry_ev_ebitda_unit"),
+                    "industry_forward_pe_basis": mult.get("industry_forward_pe_basis"),
+                    "industry_forward_pe_forecast_type": mult.get("industry_forward_pe_forecast_type"),
+                    "industry_ev_ebitda_basis": mult.get("industry_ev_ebitda_basis"),
+                    "industry_ev_ebitda_forecast_type": mult.get("industry_ev_ebitda_forecast_type"),
+                    "industry_ev_ebitda_denominator_scope": mult.get("industry_ev_ebitda_denominator_scope"),
+                    "industry_mapping_key": mult.get("industry_mapping_key"),
+                    "industry_mapping_source": mult.get("industry_mapping_source"),
+                    "industry_forward_pe_source": mult.get("industry_forward_pe_source"),
+                    "industry_forward_pe_source_url": mult.get("industry_forward_pe_source_url"),
+                    "industry_ev_ebitda_source": mult.get("industry_ev_ebitda_source"),
+                    "industry_ev_ebitda_source_url": mult.get("industry_ev_ebitda_source_url"),
+                    "industry_is_estimated": mult.get("industry_is_estimated"),
+                    "industry_notes": mult.get("industry_notes"),
+                    "industry_unavailable_reason": mult.get("industry_unavailable_reason"),
+                }.items()
+                if value is not None
+            },
             revenue_growth=self._metric(maps, ("revenue_growth",), unit="ratio", period="growth", source=str(default_source), as_of=quote_as_of, estimated=True),
             ebitda_growth=self._metric(maps, ("ebitda_growth",), unit="ratio", period="growth", source=str(default_source), as_of=quote_as_of, estimated=True),
             eps_growth=self._metric(maps, ("eps_growth",), unit="ratio", period="growth", source=str(default_source), as_of=quote_as_of, estimated=True),
@@ -773,10 +807,12 @@ def apply_overrides(base_assumptions: ValuationAssumptions, overrides: Optional[
         update_scenarios("pe_target", "forward_pe")
         data["pe_source"] = SourceType.USER_OVERRIDE
         data["pe_source_label"] = "User override"
+        data["pe_selection_layer"] = "user_override"
     if any(key.startswith("ev_ebitda.") for key in overrides):
         update_scenarios("ev_ebitda_multiple", "ev_ebitda")
         data["ev_ebitda_source"] = SourceType.USER_OVERRIDE
         data["ev_ebitda_source_label"] = "User override"
+        data["ev_ebitda_selection_layer"] = "user_override"
     if any(key.startswith("fcf_yield.") for key in overrides):
         update_scenarios("fcf_yield", "fcf_yield", inverse=True)
         data["fcf_yield_source"] = SourceType.USER_OVERRIDE
@@ -1143,6 +1179,14 @@ class ValuationService:
     ) -> ValuationResponse:
         snapshot = self._data_service.get_snapshot(ticker, bypass_cache=bypass_cache, budget=budget)
         assumptions = apply_overrides(self._default_assumptions, overrides)
+        # Multiple arbitration belongs at the normalized snapshot boundary so
+        # the selected company/industry/system source reaches every engine,
+        # composite result, API response, and Markdown export consistently.
+        assumptions, multiple_warnings = resolve_multiple_assumptions(snapshot, assumptions)
+        if multiple_warnings:
+            snapshot = snapshot.model_copy(update={
+                "warnings": list(dict.fromkeys([*snapshot.warnings, *multiple_warnings]))
+            })
         valuations = run_all_engines(snapshot, assumptions)
         composite = run_composite(
             current_price=snapshot.current_price.value,
