@@ -1,98 +1,135 @@
 # Project Constraints & Standards
 
-本指南记录本项目的核心领域约束、架构不变量、数据与财务准则、版本库安全策略以及标准工具链验证命令。
+本指南记录项目长期稳定的领域、架构、数据与财务约束。Git 安全与验证流程分别见 `repository-safety.md` 和 `verification.md`。
 
-## 1. Core Architecture & Domain Invariants (核心架构与领域不变量)
+## 1. Core Architecture & Domain Invariants
 
-- **定位与目标**：高确定性、可溯源的美股上市公司估值分析引擎，采用 FastAPI (Python 3.12+) 后端与 Next.js (TypeScript) 前端。
-- **任意美股标的查询**：系统面向真实全量美股上市公司（如 `NVDA`、`AAPL`、`MSFT`、`AVGO`、`KO`、`JPM`、`TSM`、`RIVN` 等），绝不退回至任何静态白名单，严禁将演示数据（如 AVGO fixture）重命名复制给其他股票。
-- **模型适用性与数值约束**：支持任意美股标的查询，**但不保证每只股票四个模型均产生数值**；仅数据完整且业务适用的模型产生有效结果，不适用或缺少必要输入的模型诚实隔离并标记原因（`available: false`），四个模型始终独立输出，不合成跨模型结果。
-- **数据源与离线隔离**：
-  - 生产与默认运行模式采用无密钥实时行情源（固定依赖 `yfinance`）。
-  - 离线演示数据（`AvgoFixtureProvider`，基准日 2025-01-15）仅在显式配置 `DATA_PROVIDER=demo` 或请求携带 `?provider=demo` 时生效，专用于网络隔离下的确定性自动化测试与离线演示，严禁在线查询时静默回退。
-- **四模型独立输出约束**：
-  - **Forward P/E**：基于分析师预期或历史中位数 EPS 及目标倍数计算。
-  - **EV/EBITDA**：基于预期 EBITDA、目标倍数及净债务扣除，折算每股股权价值。
-  - **FCF yield**：仅基于 FCFE（股权自由现金流），严禁使用 WACC 折现。
-  - **DCF**：仅基于 FCFF（企业自由现金流），包含五年预测折现及终值折现。
-  - **独立情景**：每个模型各自输出 Low/Base/High；单个模型 unavailable 时不影响、重分配或改写其他模型。
-  - 详细公式、情景与分类阈值以权威规范文档为准，不在此复制易陈旧的静态实现常量。
-- **计算精度与溯源元数据**：
-  - 后端业务计算全量采用 Python `Decimal` 确定性运算，JSON 接口以高精度字符串传输，禁止前端做二次业务估值计算。
-  - 所有指标具备结构化元数据（`value`、`unit`、`period`、`source`、`source_type`、`as_of`、`confidence`、`is_estimated`）。严禁对缺失财务字段进行无根据补零。
+- **定位与目标**：高确定性、可溯源的美股上市公司估值分析引擎，采用 FastAPI (Python 3.12+) 后端与 Next.js / React / TypeScript 前端。
+- **架构边界**：保持现有 provider → service / normalization → projection / valuation engine → API / export 的职责分层；局部需求不应触发无关的整体重构。
+- **业务计算位置**：估值与核心财务计算由后端负责，前端只展示、交互和导出，不维护另一套独立估值公式。
+- **任意美股标的查询**：系统面向真实全量美股上市公司，不得退回静态白名单，也不得把 demo fixture 改名复制给其他股票。
+- **模型独立性**：四种模型分别输出 Low / Base / High；某模型 unavailable 时不影响、重分配或改写其他模型，不生成跨模型综合目标价。
 
-## 2. Financial Applicability & Robust Isolation (财务适用性与边界隔离)
+## 2. Valuation Model Invariants
 
-系统依据公司类型与财务现实执行细粒度隔离，杜绝编造数据或无端崩溃：
+### Forward P/E
 
-- **正常盈利企业**（如 `NVDA`、`AAPL`、`MSFT`、`KO`）：四种模型独立执行；每个模型是否可用取决于其自身输入。
-- **美股上市外国 ADR**（如纽交所代码 `TSM`，上市交易所 `NYQ`）：
-  - 支持 Forward P/E 分析：使用美股市场的 USD 交易报价与分析师一致预期的每 ADS USD 预测 EPS。
-  - 隔离财报类模型：当财报披露币种与交易币种不一致（如台币 TWD vs 美元 USD）且缺乏权威折算时，EV/EBITDA、FCF yield 与 DCF 明确标记 `available: false`，原因标明“记账币种与交易币种不一致，不进行未经审计的汇率折算”，严禁随意捏造汇率。
-- **金融机构与银行**（如 `JPM`、`BAC`）：
-  - 存款负债构成其核心经营资产，EV/EBITDA 与 FCFF DCF 在经济学上不适用。
-  - 系统将其隔离标记为 `available: false` 并输出业务原因，Forward P/E 正常计算，其他模型不受影响。
-- **亏损与早期标的**（如 `RIVN`）：
-  - 依赖正向收益或现金流的模型诚实输出 `available: false` 与具体 `unavailable_reason`（如负 EBITDA），系统正常返回 HTTP 200，绝不因缺少正盈利而崩溃或返回 422 错误。
-- **非股票资产类别**（如 ETF `SPY`、加密货币）：
-  - 统一通过类型化错误 `UnsupportedCompanyError` 拒绝并返回 HTTP 422。
-- **财年预测对齐准则**：
-  - 预测财年必须通过 upstream `nextFiscalYearEnd` 时间戳严格验证，严禁盲目采用 `year+1` 粗暴推算；对基准日非相邻的情况实施严格校验。
+- 基于 forward EPS 与目标 P/E。
+- 历史 forward P/E 中位数可作为优先倍数来源；缺失时使用明确配置或用户 override。
 
-## 3. Git Baseline & Untracked File Safety (版本库基线与安全策略)
+### EV/EBITDA
 
-- **先查基线与保护成果**：
-  - 任何操作前必须首先核实当前 Git 基线与分支状态（如 `git status`、`git log`）。
-  - 严格保护未提交与未跟踪文件，严禁执行 `git clean -fd`、`git reset --hard`、破坏性脚手架覆盖或重新初始化 Git 仓库。
-  - 除非用户发出明确授权指令，否则严禁擅自执行 `git commit` 或 `git push`。
-- **Diff Stat 统计与基线说明**：
-  - 在未建立 commit 基线或包含未跟踪文件时，`git diff --stat` 无法提供改动行数。此时应通过工作区文件快照比对、文件行数统计或逐文件清单说明变动，不得因 `git diff` 为空而声称没有修改。
+- 基于 forward EBITDA、目标倍数、净债务和 diluted shares 得到每股股权价值。
+- 必须保持企业价值与股权价值之间的净债务桥接。
 
-## 4. Toolchain Baseline & Verification Commands (工具链与验证命令)
+### FCF Yield
 
-### 环境基线
-- 后端：Python 3.12+，虚拟环境位于 `.venv`，依赖版本以 `pyproject.toml` 及 `backend/requirements.lock` 锁定为准。
-- 前端：Node，Next.js / React / TypeScript，位于 `frontend/` 目录，依赖版本以 `frontend/package.json` 为准。
+- 仅使用 FCFE。
+- 不得使用 WACC 对 FCFE 进行折现。
+- yield 与估值方向相反：更高 yield 对应更低估值。
 
-### 标准验证命令（开发与全量验收参考）
-以下命令为系统开发与全量验收时的标准命令集（指明来源）：
+### DCF
 
-```powershell
-# 1. 后端离线单元与回归测试（必须在 demo 隔离环境中运行，来源：pyproject.toml / backend/tests/）
-.\.venv\Scripts\python.exe -m pytest backend/tests/ -v
+- 仅使用 FCFF。
+- 使用五年预测、逐年折现与 terminal value。
+- 企业价值转股权价值时正确处理 debt / cash。
+- WACC 必须大于 terminal growth。
+- TTM 数据不得直接改标签伪装成 forecast period。
 
-# 2. 真实多股票与特殊边界标的在线验证（来源：.scratch/live-tickers/）
-.\.venv\Scripts\python.exe .scratch/live-tickers/verify_live.py
-.\.venv\Scripts\python.exe .scratch/live-tickers/verify_special_tickers.py
+具体公开公式与当前行为以 `README.md` 为准；实现发生变化时应同步保持文档和测试一致。
 
-# 3. 前端质量与构建检查（在 frontend/ 目录下执行，来源：frontend/package.json）
-cd frontend
-npm run typecheck
-npm run lint
-npm run build
-cd ..
+## 3. Precision & Provenance
 
-# 4. 前后端流式协议与端到端浏览器验收（来源：.scratch/live-tickers/）
-node --experimental-strip-types .scratch/live-tickers/test_api_deep.mjs
-python .scratch/live-tickers/browser_acceptance.py
-```
+- 后端核心业务计算使用 Python `Decimal`，JSON 以高精度字符串传输。
+- 不允许前端对后端估值结果做二次业务计算。
+- 缺失财务字段不得无根据补零。
+- 不得编造目标价、汇率、财务数据或来源。
+- 财务指标应保留适用的结构化 provenance，包括：
+  - `value`
+  - `unit`
+  - `period`
+  - `source`
+  - `source_type`
+  - `as_of`
+  - `confidence`
+  - `is_estimated`
+- unavailable 模型必须保留明确、可解释的 `unavailable_reason`。
 
-### 文档任务的执行纪律
-- **禁止过度测试**：对于纯文档、规范或指引类的调整，**严禁**为纯文档改动盲目运行整套产品测试（尤其是涉及大量依赖或在线网络请求的测试套件）。
-- **区分历史证据与当前执行**：交接文档与报告中若提及测试结果，必须明确说明其为历史轮次已沉淀的验证记录（如 HANDOFF 第 13 节记录的历史通过），非本轮文档工作的重复执行，准确标明 `NOT RUN` / `history`。
+涉及财务变更时，应能够沿以下数据链回溯：
 
-### 工作流质量门槛
+`source → normalizer/service → projection → valuation engine → API/export`
 
-- **证据优先于结论**：任何“通过”“已修复”“已交付”都必须绑定实际命令、工作目录、退出码和可复核 artifact；Worker 自报、旧日志或历史 `HANDOFF.md` 只能作为相应等级的证据，不能覆盖当前 `git status`、当前 diff 或当前失败输出。
-- **报告可复现**：每项任务报告必须记录基线、Ownership、Acceptance 矩阵、changed files、测试/静态检查的 `PASS`/`FAIL`/`NOT RUN`、风险和未决事项；未验证的模型可用性、实时数据、汇率或产品行为必须标记 `Not verified` / `Inference`。
-- **验证范围跟随改动**：只改 Markdown 指引时运行 Markdown 内链、空白、终止换行和结构静态检查即可；不运行产品全套测试。若同一工作区另有产品代码 dirty/untracked，报告必须分离这些历史/并发成果，不得把它们冒充为本轮文档验证。
-- **提供商回退不改变领域规则**：默认 Antigravity / `gemini-3.8-flash-high` / Full Access 不可用时，可在宿主实际暴露并授权的前提下回退到 Codex Luna Max；须记录 provider/model、原因、时间和 `resets_at`/下次探测时间，且不得因换模型放宽任意美股支持、模型适用性隔离、Decimal、来源元数据、缺失不补零、汇率审计或仓库安全约束。
-- **副作用有界**：在工具、文件或外部请求已经产生副作用后，不得盲目重试非幂等动作；使用 continuation boundary 和交接证据恢复。回退、并行和会话复用都不能成为重复执行或绕过人工决策的理由。
+## 4. Data Provider Boundaries
 
-## 5. Authoritative Spec References (权威规范索引)
+- 默认运行模式使用实时数据；当前 live provider 为无密钥 `yfinance`。
+- demo 数据只在显式 `DATA_PROVIDER=demo` 或请求 `?provider=demo` 时使用。
+- `AvgoFixtureProvider` 是固定日期的 AVGO 离线 fixture，仅用于确定性测试与演示。
+- live provider 失败时不得静默回退到 demo。
+- demo fixture 不得复制、改名或伪装成其他 ticker 的真实数据。
+- provider 返回的数据必须经过现有 validation / normalization 边界后再进入估值逻辑。
 
-当面临业务规则与技术实现分歧时，以以下高优先级权威文档为准，不复制冗余历史实现快照：
+## 5. Financial Applicability
 
-1. **功能与核验规范**：[`.scratch/live-tickers/spec.md`](../../.scratch/live-tickers/spec.md) 与 [`.scratch/live-tickers/coordinator-verification-plan.md`](../../.scratch/live-tickers/coordinator-verification-plan.md)。
-2. **最新验收与交付状态**：[`HANDOFF.md`](../../HANDOFF.md) 第 13 节（Final Acceptance & Closeout Status，明确真实多 Ticker 需求已全量验收交付闭环）。
-3. **公开接口与使用手册**：[`README.md`](../../README.md)。
+系统支持符合范围的美股上市公司，但不保证每只股票四个模型均有有效数值。
+
+### Profitable operating companies
+
+如 `NVDA`、`AAPL`、`MSFT`、`AVGO`、`KO`：四种模型可独立运行，实际 availability 取决于各自输入是否完整且经济学上适用。
+
+### US-listed foreign ADRs
+
+如 `TSM`：
+
+- Forward P/E 可使用美国市场 USD 报价及每 ADS 的 USD forward EPS。
+- 当财报币种与交易币种不一致且缺乏可信折算时，依赖财报币种的模型应返回 unavailable。
+- 不得自行捏造未经审计的 FX conversion。
+
+### Financial institutions / banks
+
+如 `JPM`、`BAC`、`C`：
+
+- 存款负债属于核心经营结构，传统 EV/EBITDA 与 FCFF DCF 通常不具经济适用性。
+- 不适用模型应明确返回 `available: false` 与原因。
+- Forward P/E 等仍可在输入适用时独立运行。
+
+### Loss-makers / early-stage companies
+
+如 `RIVN`、`SNAP`：
+
+- 依赖正收益、正 EBITDA 或正现金流的模型在条件不满足时返回 unavailable。
+- 不应因单个模型不适用导致整个公司请求崩溃或返回通用错误。
+
+### Unsupported asset classes
+
+ETF、crypto、mutual fund、SPAC 或不符合系统范围的非美股证券，通过类型化错误拒绝；当前公开错误行为以 `README.md` 为准。
+
+## 6. Forecast Alignment
+
+- 预测财年应使用 upstream `nextFiscalYearEnd` 等可验证时间信息对齐。
+- 不得无条件使用 `year + 1` 推断下一财年。
+- forecast、TTM、historical period 必须保持语义区别。
+
+## 7. Public Contract
+
+当任务影响以下内容时，应检查并同步 `README.md`：
+
+- 公开 API；
+- request / response schema；
+- model formulas；
+- provider behavior；
+- setup / run instructions；
+- error taxonomy；
+- 用户可见能力或限制。
+
+## 8. Verification & Repository Safety
+
+不要在本文件复制操作性流程。
+
+- 验证范围、标准命令和证据规则：`docs/agents/verification.md`
+- Git baseline、dirty / untracked 保护和破坏性操作限制：`docs/agents/repository-safety.md`
+
+## 9. Historical Artifacts
+
+`.scratch/` 与根 `HANDOFF.md` 中可能保留旧任务的 spec、验收记录、报告和历史工作流命名。这些内容可作为历史证据，但不自动代表当前代码状态，也不定义当前 Agent 执行方式。
+
+对于当前工作，以当前代码、当前 diff、当前验证输出以及本文件定义的领域不变量为准。
